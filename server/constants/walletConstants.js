@@ -1,0 +1,18 @@
+export const WALLET_TRANSACTION_TYPE = Object.freeze({
+    CREDIT: "CREDIT",
+    DEBIT: "DEBIT",
+});
+
+export const WALLET_TRANSACTION_TYPE_VALUES = Object.values(
+    WALLET_TRANSACTION_TYPE
+);
+
+export const WALLET_TRANSACTION_STATUS = Object.freeze({
+    PENDING: "PENDING",
+    COMPLETED: "COMPLETED",
+    FAILED: "FAILED",
+});
+
+export const WALLET_TRANSACTION_STATUS_VALUES = Object.values(
+    WALLET_TRANSACTION_STATUS
+);

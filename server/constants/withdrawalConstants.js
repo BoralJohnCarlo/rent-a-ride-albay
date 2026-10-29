@@ -1,0 +1,14 @@
+export const WITHDRAWAL_STATUS = Object.freeze({
+    PENDING: "PENDING",
+    PROCESSING: "PROCESSING",
+    COMPLETED: "COMPLETED",
+    FAILED: "FAILED",
+});
+
+export const WITHDRAWAL_STATUS_VALUES = Object.values(
+    WITHDRAWAL_STATUS
+);
+
+export const WITHDRAWAL_CODE_PREFIX = "WD-";
+
+export const MINIMUM_WITHDRAWAL_AMOUNT = 100;

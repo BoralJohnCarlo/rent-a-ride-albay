@@ -1,0 +1,707 @@
+import { after, before, beforeEach, describe, it } from "node:test";
+import assert from "node:assert/strict";
+
+import mongoose from "mongoose";
+
+import Booking from "../../models/Booking.js";
+import Driver from "../../models/Driver.js";
+import Notification from "../../models/Notification.js";
+import Payment from "../../models/Payment.js";
+import Rental from "../../models/Rental.js";
+import Settings from "../../models/Settings.js";
+import User from "../../models/User.js";
+import Vehicle from "../../models/Vehicle.js";
+// Registered for populateBooking's vehicle.category populate.
+import "../../models/VehicleCategory.js";
+
+import {
+    BOOKING_DRIVER_OPTIONS,
+    BOOKING_STATUS,
+} from "../../constants/bookingConstants.js";
+import {
+    DRIVER_AVAILABILITY,
+    DRIVER_STATUS,
+} from "../../constants/driverConstants.js";
+import { RENTAL_STATUS } from "../../constants/rentalConstants.js";
+import { VEHICLE_STATUS } from "../../constants/vehicleConstants.js";
+
+import {
+    approveBooking,
+    createBooking,
+    requestBookingExtension,
+} from "../../services/bookingService.js";
+import {
+    archiveDriver,
+    getAvailableDrivers,
+    getDrivers,
+} from "../../services/driverService.js";
+import { reassignDriver } from "../../services/rentalService.js";
+import { areDriversOfferedForVehicle } from "../../services/driverPricingService.js";
+
+import { connectTestDb, disconnectTestDb } from "../helpers/testDb.js";
+
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+
+const newId = () => new mongoose.Types.ObjectId();
+
+/* 10:00 AM Manila (02:00 UTC), `days` from today — inside pickup hours. */
+const manilaMorning = (days) => {
+    const date = new Date(Date.now() + days * DAY);
+    date.setUTCHours(2, 0, 0, 0);
+    return date;
+};
+
+/*
+ * Schemas require full listings the logic under test never reads, so
+ * documents are inserted directly with just the fields the services query.
+ */
+const insertVehicle = async (overrides = {}) => {
+    const _id = newId();
+
+    await Vehicle.collection.insertOne({
+        _id,
+        status: VEHICLE_STATUS.AVAILABLE,
+        vehicleCode: `TEST-${_id}`,
+        plateNumber: `TEST-${_id}`,
+        brand: "Toyota",
+        model: "Vios",
+        vehicleType: "Car",
+        pricing: { dailyRate: 2400, reservationFee: 0 },
+        availability: { bookingEnabled: true, blockedDates: [] },
+        ...overrides,
+    });
+
+    return _id;
+};
+
+const insertDriver = async (overrides = {}) => {
+    const _id = newId();
+
+    await Driver.collection.insertOne({
+        _id,
+        driverCode: `RAR-DRV-${_id}`,
+        firstName: "Test",
+        lastName: "Driver",
+        email: `driver-${_id}@test.local`,
+        phoneNumber: "09170000000",
+        status: DRIVER_STATUS.ACTIVE,
+        availability: DRIVER_AVAILABILITY.AVAILABLE,
+        license: {
+            licenseNumber: `N-${_id}`,
+            licenseType: "Professional",
+            expiryDate: new Date(Date.now() + 365 * DAY),
+            restrictionCodes: ["B"],
+        },
+        archive: { isArchived: false },
+        audit: {},
+        ...overrides,
+    });
+
+    return _id;
+};
+
+const insertBooking = async (overrides = {}) => {
+    const _id = newId();
+    const start = new Date(Date.now() + 3 * DAY);
+
+    await Booking.collection.insertOne({
+        _id,
+        bookingCode: `BK-T${_id}`,
+        customer: customerId,
+        vehicle: newId(),
+        driverOption: BOOKING_DRIVER_OPTIONS.WITH_DRIVER,
+        driver: null,
+        startDate: start,
+        endDate: new Date(start.getTime() + 2 * DAY),
+        pickupLocation: { type: "Office", address: "Legazpi" },
+        returnLocation: { type: "Office", address: "Legazpi" },
+        pricing: {
+            dailyRate: 2400,
+            reservationFee: 0,
+            rentalDays: 2,
+            subtotal: 4800,
+            totalAmount: 4800,
+            pickupDistanceFee: 0,
+            returnDistanceFee: 0,
+            driverDailyRate: 0,
+            driverFee: 0,
+        },
+        status: BOOKING_STATUS.PENDING,
+        statusHistory: [],
+        extensions: [],
+        reschedules: [],
+        audit: {},
+        ...overrides,
+    });
+
+    return _id;
+};
+
+const insertOngoingRental = async ({ bookingId, driverId, dueBackAt }) => {
+    const _id = newId();
+    const start = new Date(Date.now() - DAY);
+
+    await Rental.collection.insertOne({
+        _id,
+        rentalCode: `RN-T${_id}`,
+        booking: bookingId,
+        customer: customerId,
+        vehicle: newId(),
+        driver: driverId,
+        status: RENTAL_STATUS.ONGOING,
+        bookingPeriod: {
+            originalStartDate: start,
+            originalEndDate: dueBackAt,
+            actualStartDate: start,
+        },
+        actualEndDate: dueBackAt,
+        pickup: { date: start },
+        return: { date: null },
+        extensions: [],
+        driverReassignments: [],
+        operationalEvents: [],
+        audit: {},
+    });
+
+    return _id;
+};
+
+const setAdminAssignment = (on) =>
+    Settings.collection.updateOne(
+        {},
+        {
+            $set: {
+                "driverAssignmentSettings.requireAdminDriverAssignment": on,
+            },
+        },
+        { upsert: true }
+    );
+
+let adminId;
+let customerId;
+
+before(async () => {
+    await connectTestDb();
+    await Promise.all(
+        [Booking, Payment, Notification].map((model) => model.init())
+    );
+});
+
+after(disconnectTestDb);
+
+beforeEach(async () => {
+    await Promise.all(
+        [
+            Booking,
+            Driver,
+            Notification,
+            Payment,
+            Rental,
+            Settings,
+            User,
+            Vehicle,
+        ].map((model) => model.deleteMany({}))
+    );
+
+    adminId = newId();
+    customerId = newId();
+
+    await User.collection.insertMany([
+        {
+            _id: adminId,
+            role: "admin",
+            email: `admin-${adminId}@test.local`,
+        },
+        {
+            _id: customerId,
+            role: "customer",
+            firstName: "Maria",
+            lastName: "Santos",
+            email: `customer-${customerId}@test.local`,
+            isVerified: true,
+        },
+    ]);
+});
+
+describe("admin driver assignment (Settings → Drivers)", () => {
+    it("lets a customer book With Driver without choosing one", async () => {
+        await setAdminAssignment(true);
+
+        const vehicleId = await insertVehicle();
+        const start = manilaMorning(5);
+
+        const booking = await createBooking(
+            {
+                vehicle: vehicleId,
+                driverOption: BOOKING_DRIVER_OPTIONS.WITH_DRIVER,
+                driver: "",
+                startDate: start.toISOString(),
+                endDate: new Date(start.getTime() + 2 * DAY).toISOString(),
+                pickupLocation: {
+                    type: "Custom",
+                    address: "Legazpi City",
+                    latitude: 13.1391,
+                    longitude: 123.7438,
+                },
+                returnLocation: {
+                    type: "Custom",
+                    address: "Legazpi City",
+                    latitude: 13.1391,
+                    longitude: 123.7438,
+                },
+            },
+            customerId
+        );
+
+        const saved = await Booking.findById(booking._id).lean();
+
+        assert.equal(saved.driverOption, BOOKING_DRIVER_OPTIONS.WITH_DRIVER);
+        assert.equal(saved.driver, null);
+    });
+
+    it("lets the admin assign a driver at approval once the setting is off again", async () => {
+        const vehicleId = await insertVehicle();
+        const driverId = await insertDriver();
+        const bookingId = await insertBooking({ vehicle: vehicleId });
+
+        await approveBooking(bookingId, adminId, driverId);
+
+        const saved = await Booking.findById(bookingId).lean();
+
+        assert.equal(saved.status, BOOKING_STATUS.APPROVED);
+        assert.equal(String(saved.driver), String(driverId));
+    });
+
+    it("doesn't put the booking code in the customer's driver notice", async () => {
+        const vehicleId = await insertVehicle();
+        const driverId = await insertDriver();
+        const bookingId = await insertBooking({ vehicle: vehicleId });
+
+        await approveBooking(bookingId, adminId, driverId);
+
+        const notice = await Notification.findOne({
+            recipient: customerId,
+            title: "Driver Assigned to Your Booking",
+        }).lean();
+
+        assert.ok(notice);
+        assert.doesNotMatch(notice.message, /BK-/);
+    });
+});
+
+describe("driver eligibility", () => {
+    it("refuses a driver whose license expires before the trip ends", async () => {
+        const vehicleId = await insertVehicle();
+        const driverId = await insertDriver();
+        const bookingId = await insertBooking({
+            vehicle: vehicleId,
+            driver: driverId,
+        });
+        const booking = await Booking.findById(bookingId).lean();
+
+        await Driver.collection.updateOne(
+            { _id: driverId },
+            {
+                $set: {
+                    "license.expiryDate": new Date(
+                        new Date(booking.endDate).getTime() - HOUR
+                    ),
+                },
+            }
+        );
+
+        await assert.rejects(
+            approveBooking(bookingId, adminId),
+            /expires before this trip ends/
+        );
+    });
+
+    it("refuses an archived driver", async () => {
+        const vehicleId = await insertVehicle();
+        const driverId = await insertDriver({
+            availability: DRIVER_AVAILABILITY.UNAVAILABLE,
+            archive: { isArchived: true },
+        });
+        const bookingId = await insertBooking({
+            vehicle: vehicleId,
+            driver: driverId,
+        });
+
+        await assert.rejects(
+            approveBooking(bookingId, adminId),
+            /not active/
+        );
+    });
+
+    it("refuses an extension that runs past the driver's license", async () => {
+        const vehicleId = await insertVehicle({
+            status: VEHICLE_STATUS.RENTED,
+        });
+        const start = new Date(Date.now() - DAY);
+        const end = new Date(Date.now() + DAY);
+        const driverId = await insertDriver({
+            license: {
+                licenseNumber: "N-EXT",
+                licenseType: "Professional",
+                expiryDate: new Date(end.getTime() + 2 * HOUR),
+                restrictionCodes: ["B"],
+            },
+        });
+        const bookingId = await insertBooking({
+            vehicle: vehicleId,
+            driver: driverId,
+            status: BOOKING_STATUS.ONGOING,
+            startDate: start,
+            endDate: end,
+        });
+
+        await assert.rejects(
+            requestBookingExtension(
+                bookingId,
+                {
+                    requestedEndDate: new Date(
+                        end.getTime() + DAY
+                    ).toISOString(),
+                },
+                customerId
+            ),
+            /license expires before this trip ends/
+        );
+    });
+});
+
+describe("driver pickers", () => {
+    it("marks drivers already booked during the trip as busy", async () => {
+        const freeId = await insertDriver({ firstName: "Free" });
+        const busyId = await insertDriver({ firstName: "Busy" });
+        const start = new Date(Date.now() + 4 * DAY);
+
+        await insertBooking({
+            driver: busyId,
+            status: BOOKING_STATUS.APPROVED,
+            startDate: start,
+            endDate: new Date(start.getTime() + DAY),
+        });
+
+        const drivers = await getAvailableDrivers({
+            startDate: new Date(start.getTime() + HOUR).toISOString(),
+            endDate: new Date(start.getTime() + 2 * DAY).toISOString(),
+        });
+
+        const byId = new Map(
+            drivers.map((driver) => [String(driver._id), driver])
+        );
+
+        assert.equal(byId.get(String(freeId)).busy, false);
+        assert.equal(byId.get(String(busyId)).busy, true);
+    });
+
+    it("leaves out drivers whose license won't last the trip", async () => {
+        const start = new Date(Date.now() + 4 * DAY);
+        const end = new Date(start.getTime() + 2 * DAY);
+
+        const okId = await insertDriver();
+        const expiringId = await insertDriver({
+            license: {
+                licenseNumber: "N-SOON",
+                licenseType: "Professional",
+                expiryDate: new Date(start.getTime() + DAY),
+                restrictionCodes: ["B"],
+            },
+        });
+
+        const ids = (
+            await getAvailableDrivers({
+                startDate: start.toISOString(),
+                endDate: end.toISOString(),
+            })
+        ).map((driver) => String(driver._id));
+
+        assert.ok(ids.includes(String(okId)));
+        assert.ok(!ids.includes(String(expiringId)));
+
+        // The admin's approval picker applies the same rule.
+        const adminIds = (
+            await getDrivers({
+                availability: "BOOKABLE",
+                startDate: start.toISOString(),
+                endDate: end.toISOString(),
+            })
+        ).map((driver) => String(driver._id));
+
+        assert.ok(!adminIds.includes(String(expiringId)));
+    });
+});
+
+describe("archiveDriver", () => {
+    it("refuses while a paid booking awaits approval", async () => {
+        const driverId = await insertDriver();
+
+        await insertBooking({
+            driver: driverId,
+            status: BOOKING_STATUS.PAYMENT_RECEIVED,
+        });
+
+        await assert.rejects(
+            archiveDriver(driverId, "", adminId),
+            /cannot be archived/
+        );
+    });
+
+    it("refuses while their trip is running past its due-back time", async () => {
+        const driverId = await insertDriver();
+
+        await insertBooking({
+            driver: driverId,
+            status: BOOKING_STATUS.ONGOING,
+            startDate: new Date(Date.now() - 3 * DAY),
+            endDate: new Date(Date.now() - DAY),
+        });
+
+        await assert.rejects(
+            archiveDriver(driverId, "", adminId),
+            /cannot be archived/
+        );
+    });
+
+    it("refuses while they drive a rental they took over", async () => {
+        const driverId = await insertDriver();
+        const bookingId = await insertBooking({
+            driver: newId(),
+            status: BOOKING_STATUS.ONGOING,
+        });
+
+        await insertOngoingRental({
+            bookingId,
+            driverId,
+            dueBackAt: new Date(Date.now() + DAY),
+        });
+
+        await assert.rejects(
+            archiveDriver(driverId, "", adminId),
+            /cannot be archived/
+        );
+    });
+});
+
+describe("reassignDriver", () => {
+    const setup = async () => {
+        const previousId = await insertDriver({
+            firstName: "First",
+            availability: DRIVER_AVAILABILITY.UNAVAILABLE,
+        });
+        const nextId = await insertDriver({ firstName: "Second" });
+        const dueBackAt = new Date(Date.now() + DAY);
+        const bookingId = await insertBooking({
+            driver: previousId,
+            status: BOOKING_STATUS.ONGOING,
+            startDate: new Date(Date.now() - DAY),
+            endDate: dueBackAt,
+        });
+        const rentalId = await insertOngoingRental({
+            bookingId,
+            driverId: previousId,
+            dueBackAt,
+        });
+
+        return { previousId, nextId, bookingId, rentalId, dueBackAt };
+    };
+
+    it("moves the booking, frees the first driver and books the second", async () => {
+        const { previousId, nextId, bookingId, rentalId } = await setup();
+
+        await reassignDriver(rentalId, nextId, "Sick", adminId);
+
+        const [rental, booking, previous, next] = await Promise.all([
+            Rental.findById(rentalId).lean(),
+            Booking.findById(bookingId).lean(),
+            Driver.findById(previousId).lean(),
+            Driver.findById(nextId).lean(),
+        ]);
+
+        assert.equal(String(rental.driver), String(nextId));
+        assert.equal(rental.driverReassignments.length, 1);
+        assert.equal(String(booking.driver), String(nextId));
+        assert.equal(previous.availability, DRIVER_AVAILABILITY.AVAILABLE);
+        assert.equal(next.availability, DRIVER_AVAILABILITY.UNAVAILABLE);
+
+        const notice = await Notification.findOne({
+            recipient: customerId,
+            title: "Your Driver Has Changed",
+        }).lean();
+
+        assert.ok(notice);
+        assert.doesNotMatch(notice.message, /BK-|RN-/);
+    });
+
+    it("refuses a replacement who's booked before the rental is due back", async () => {
+        const { nextId, rentalId, dueBackAt } = await setup();
+
+        await insertBooking({
+            driver: nextId,
+            status: BOOKING_STATUS.APPROVED,
+            startDate: new Date(dueBackAt.getTime() - 2 * HOUR),
+            endDate: new Date(dueBackAt.getTime() + DAY),
+        });
+
+        await assert.rejects(
+            reassignDriver(rentalId, nextId, "", adminId),
+            /before this rental is due back/
+        );
+    });
+
+    it("refuses a replacement whose license won't last the trip", async () => {
+        const { nextId, rentalId, dueBackAt } = await setup();
+
+        await Driver.collection.updateOne(
+            { _id: nextId },
+            {
+                $set: {
+                    "license.expiryDate": new Date(
+                        dueBackAt.getTime() - HOUR
+                    ),
+                },
+            }
+        );
+
+        await assert.rejects(
+            reassignDriver(rentalId, nextId, "", adminId),
+            /license expires before this rental is due back/
+        );
+    });
+});
+
+describe("motorcycle drivers (Settings → Drivers)", () => {
+    const setMotorcycleDrivers = (on) =>
+        Settings.collection.updateOne(
+            {},
+            {
+                $set: {
+                    "driverAssignmentSettings.motorcycleDriversEnabled": on,
+                },
+            },
+            { upsert: true }
+        );
+
+    const book = async (vehicleId, driverOption, driver = null) => {
+        const start = manilaMorning(5);
+        const location = {
+            type: "Custom",
+            address: "Legazpi City",
+            latitude: 13.1391,
+            longitude: 123.7438,
+        };
+
+        return createBooking(
+            {
+                vehicle: vehicleId,
+                driverOption,
+                driver,
+                startDate: start.toISOString(),
+                endDate: new Date(start.getTime() + 2 * DAY).toISOString(),
+                pickupLocation: location,
+                returnLocation: location,
+            },
+            customerId
+        );
+    };
+
+    it("treats a missing setting as on (older settings)", () => {
+        const motorcycle = { vehicleType: "Motorcycle" };
+
+        assert.equal(areDriversOfferedForVehicle(motorcycle, null), true);
+        assert.equal(
+            areDriversOfferedForVehicle(motorcycle, {
+                driverAssignmentSettings: {},
+            }),
+            true
+        );
+        assert.equal(
+            areDriversOfferedForVehicle(motorcycle, {
+                driverAssignmentSettings: { motorcycleDriversEnabled: false },
+            }),
+            false
+        );
+    });
+
+    it("refuses a motorcycle with a driver while it's off", async () => {
+        await setMotorcycleDrivers(false);
+
+        const motorcycleId = await insertVehicle({ vehicleType: "Motorcycle" });
+        const driverId = await insertDriver();
+
+        await assert.rejects(
+            book(motorcycleId, BOOKING_DRIVER_OPTIONS.WITH_DRIVER, driverId),
+            /self-drive only/
+        );
+    });
+
+    it("still books a motorcycle as self-drive while it's off", async () => {
+        await setMotorcycleDrivers(false);
+
+        const motorcycleId = await insertVehicle({ vehicleType: "Motorcycle" });
+
+        const booking = await book(
+            motorcycleId,
+            BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER
+        );
+
+        assert.equal(
+            booking.driverOption,
+            BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER
+        );
+    });
+
+    it("leaves cars bookable with a driver while it's off", async () => {
+        await setMotorcycleDrivers(false);
+
+        const carId = await insertVehicle();
+        const driverId = await insertDriver();
+
+        const booking = await book(
+            carId,
+            BOOKING_DRIVER_OPTIONS.WITH_DRIVER,
+            driverId
+        );
+
+        assert.equal(String(booking.driver?._id ?? booking.driver), String(driverId));
+    });
+
+    it("offers drivers for motorcycles again once it's back on", async () => {
+        await setMotorcycleDrivers(false);
+        await setMotorcycleDrivers(true);
+
+        const motorcycleId = await insertVehicle({ vehicleType: "Motorcycle" });
+        const driverId = await insertDriver();
+
+        const booking = await book(
+            motorcycleId,
+            BOOKING_DRIVER_OPTIONS.WITH_DRIVER,
+            driverId
+        );
+
+        assert.equal(
+            booking.driverOption,
+            BOOKING_DRIVER_OPTIONS.WITH_DRIVER
+        );
+    });
+
+    it("keeps an existing motorcycle booking with its driver when turned off", async () => {
+        const motorcycleId = await insertVehicle({ vehicleType: "Motorcycle" });
+        const driverId = await insertDriver();
+        const bookingId = await insertBooking({
+            vehicle: motorcycleId,
+            driver: driverId,
+        });
+
+        await setMotorcycleDrivers(false);
+
+        await approveBooking(bookingId, adminId);
+
+        const saved = await Booking.findById(bookingId).lean();
+
+        assert.equal(saved.status, BOOKING_STATUS.APPROVED);
+        assert.equal(String(saved.driver), String(driverId));
+    });
+});
