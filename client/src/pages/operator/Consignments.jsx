@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { CalendarClock, ClipboardList, Plus } from "lucide-react";
 
 import Button from "../../components/common/Button";
 import EmptyState from "../../components/common/EmptyState";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
-import TableToolbar from "../../components/tables/TableToolbar";
+import PillSearch from "../../components/common/PillSearch";
+import PillTabs from "../../components/common/PillTabs";
 
 import ConsignmentCardGrid from "../../components/consignments/ConsignmentCardGrid";
-import ConsignmentFilters from "../../components/consignments/ConsignmentFilters";
+import ConsignmentAppointmentsPanel from "../../components/consignments/ConsignmentAppointmentsPanel";
+import OperatorPendingVehiclesPanel from "../../components/consignments/OperatorPendingVehiclesPanel";
 
 import NewConsignmentDialog from "../../components/consignments/NewConsignmentDialog";
 import WithdrawConsignmentDialog from "../../components/consignments/WithdrawConsignmentDialog";
 import ConsignmentReview from "../../components/consignments/ConsignmentReview";
+import BookInspectionDialog from "../../components/consignments/BookInspectionDialog";
 
 import useConsignments from "../../hooks/consignments/useConsignments";
 import useToast from "../../hooks/toast/useToast";
@@ -22,31 +26,71 @@ const PAGE_TRANSITION = {
 
 const STATUS_ALL = "All";
 
+// Approved applications become vehicles and leave this page, so there's
+// nothing to filter them by.
+const STATUS_OPTIONS = [
+    STATUS_ALL,
+    "Draft",
+    "Pending",
+    "Under Review",
+    "Revision Requested",
+    "Rejected",
+    "Withdrawn",
+    "Archived",
+].map((status) => ({
+    value: status,
+    label: status === STATUS_ALL ? "All statuses" : status,
+}));
+
+const SECTIONS = [
+    {
+        value: "applications",
+        label: "Applications",
+        icon: ClipboardList,
+    },
+    {
+        value: "appointments",
+        label: "Appointments",
+        icon: CalendarClock,
+    },
+];
+
 const Consignments = () => {
     const {
         consignments,
         loading,
         withdrawConsignment,
+        submitConsignment,
         getMyConsignments,
+        bookInspectionAppointment,
     } = useConsignments();
 
     const toast = useToast();
+
+    const [section, setSection] =
+        useState("applications");
 
     const [search, setSearch] = useState("");
 
     const [statusFilter, setStatusFilter] =
         useState(STATUS_ALL);
 
-    const [showFilters, setShowFilters] =
-        useState(false);
-
     const [newDialogOpen, setNewDialogOpen] =
         useState(false);
+
+    const [editDialogOpen, setEditDialogOpen] =
+        useState(false);
+
+    const [editingConsignment, setEditingConsignment] =
+        useState(null);
 
     const [reviewDialogOpen, setReviewDialogOpen] =
         useState(false);
 
     const [withdrawDialogOpen, setWithdrawDialogOpen] =
+        useState(false);
+
+    const [bookInspectionDialogOpen, setBookInspectionDialogOpen] =
         useState(false);
 
     const [selectedConsignment, setSelectedConsignment] =
@@ -56,16 +100,31 @@ const Consignments = () => {
         getMyConsignments();
     }, [getMyConsignments]);
 
+    /*
+     * Once approved, a consignment becomes a real vehicle — it moves to
+     * "My Vehicles" and has nothing left for admin to decide, so it's
+     * excluded here rather than left cluttering an "applications" page.
+     */
+    const pendingConsignments = useMemo(
+        () =>
+            consignments.filter(
+                (consignment) =>
+                    consignment.application?.status !==
+                    "Approved"
+            ),
+        [consignments]
+    );
+
     const filteredConsignments = useMemo(() => {
         const keyword = search
             .trim()
             .toLowerCase();
 
-        return consignments.filter(
+        return pendingConsignments.filter(
             (consignment) => {
                 if (
                     statusFilter !== STATUS_ALL &&
-                    consignment.status !==
+                    consignment.application?.status !==
                         statusFilter
                 ) {
                     return false;
@@ -115,7 +174,7 @@ const Consignments = () => {
             }
         );
     }, [
-        consignments,
+        pendingConsignments,
         search,
         statusFilter,
     ]);
@@ -130,6 +189,35 @@ const Consignments = () => {
 
     const handleCloseNewDialog = () => {
         setNewDialogOpen(false);
+    };
+
+    const handleEdit = (consignment) => {
+        setEditingConsignment(consignment);
+        setEditDialogOpen(true);
+    };
+
+    const handleCloseEdit = () => {
+        setEditDialogOpen(false);
+        setEditingConsignment(null);
+    };
+
+    const handleSubmit = async (consignment) => {
+        try {
+            await submitConsignment(
+                consignment._id
+            ).unwrap();
+
+            toast.success(
+                "Consignment application submitted successfully."
+            );
+
+            handleRefresh();
+        } catch (error) {
+            toast.error(
+                error?.message ||
+                    "Unable to submit consignment application."
+            );
+        }
     };
 
     const handleOpenReview = (
@@ -179,7 +267,7 @@ const Consignments = () => {
             try {
                 await withdrawConsignment({
                     id: selectedConsignment._id,
-                    ...payload,
+                    payload,
                 }).unwrap();
 
                 toast.success(
@@ -193,6 +281,50 @@ const Consignments = () => {
                 toast.error(
                     error?.message ||
                         "Unable to withdraw consignment application."
+                );
+            }
+        };
+
+    const handleOpenBookInspection =
+        (consignment) => {
+            setSelectedConsignment(
+                consignment
+            );
+
+            setBookInspectionDialogOpen(true);
+        };
+
+    const handleCloseBookInspection =
+        () => {
+            setSelectedConsignment(null);
+
+            setBookInspectionDialogOpen(false);
+        };
+
+    const handleBookInspection =
+        async ({ date, time }) => {
+            if (!selectedConsignment) {
+                return;
+            }
+
+            try {
+                await bookInspectionAppointment({
+                    consignmentId:
+                        selectedConsignment._id,
+                    data: { date, time },
+                }).unwrap();
+
+                toast.success(
+                    "Inspection appointment scheduled."
+                );
+
+                handleCloseBookInspection();
+
+                handleRefresh();
+            } catch (error) {
+                toast.error(
+                    error?.message ||
+                        "Unable to schedule the inspection appointment."
                 );
             }
         };
@@ -218,121 +350,106 @@ const Consignments = () => {
     return (
         <>
             <div className="space-y-6">
-                <TableToolbar
-                    search={search}
-                    onSearch={setSearch}
-                    searchPlaceholder="Search consignments..."
-                    addLabel="New Application"
-                    onAdd={
-                        handleOpenNewDialog
-                    }
-                    showFilter
-                    onFilter={() =>
-                        setShowFilters(
-                            (previous) =>
-                                !previous
-                        )
-                    }
-                />
-
-                <AnimatePresence initial={false}>
-                    {showFilters && (
-                        <motion.div
-                            key="filters"
-                            initial={{
-                                opacity: 0,
-                                height: 0,
-                            }}
-                            animate={{
-                                opacity: 1,
-                                height: "auto",
-                            }}
-                            exit={{
-                                opacity: 0,
-                                height: 0,
-                            }}
-                            transition={
-                                PAGE_TRANSITION
-                            }
-                            className="overflow-hidden"
-                        >
-                            <ConsignmentFilters
-                                status={
-                                    statusFilter
-                                }
-                                onStatusChange={
-                                    setStatusFilter
-                                }
-                            />
-                        </motion.div>
+                {/* Controls, centred: search + status filter (Applications
+                    only) → section pill with the New Application button. */}
+                <div className="flex flex-col items-center gap-3">
+                    {section === "applications" && (
+                        <PillSearch
+                            value={search}
+                            onChange={setSearch}
+                            placeholder="Search by code, vehicle, or plate..."
+                            label="Search consignments"
+                            filters={[
+                                {
+                                    value: statusFilter,
+                                    onChange: setStatusFilter,
+                                    options: STATUS_OPTIONS,
+                                    label: "Filter by status",
+                                },
+                            ]}
+                        />
                     )}
-                </AnimatePresence>
 
-                {loading ? (
-                    <LoadingSpinner
-                        fullScreen={false}
-                    />
-                ) : filteredConsignments.length ===
-                  0 ? (
-                    <EmptyState
-                        title={
-                            emptyState.title
-                        }
-                        description={
-                            emptyState.description
-                        }
-                        action={
-                            !hasFilters && (
-                                <Button
-                                    onClick={
-                                        handleOpenNewDialog
-                                    }
-                                >
-                                    New Application
-                                </Button>
-                            )
-                        }
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                        <PillTabs
+                            label="Consignment sections"
+                            layoutId="operator-consignment-section-pill"
+                            value={section}
+                            onChange={setSection}
+                            options={SECTIONS}
+                        />
+
+                        <Button
+                            size="sm"
+                            leftIcon={<Plus size={16} />}
+                            onClick={handleOpenNewDialog}
+                            className="h-11 rounded-full! px-5!"
+                        >
+                            New Application
+                        </Button>
+                    </div>
+                </div>
+
+                {section === "appointments" ? (
+                    <ConsignmentAppointmentsPanel
+                        consignments={consignments}
+                        loading={loading}
+                        onView={handleOpenReview}
                     />
                 ) : (
-                    <AnimatePresence
-                        mode="wait"
-                        initial={false}
-                    >
-                        <motion.div
-                            key={`${statusFilter}-${search}`}
-                            layout
-                            initial={{
-                                opacity: 0,
-                                y: 12,
-                            }}
-                            animate={{
-                                opacity: 1,
-                                y: 0,
-                            }}
-                            exit={{
-                                opacity: 0,
-                                y: -12,
-                            }}
-                            transition={
-                                PAGE_TRANSITION
-                            }
-                        >
-                            <ConsignmentCardGrid
-                                consignments={
-                                    filteredConsignments
-                                }
-                                onView={
-                                    handleOpenReview
-                                }
-                                onSelect={
-                                    handleOpenReview
-                                }
-                                onWithdraw={
-                                    handleOpenWithdraw
+                    <>
+                        <OperatorPendingVehiclesPanel />
+
+                        {loading ? (
+                            <LoadingSpinner fullScreen={false} />
+                        ) : filteredConsignments.length === 0 ? (
+                            <EmptyState
+                                title={emptyState.title}
+                                description={
+                                    emptyState.description
                                 }
                             />
-                        </motion.div>
-                    </AnimatePresence>
+                        ) : (
+                            <AnimatePresence
+                                mode="wait"
+                                initial={false}
+                            >
+                                <motion.div
+                                    key={`${statusFilter}-${search}`}
+                                    layout
+                                    initial={{
+                                        opacity: 0,
+                                        y: 12,
+                                    }}
+                                    animate={{
+                                        opacity: 1,
+                                        y: 0,
+                                    }}
+                                    exit={{
+                                        opacity: 0,
+                                        y: -12,
+                                    }}
+                                    transition={PAGE_TRANSITION}
+                                >
+                                    <ConsignmentCardGrid
+                                        consignments={
+                                            filteredConsignments
+                                        }
+                                        onView={handleOpenReview}
+                                        onSelect={handleOpenReview}
+                                        onEdit={handleEdit}
+                                        onSubmit={handleSubmit}
+                                        onWithdraw={
+                                            handleOpenWithdraw
+                                        }
+                                        onBookInspection={
+                                            handleOpenBookInspection
+                                        }
+                                    />
+                                </motion.div>
+                            </AnimatePresence>
+                        )}
+                    </>
                 )}
             </div>
 
@@ -344,6 +461,17 @@ const Consignments = () => {
                 onSuccess={
                     handleRefresh
                 }
+            />
+
+            <NewConsignmentDialog
+                open={editDialogOpen}
+                mode="edit"
+                consignment={editingConsignment}
+                onClose={handleCloseEdit}
+                onSuccess={() => {
+                    handleCloseEdit();
+                    handleRefresh();
+                }}
             />
 
             <WithdrawConsignmentDialog
@@ -372,6 +500,14 @@ const Consignments = () => {
                 onClose={
                     handleCloseReview
                 }
+            />
+
+            <BookInspectionDialog
+                open={bookInspectionDialogOpen}
+                consignment={selectedConsignment}
+                loading={loading}
+                onClose={handleCloseBookInspection}
+                onSubmit={handleBookInspection}
             />
         </>
     );

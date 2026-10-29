@@ -1,0 +1,123 @@
+/*
+ * Branded scrollbars, site-wide.
+ *
+ * Chromium / Safari: a floating yellow pill (brand gradient) on a soft track.
+ * The thumb gets a transparent border + padding-box clip, so it sits inset
+ * from the edges instead of filling the whole gutter. The page scrollbar is
+ * a bit wider than the ones inside panels, lists and modals.
+ *
+ * Firefox only supports the standard `scrollbar-color` / `scrollbar-width`.
+ * Chromium 121+ supports them too, but setting them there switches OFF the
+ * ::-webkit-scrollbar styling below, so they're scoped to Firefox only.
+ *
+ * `.scrollbar-hide` (index.css) still wins: its selectors are more specific.
+ */
+
+:root {
+    --scrollbar-track: #f1efe9;
+    --scrollbar-thumb-from: #fde047;
+    --scrollbar-thumb-to: #eab308;
+    --scrollbar-thumb-hover-from: #facc15;
+    --scrollbar-thumb-hover-to: #ca8a04;
+    --scrollbar-thumb-active: #a16207;
+    --scrollbar-firefox-thumb: #eab308;
+}
+
+[data-theme="dark"] {
+    --scrollbar-track: #0b0f19;
+    --scrollbar-thumb-from: #facc15;
+    --scrollbar-thumb-to: #ca8a04;
+    --scrollbar-thumb-hover-from: #fde047;
+    --scrollbar-thumb-hover-to: #eab308;
+    --scrollbar-thumb-active: #fef08a;
+    --scrollbar-firefox-thumb: #ca8a04;
+}
+
+/* ---- Chromium / Safari ---------------------------------------------- */
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+html::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+html::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    background: linear-gradient(
+            180deg,
+            var(--scrollbar-thumb-from),
+            var(--scrollbar-thumb-to)
+        )
+        padding-box;
+    min-height: 40px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    border-width: 2px;
+    background: linear-gradient(
+            180deg,
+            var(--scrollbar-thumb-hover-from),
+            var(--scrollbar-thumb-hover-to)
+        )
+        padding-box;
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: var(--scrollbar-thumb-active) padding-box;
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Christmas: a candy-cane thumb for the season (see christmas.css). */
+html[data-season="christmas"] ::-webkit-scrollbar-thumb,
+html[data-season="christmas"]::-webkit-scrollbar-thumb {
+    background: repeating-linear-gradient(
+            135deg,
+            #dc2626 0 8px,
+            #fef2f2 8px 16px
+        )
+        padding-box;
+}
+
+html[data-season="christmas"] ::-webkit-scrollbar-thumb:hover,
+html[data-season="christmas"]::-webkit-scrollbar-thumb:hover {
+    background: repeating-linear-gradient(
+            135deg,
+            #b91c1c 0 8px,
+            #16a34a 8px 16px
+        )
+        padding-box;
+}
+
+/* ---- Firefox -------------------------------------------------------- */
+
+@supports (-moz-appearance: none) {
+    html {
+        scrollbar-color: var(--scrollbar-firefox-thumb)
+            var(--scrollbar-track);
+    }
+
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scrollbar-firefox-thumb) transparent;
+    }
+
+    html[data-season="christmas"],
+    html[data-season="christmas"] * {
+        scrollbar-color: #dc2626 transparent;
+    }
+}

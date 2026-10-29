@@ -11,6 +11,7 @@ const VehicleTable = ({
     leavingRowId,
 
     compact = false,
+    dense = false,
     showApproval = false,
     showActions = true,
 
@@ -18,26 +19,42 @@ const VehicleTable = ({
     onExpandedRowsChange,
 
     isArchivedView = false,
+    platformCommissionRate = null,
+
+    pinnedIds,
+    onTogglePin,
+    bookingSchedule,
 
     onView,
     onEdit,
     onApprove,
     onArchive,
     onRestore,
+    onRenewRegistration,
+    onManageAvailability,
+    onOffRoad,
 }) => {
     const columns =
         useVehicleTableColumns({
             compact,
+            dense,
             showApproval,
             showActions,
 
             isArchivedView,
+
+            pinnedIds,
+            onTogglePin,
+            bookingSchedule,
 
             onView,
             onEdit,
             onApprove,
             onArchive,
             onRestore,
+            onRenewRegistration,
+            onManageAvailability,
+            onOffRoad,
         });
 
     return (
@@ -46,6 +63,7 @@ const VehicleTable = ({
             data={vehicles}
             loading={loading}
             compact={compact}
+            dense={dense}
             caption="Vehicle management table"
             emptyMessage="No vehicles match the current search."
             leavingRowId={leavingRowId}
@@ -62,6 +80,9 @@ const VehicleTable = ({
             renderDetails={(vehicle) => (
                 <VehicleQuickDetails
                     vehicle={vehicle}
+                    platformCommissionRate={
+                        platformCommissionRate
+                    }
                 />
             )}
         />

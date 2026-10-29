@@ -13,6 +13,7 @@ import Badge from "../common/Badge";
 import Price from "../common/Price";
 import StatusChip from "../common/StatusChip";
 import CardActionMenu from "../cards/CardActionMenu";
+import VehiclePinButton from "./VehiclePinButton";
 
 import {
     CARD_LAYOUT_TRANSITION,
@@ -26,12 +27,18 @@ const VehicleCard = ({
     onArchive,
     onRestore,
     isArchivedView = false,
+    menuActions,
+    // Admin fleet: pin toggle in the photo's top-left corner.
+    pinned = false,
+    onTogglePin,
     className = "",
 }) => {
     const item =
         getVehicleCardData(vehicle);
 
-        const cardActions = [
+        // `menuActions` replaces the default admin menu outright (a
+        // partner's card only gets View + Availability).
+        const cardActions = menuActions ?? [
     {
         label: "View",
         icon: Eye,
@@ -71,19 +78,24 @@ const VehicleCard = ({
         }}
             className={[
                 "group",
-                "h-[500x]",
+                "flex",
+                "flex-col",
                 "cursor-pointer",
-                "overflow-visible",
                 "rounded-3xl",
                 "border",
                 "border-gray-200",
                 "bg-white",
+                "dark:border-gray-800",
+                "dark:bg-gray-900",
                 "shadow-md",
                 "transition-all",
                 "duration-300",
                 "hover:-translate-y-1",
                 "hover:border-gray-300",
+                "dark:hover:border-gray-600",
                 "hover:shadow-2xl",
+                pinned &&
+                    "ring-2 ring-amber-300/70 dark:ring-amber-500/40",
                 className,
             ]
                 .filter(Boolean)
@@ -91,7 +103,7 @@ const VehicleCard = ({
         >
             <motion.div
                 layoutId={`vehicle-image-${item.id}`}
-                className="relative h-48 overflow-hidden bg-gray-100"
+                className="relative h-40 overflow-hidden rounded-t-3xl bg-gray-50 dark:bg-gray-800/60"
             >
                 {item.image ? (
                     <img
@@ -100,7 +112,8 @@ const VehicleCard = ({
                         className="
                             h-full
                             w-full
-                            object-cover
+                            object-contain
+                            p-3
                             transition-transform
                             duration-500
                             group-hover:scale-105
@@ -117,6 +130,8 @@ const VehicleCard = ({
                             gap-1
                             bg-gray-50
                             text-gray-400
+                            dark:bg-gray-800/50
+                            dark:text-gray-500
                         "
                     >
                         <ImageOff
@@ -125,18 +140,27 @@ const VehicleCard = ({
                         />
 
                         <div className="text-center">
-                            <p className="text-sm font-medium text-gray-500">
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                                 No Image
                             </p>
 
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-gray-400 dark:text-gray-500">
                                 Upload later
                             </p>
                         </div>
                     </div>
                 )}
 
-            <div className="absolute right-4 top-4 z-50 flex items-center gap-2">
+            {onTogglePin && (
+                <VehiclePinButton
+                    variant="card"
+                    pinned={pinned}
+                    onToggle={() => onTogglePin(vehicle)}
+                    className="absolute left-3 top-3 z-50"
+                />
+            )}
+
+            <div className="absolute right-3 top-3 z-50 flex items-center gap-2">
                     {item.featured && (
                 <Badge variant="warning">
                     Featured
@@ -151,6 +175,8 @@ const VehicleCard = ({
             shadow-md
             transition
           hover:bg-white
+            dark:bg-gray-800/90
+            dark:hover:bg-gray-800
         "
 
         onClick={(event) => event.stopPropagation()}
@@ -162,7 +188,7 @@ const VehicleCard = ({
 </div>
             </motion.div>
 
-            <div className="flex-1 flex-col px-6 py-5">
+            <div className="flex flex-1 flex-col px-4 py-4">
 
                 <div>
     <div className="min-w-0 flex-1">
@@ -170,10 +196,11 @@ const VehicleCard = ({
             layoutId={`vehicle-title-${item.id}`}
             className="
                 truncate
-                text-lg
+                text-base
                 font-bold
                 tracking-tight
                 text-gray-900
+                dark:text-white
             "
         >
             {item.name}
@@ -181,11 +208,12 @@ const VehicleCard = ({
 
         <p
             className="
-                mt-1.5
-                text-sm
+                mt-0.5
+                text-xs
                 font-medium
                 tracking-wide
                 text-gray-500
+                dark:text-gray-400
             "
         >
             {item.vehicleCode}
@@ -194,12 +222,14 @@ const VehicleCard = ({
 
 </div>
 
-                <div className="mt-5 flex items-center justify-between gap-3">
+                <div className="mt-3 flex items-center justify-between gap-3">
          <StatusChip
              status={item.status}
+             size="sm"
          />
 
          <Badge
+         size="sm"
          className="shrink-0"
                 variant={
                    vehicle.ownership ===
@@ -215,13 +245,14 @@ const VehicleCard = ({
 
                 <div
                     className="
-                        mt-5
+                        mt-3
                         flex
                         flex-wrap
                         gap-x-4
                         gap-y-1
-                        text-sm
+                        text-xs
                         text-gray-600
+                        dark:text-gray-300
                     "
                 >
                     <span>
@@ -235,7 +266,7 @@ const VehicleCard = ({
 
                 <motion.div
                     layoutId={`vehicle-price-${item.id}`}
-                    className="mt-auto flex items-end justify-between pt-5"
+                    className="mt-auto flex items-end justify-between pt-3"
                 >
                     <div
     className="
@@ -246,29 +277,33 @@ const VehicleCard = ({
         border
         border-green-200
         bg-green-100/70
-        px-5
-        py-2
+        px-3
+        py-1
         shadow-sm
+        dark:border-green-900/50
+        dark:bg-green-900/30
     "
 >
     <Price
-        value={item.dailyRate}
+        value={Number(item.dailyRate) + Number(item.reservationFee || 0)}
         className="
-            text-3xl
+            text-lg
             font-black
             tracking-tight
             text-green-800
+            dark:text-green-300
         "
     />
 
     <span
         className="
-            mb-1
-            text-xs
+            mb-0.5
+            text-[10px]
             font-semibold
             uppercase
             tracking-wide
             text-green-700
+            dark:text-green-400
         "
     >
         /day
@@ -278,9 +313,10 @@ const VehicleCard = ({
                     <div
                         className="
                             text-right
-                            text-xs
-                            leading-5
+                            text-[11px]
+                            leading-4
                             text-gray-400
+                            dark:text-gray-500
                         "
                     >
                         <p>

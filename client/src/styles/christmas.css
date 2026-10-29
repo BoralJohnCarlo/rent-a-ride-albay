@@ -1,0 +1,239 @@
+/*
+ * Christmas theme - a festive layer over the user's light/dark mode.
+ *
+ * Everything here is scoped to html[data-season="christmas"], which
+ * ThemeProvider only sets while the theme is both selected and inside the
+ * admin-configured window. data-theme still resolves to light/dark, so all
+ * the existing `dark:` styles keep working underneath.
+ *
+ * Kept intentionally restrained: snowfall, a snow-cap on cards, a candy-cane
+ * table header and a thin garland along the top. Nothing here changes
+ * layout - decoration is background-image / colour only.
+ *
+ * This file is unlayered on purpose: unlayered rules beat Tailwind's
+ * @layer utilities regardless of specificity, which is what lets one
+ * stylesheet restyle cards/tables in ~200 components without touching them.
+ */
+
+html[data-season="christmas"] {
+    --xmas-red: #c62828;
+    --xmas-green: #1f7a45;
+    --xmas-gold: #e8b23a;
+
+    /* Snow-cap on a white card must read as icy blue, not white-on-white. */
+    --xmas-cap: #d6e6fb;
+    --xmas-cap-soft: rgba(214, 230, 251, 0.75);
+    --xmas-blush: rgba(198, 40, 40, 0.045);
+    --xmas-stripe-alt: #ffffff;
+    --xmas-row-hover: rgba(198, 40, 40, 0.05);
+
+    --xmas-flake: #93c5fd;
+    --xmas-flake-glow: rgba(255, 255, 255, 0.95);
+
+    --xmas-corner: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2393c5fd' stroke-opacity='0.7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v20M3.34 7l17.32 10M3.34 17 20.66 7M9 3.6l3 2.4 3-2.4M9 20.4l3-2.4 3 2.4'/%3E%3C/svg%3E");
+}
+
+html[data-season="christmas"][data-theme="dark"] {
+    --xmas-red: #f87171;
+    --xmas-green: #4ade80;
+    --xmas-gold: #fbbf24;
+
+    --xmas-cap: rgba(241, 245, 249, 0.9);
+    --xmas-cap-soft: rgba(241, 245, 249, 0.6);
+    --xmas-blush: rgba(248, 113, 113, 0.07);
+    --xmas-stripe-alt: rgba(255, 255, 255, 0.85);
+    --xmas-row-hover: rgba(248, 113, 113, 0.08);
+
+    --xmas-flake: #ffffff;
+    --xmas-flake-glow: rgba(186, 214, 255, 0.9);
+
+    --xmas-corner: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-opacity='0.4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v20M3.34 7l17.32 10M3.34 17 20.66 7M9 3.6l3 2.4 3-2.4M9 20.4l3-2.4 3 2.4'/%3E%3C/svg%3E");
+}
+
+/* ---------- Cards, panels & modals ---------- */
+
+/*
+ * "Card" = a block element with a large radius, a border and a solid white
+ * base (every light-mode card in the app follows this, with a `dark:` bg on
+ * top). Buttons/inputs are excluded by tag, translucent surfaces such as
+ * navbars by `bg-white/80`, small icon boxes by their fixed width, link-
+ * buttons by `inline-flex`, input wrappers by their `focus-within:`
+ * ring (a snow-cap on a form field looks wrong), and dropdown/calendar
+ * panels by `data-dropdown-panel` (a cap would sit over the options).
+ */
+html[data-season="christmas"]
+    :is(div, section, article, li, a):is(.rounded-xl, .rounded-2xl, .rounded-3xl):is(.border, .border-2).bg-white:not(
+        :is(.w-8, .w-9, .w-10, .w-11, .w-12, .w-14, .w-16, .size-8, .size-10, .size-12, .inline-flex)
+    ):not([class*="gradient"]):not([class*="focus-within:"]):not([data-dropdown-panel]) {
+    background-image:
+        var(--xmas-corner),
+        /* wider, softer drips */
+        radial-gradient(circle at 50% 0, var(--xmas-cap) 0 6px, transparent 6.6px),
+        /* smaller offset drips so the edge isn't a perfect repeat */
+        radial-gradient(circle at 50% 0, var(--xmas-cap-soft) 0 3.5px, transparent 4px),
+        /* the cap itself */
+        linear-gradient(var(--xmas-cap), var(--xmas-cap)),
+        /* faint warm blush under it */
+        linear-gradient(180deg, var(--xmas-blush), transparent 64px);
+    background-size:
+        16px 16px,
+        15px 9px,
+        23px 13px,
+        100% 3px,
+        100% 64px;
+    background-repeat:
+        no-repeat,
+        repeat-x,
+        repeat-x,
+        no-repeat,
+        no-repeat;
+    background-position:
+        right 10px bottom 10px,
+        0 0,
+        7px 0,
+        0 0,
+        0 0;
+}
+
+/* A card inside a card would stack caps - keep only the outermost one. */
+html[data-season="christmas"]
+    :is(div, section, article, li, a):is(.rounded-xl, .rounded-2xl, .rounded-3xl):is(.border, .border-2).bg-white
+    :is(div, section, article, li, a):is(.rounded-xl, .rounded-2xl, .rounded-3xl):is(.border, .border-2).bg-white {
+    background-image: none;
+}
+
+/* ---------- Tables ---------- */
+
+/*
+ * Transparent header so the wrapping card's snow-cap shows through it
+ * (an opaque thead would cover the top edge), plus a candy-cane rule.
+ */
+html[data-season="christmas"] thead {
+    background-color: transparent;
+}
+
+html[data-season="christmas"] thead th {
+    color: var(--xmas-red);
+    background-image: repeating-linear-gradient(
+        -45deg,
+        var(--xmas-red) 0 5px,
+        var(--xmas-stripe-alt) 5px 10px
+    );
+    background-size: 100% 3px;
+    background-position: left bottom;
+    background-repeat: no-repeat;
+}
+
+html[data-season="christmas"] tbody tr:hover {
+    background-color: var(--xmas-row-hover);
+}
+
+/* ---------- Global accents ---------- */
+
+/* Garland along the very top edge of the viewport. */
+html[data-season="christmas"] body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 3px;
+    z-index: 60;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        90deg,
+        var(--xmas-red) 0 18px,
+        var(--xmas-gold) 18px 22px,
+        var(--xmas-green) 22px 40px,
+        var(--xmas-gold) 40px 44px
+    );
+}
+
+/*
+ * The same garland where one page section meets the next (public and
+ * customer pages — the `.site-texture` layouts). Drawn as a striped top
+ * border via border-image rather than a pseudo-element, because the dark
+ * "lit seams" (site-texture.css) already use both
+ * ::before and ::after on these sections. Cards (rounded) are skipped.
+ */
+html[data-season="christmas"]
+    .site-texture
+    section:not([class*="rounded"])
+    + section:not([class*="rounded"]) {
+    border-style: solid;
+    border-width: 3px 0 0;
+    border-image: repeating-linear-gradient(
+            90deg,
+            var(--xmas-red) 0 18px,
+            var(--xmas-gold) 18px 22px,
+            var(--xmas-green) 22px 40px,
+            var(--xmas-gold) 40px 44px
+        )
+        1;
+}
+
+html[data-season="christmas"] ::selection {
+    background: rgba(198, 40, 40, 0.22);
+}
+
+/* ---------- Snowfall ---------- */
+
+.xmas-snow {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.xmas-flake {
+    position: absolute;
+    top: -8vh;
+    left: var(--left);
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    background: var(--xmas-flake);
+    box-shadow: 0 0 4px var(--xmas-flake-glow);
+    opacity: var(--alpha);
+    animation: xmas-fall var(--dur) linear var(--delay) infinite;
+    will-change: transform;
+}
+
+.xmas-flake--glyph {
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--xmas-flake);
+    font-size: calc(var(--size) * 2.6);
+    line-height: 1;
+    text-shadow: 0 0 5px var(--xmas-flake-glow);
+}
+
+@keyframes xmas-fall {
+    from {
+        transform: translate3d(0, 0, 0) rotate(0deg);
+    }
+
+    to {
+        transform: translate3d(var(--drift), 112vh, 0) rotate(240deg);
+    }
+}
+
+/* Half the flakes on phones - less to paint, less to cover content. */
+@media (max-width: 640px) {
+    .xmas-flake:nth-child(n + 15) {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .xmas-snow {
+        display: none;
+    }
+}
+
+/* The in-app motion preference (written by ThemeProvider). */
+html[data-motion="reduced"] .xmas-snow {
+    display: none;
+}

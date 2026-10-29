@@ -93,3 +93,39 @@ export const restoreConsignment = (
     api.patch(
         `/consignments/${consignmentId}/restore`
     );
+
+export const bookInspectionAppointment = (
+    consignmentId,
+    data
+) =>
+    api.patch(
+        `/consignments/${consignmentId}/inspection-appointment`,
+        data
+    );
+
+export const requestReschedule = (
+    consignmentId,
+    data
+) =>
+    api.post(
+        `/consignments/${consignmentId}/reschedule`,
+        data
+    );
+
+export const approveReschedule = (
+    consignmentId,
+    data
+) =>
+    api.patch(
+        `/consignments/${consignmentId}/reschedule/approve`,
+        data
+    );
+
+export const rejectReschedule = (
+    consignmentId,
+    data
+) =>
+    api.patch(
+        `/consignments/${consignmentId}/reschedule/reject`,
+        data
+    );

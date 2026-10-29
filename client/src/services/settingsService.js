@@ -1,5 +1,6 @@
 import {
     getSettings,
+    getPublicSettings,
     updateSettings,
 } from "../api/settingsApi";
 
@@ -7,6 +8,12 @@ import {
 export const fetchSettings =
     async () => {
         return await getSettings();
+    };
+
+
+export const fetchPublicSettings =
+    async () => {
+        return await getPublicSettings();
     };
 
 

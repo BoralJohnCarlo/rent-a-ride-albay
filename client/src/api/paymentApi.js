@@ -27,25 +27,31 @@ export const verifyPayment = async (
     return data;
 };
 
-export const rejectPayment = async (
-    paymentId,
-    reason
-) => {
-    const { data } = await api.patch(
-        `/payments/${paymentId}/reject`,
-        {
-            reason,
-        }
-    );
-
-    return data;
-};
-
 export const cancelPayment = async (
     paymentId
 ) => {
     const { data } = await api.patch(
         `/payments/${paymentId}/cancel`
+    );
+
+    return data;
+};
+
+export const reportPaymentFailure = async (
+    paymentId
+) => {
+    const { data } = await api.patch(
+        `/payments/${paymentId}/report-failure`
+    );
+
+    return data;
+};
+
+export const reconcilePayment = async (
+    paymentId
+) => {
+    const { data } = await api.patch(
+        `/payments/${paymentId}/reconcile`
     );
 
     return data;
@@ -81,6 +87,38 @@ export const createCheckout = async (
     const { data } = await api.post(
         `/payments/${paymentId}/checkout`,
         { force }
+    );
+
+    return data;
+};
+
+export const reconcilePaymentRefund = async (
+    paymentId
+) => {
+    const { data } = await api.patch(
+        `/payments/${paymentId}/refund/reconcile`
+    );
+
+    return data;
+};
+
+export const sendPaymentRefund = async (
+    paymentId
+) => {
+    const { data } = await api.patch(
+        `/payments/${paymentId}/refund/send`
+    );
+
+    return data;
+};
+
+export const completePaymentRefund = async (
+    paymentId,
+    { succeeded = true, notes = "" } = {}
+) => {
+    const { data } = await api.patch(
+        `/payments/${paymentId}/refund/complete`,
+        { succeeded, notes }
     );
 
     return data;

@@ -1,5 +1,6 @@
 import {
     getVehicles,
+    getMyVehicles,
     getVehicleCounts,
     getVehicleById,
     createVehicle,
@@ -15,6 +16,13 @@ import {
     removeVehicleBlockedDate,
     updateFeaturedVehicle,
     uploadVehicleImage as uploadVehicleImageApi,
+    checkPlateNumberExists as checkPlateNumberExistsApi,
+    checkRegistrationNumberExists as checkRegistrationNumberExistsApi,
+    renewVehicleRegistration as renewVehicleRegistrationApi,
+    setVehicleRegistrationAvailability as setVehicleRegistrationAvailabilityApi,
+    getVehicleRegistrationRenewalEligibility as getVehicleRegistrationRenewalEligibilityApi,
+    requestVehicleRegistrationRenewalAttempt as requestVehicleRegistrationRenewalAttemptApi,
+    grantVehicleRegistrationRenewalAttempt as grantVehicleRegistrationRenewalAttemptApi,
 } from "../api/vehicleApi";
 
 
@@ -22,6 +30,12 @@ export const fetchVehicles = async (
     filters = {}
 ) => {
     return await getVehicles(filters);
+};
+
+export const fetchMyVehicles = async (
+    filters = {}
+) => {
+    return await getMyVehicles(filters);
 };
 
 
@@ -168,5 +182,83 @@ export const uploadVehicleImage = async (
 ) => {
     return await uploadVehicleImageApi(
         file
+    );
+};
+
+
+/*
+ * `excludeId` is the vehicle being edited. It must reach the server so the
+ * vehicle's own plate/registration number isn't reported as a duplicate of
+ * itself (dropping it here made every edit fail with "already exists").
+ */
+export const checkPlateNumberExists = async (
+    plateNumber,
+    excludeId
+) => {
+    return await checkPlateNumberExistsApi(
+        plateNumber,
+        excludeId
+    );
+};
+
+
+export const checkRegistrationNumberExists = async (
+    registrationNumber,
+    excludeId
+) => {
+    return await checkRegistrationNumberExistsApi(
+        registrationNumber,
+        excludeId
+    );
+};
+
+
+export const renewExistingVehicleRegistration = async (
+    vehicleId,
+    payload
+) => {
+    return await renewVehicleRegistrationApi(
+        vehicleId,
+        payload
+    );
+};
+
+
+export const setExistingVehicleRegistrationAvailability = async (
+    vehicleId,
+    availableFrom
+) => {
+    return await setVehicleRegistrationAvailabilityApi(
+        vehicleId,
+        availableFrom
+    );
+};
+
+
+export const fetchVehicleRegistrationRenewalEligibility = async (
+    vehicleId
+) => {
+    return await getVehicleRegistrationRenewalEligibilityApi(
+        vehicleId
+    );
+};
+
+
+export const requestExistingVehicleRegistrationRenewalAttempt = async (
+    vehicleId
+) => {
+    return await requestVehicleRegistrationRenewalAttemptApi(
+        vehicleId
+    );
+};
+
+
+export const grantExistingVehicleRegistrationRenewalAttempt = async (
+    vehicleId,
+    amount
+) => {
+    return await grantVehicleRegistrationRenewalAttemptApi(
+        vehicleId,
+        amount
     );
 };

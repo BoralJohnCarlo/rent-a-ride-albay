@@ -6,7 +6,9 @@ import {
     approveBooking,
     rejectBooking,
     cancelBooking,
+    getBookingCancellationPreview,
     expireBooking,
+    markBookingNoShow,
     requestBookingExtension,
     approveBookingExtension,
     rejectBookingExtension,
@@ -44,10 +46,12 @@ export const updateExistingBooking = async (
 };
 
 export const approveExistingBooking = async (
-    bookingId
+    bookingId,
+    driverId = null
 ) => {
     return await approveBooking(
-        bookingId
+        bookingId,
+        driverId
     );
 };
 
@@ -71,11 +75,29 @@ export const cancelExistingBooking = async (
     );
 };
 
+export const fetchBookingCancellationPreview = async (
+    bookingId
+) => {
+    return await getBookingCancellationPreview(
+        bookingId
+    );
+};
+
 export const expireExistingBooking = async (
     bookingId
 ) => {
     return await expireBooking(
         bookingId
+    );
+};
+
+export const markExistingBookingNoShow = async (
+    bookingId,
+    options
+) => {
+    return await markBookingNoShow(
+        bookingId,
+        options
     );
 };
 

@@ -22,9 +22,15 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
     }
 
     if (!isAuthenticated) {
+        // Back here after signing in — e.g. a receipt link opened from an
+        // email while logged out (see GuestRoute).
+        const redirect = encodeURIComponent(
+            `${location.pathname}${location.search}`
+        );
+
         return (
             <Navigate
-                to="/login"
+                to={`/login?redirect=${redirect}`}
                 replace
                 state={{ from: location }}
             />

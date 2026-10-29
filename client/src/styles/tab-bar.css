@@ -1,0 +1,13 @@
+/*
+ * Customer bottom tab bar (CustomerTabBar.jsx) — phones only, matching its
+ * lg:hidden. While it's shown, body.has-tab-bar keeps the page's end (the
+ * footer) clear of it and exposes its height as --tab-bar-offset for other
+ * bottom-anchored UI (the customer-service bubble).
+ */
+@media (width < 64rem) {
+    body.has-tab-bar {
+        --tab-bar-offset: calc(4rem + env(safe-area-inset-bottom));
+
+        padding-bottom: var(--tab-bar-offset);
+    }
+}

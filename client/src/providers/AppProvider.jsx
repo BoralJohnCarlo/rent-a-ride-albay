@@ -10,11 +10,11 @@ const AppProvider = ({ children }) => {
     return (
         <Provider store={store}>
             <ThemeProvider>
-                <AuthProvider>
-                    <ToastProvider>
+                <ToastProvider>
+                    <AuthProvider>
                         {children}
-                    </ToastProvider>
-                </AuthProvider>
+                    </AuthProvider>
+                </ToastProvider>
             </ThemeProvider>
         </Provider>
     );

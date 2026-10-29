@@ -5,6 +5,8 @@ import {
 
 import { Eye, EyeOff } from "lucide-react";
 
+import DatePicker from "./DatePicker";
+
 const Input = forwardRef(
     (
         {
@@ -29,6 +31,28 @@ const Input = forwardRef(
     ) => {
         const [showPassword, setShowPassword] =
             useState(false);
+
+        // The native date popup can't be styled - use the calendar dropdown.
+        if (type === "date") {
+            return (
+                <DatePicker
+                    ref={ref}
+                    id={id}
+                    name={name}
+                    label={label}
+                    value={value}
+                    onChange={onChange}
+                    placeholder={placeholder || undefined}
+                    error={error}
+                    helperText={helperText}
+                    required={required}
+                    disabled={disabled}
+                    leftIcon={leftIcon}
+                    className={className}
+                    {...props}
+                />
+            );
+        }
 
         const isPassword = type === "password";
 

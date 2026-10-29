@@ -1,4 +1,5 @@
 import { Inbox } from "lucide-react";
+import { isValidElement } from "react";
 
 const EmptyState = ({
     title = "No Data Found",
@@ -7,7 +8,19 @@ const EmptyState = ({
     action,
     className = "",
 }) => {
-    const Icon = icon || Inbox;
+    const renderIcon = () => {
+        if (!icon) {
+            return <Inbox size={56} className="mb-5 text-gray-400 dark:text-gray-500" />;
+        }
+        if (isValidElement(icon)) {
+            return icon;
+        }
+        if (typeof icon === "function" || (typeof icon === "object" && icon?.render)) {
+            const IconComponent = icon;
+            return <IconComponent size={56} className="mb-5 text-gray-400 dark:text-gray-500" />;
+        }
+        return null;
+    };
 
     return (
         <div
@@ -29,10 +42,7 @@ const EmptyState = ({
                 ${className}
             `}
         >
-            <Icon
-                size={56}
-                className="mb-5 text-gray-400 dark:text-gray-500"
-            />
+            {renderIcon()}
 
             <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 {title}

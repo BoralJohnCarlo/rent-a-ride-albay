@@ -1,3 +1,5 @@
+import { useRef, useState } from "react";
+
 import { LoaderCircle } from "lucide-react";
 
 const variants = {
@@ -15,6 +17,16 @@ const variants = {
 
     success:
         "bg-green-600 text-white hover:bg-green-700 focus:ring-green-500",
+
+    /*
+     * Was missing entirely — every Button using variant="warning" (Request
+     * Revision, among others) fell through to `variants[variant]` being
+     * undefined, so no background/text color classes applied at all. That
+     * left the button rendering as plain unstyled text, worst of all in
+     * dark mode where the inherited text color reads as barely visible.
+     */
+    warning:
+        "bg-amber-500 text-white hover:bg-amber-600 focus:ring-amber-500",
 
     brand:
         "bg-yellow-500 text-black hover:bg-yellow-400 focus:ring-yellow-400",
@@ -43,19 +55,65 @@ const Button = ({
     leftIcon,
     rightIcon,
     className = "",
+    onPointerDown,
     ...props
 }) => {
     const isDisabled = loading || disabled;
+
+    const [ripples, setRipples] = useState([]);
+    const nextRippleId = useRef(0);
+
+    const handlePointerDown = (event) => {
+        // Only the primary mouse button / a touch or pen contact — not a
+        // right-click opening a context menu.
+        if (isDisabled || event.button !== 0) {
+            onPointerDown?.(event);
+            return;
+        }
+
+        const rect =
+            event.currentTarget.getBoundingClientRect();
+
+        // Oversized so it always fully covers the button regardless of
+        // where within it the ripple started.
+        const diameter =
+            Math.max(rect.width, rect.height) * 2;
+
+        const ripple = {
+            id: nextRippleId.current++,
+            size: diameter,
+            x: event.clientX - rect.left - diameter / 2,
+            y: event.clientY - rect.top - diameter / 2,
+        };
+
+        setRipples((previous) => [
+            ...previous,
+            ripple,
+        ]);
+
+        onPointerDown?.(event);
+    };
+
+    const removeRipple = (id) => {
+        setRipples((previous) =>
+            previous.filter(
+                (ripple) => ripple.id !== id
+            )
+        );
+    };
 
     return (
         <button
             type={type}
             disabled={isDisabled}
+            onPointerDown={handlePointerDown}
             className={`
+                relative
                 inline-flex
                 items-center
                 justify-center
                 gap-2
+                overflow-hidden
                 rounded-lg
                 font-medium
                 transition-all
@@ -65,12 +123,29 @@ const Button = ({
                 disabled:cursor-not-allowed
                 disabled:opacity-50
                 ${variants[variant]}
+                ${variant === "primary" ? "dashboard-primary-button" : ""}
                 ${sizes[size]}
                 ${fullWidth ? "w-full" : ""}
                 ${className}
             `}
             {...props}
         >
+            {ripples.map((ripple) => (
+                <span
+                    key={ripple.id}
+                    onAnimationEnd={() =>
+                        removeRipple(ripple.id)
+                    }
+                    className="animate-ripple pointer-events-none absolute rounded-full bg-current"
+                    style={{
+                        width: ripple.size,
+                        height: ripple.size,
+                        left: ripple.x,
+                        top: ripple.y,
+                    }}
+                />
+            ))}
+
             {loading ? (
                 <>
                     <LoaderCircle

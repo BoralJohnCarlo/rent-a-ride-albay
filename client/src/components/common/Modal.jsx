@@ -10,6 +10,8 @@ import {
 } from "framer-motion";
 import { X } from "lucide-react";
 
+import useMediaQuery from "../../hooks/ui/useMediaQuery";
+
 const sizes = {
     sm: "max-w-md",
     md: "max-w-lg",
@@ -56,32 +58,74 @@ const modalVariants = {
     },
 };
 
+// Phones: a bottom sheet that slides up instead of a centred card.
+const sheetVariants = {
+    hidden: {
+        y: "100%",
+    },
+    visible: {
+        y: 0,
+        transition: {
+            type: "spring",
+            stiffness: 380,
+            damping: 38,
+        },
+    },
+    exit: {
+        y: "100%",
+        transition: {
+            duration: 0.2,
+            ease: "easeIn",
+        },
+    },
+};
+
 const Modal = ({
     isOpen,
+    open,
     onClose,
     title,
+    // Optional line under the title, in the header.
+    description,
     children,
     footer,
     size = "md",
     closeOnOverlayClick = true,
     closeOnEscape = true,
 }) => {
+    // Accept `open` as an alias for `isOpen` — several dialogs pass `open`.
+    const visible = isOpen ?? open ?? false;
+
+    // A true edge-to-edge takeover — no backdrop margin, no rounded card,
+    // fills the viewport — distinct from size="full" (max-w-7xl), which is
+    // still a centered dialog just at the widest available width.
+    const isFullscreen = size === "fullscreen";
+
+    const isSheet =
+        useMediaQuery("(width < 40rem)") && !isFullscreen;
+
     const bodyRef = useRef(null);
 
     useEffect(() => {
-        if (!isOpen) {
+        if (!visible) {
             return;
         }
+
+        // Restore whatever was there, not "" — a modal opened on top of
+        // another locked dialog (e.g. the booking dialog) must keep it locked.
+        const previousOverflow =
+            document.body.style.overflow;
 
         document.body.style.overflow = "hidden";
 
         return () => {
-            document.body.style.overflow = "";
+            document.body.style.overflow =
+                previousOverflow;
         };
-    }, [isOpen]);
+    }, [visible]);
 
     useEffect(() => {
-        if (!closeOnEscape || !isOpen) {
+        if (!closeOnEscape || !visible) {
             return;
         }
 
@@ -104,14 +148,22 @@ const Modal = ({
         };
     }, [
         closeOnEscape,
-        isOpen,
+        visible,
         onClose,
     ]);
 
     return createPortal(
         <AnimatePresence>
-            {isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {visible && (
+                <div
+                    className={`fixed inset-0 z-50 flex justify-center ${
+                        isSheet
+                            ? "items-end"
+                            : isFullscreen
+                              ? "items-center"
+                              : "items-center p-4"
+                    }`}
+                >
                     <motion.div
                         className="absolute inset-0 bg-black/50"
                         variants={overlayVariants}
@@ -131,14 +183,31 @@ const Modal = ({
                     />
 
                     <motion.div
-                        variants={modalVariants}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={
+                            typeof title === "string"
+                                ? title
+                                : undefined
+                        }
+                        variants={
+                            isSheet ? sheetVariants : modalVariants
+                        }
                         initial="hidden"
                         animate="visible"
                         exit="exit"
-                        className={`
+                        className={
+                            isFullscreen
+                                ? "relative z-10 flex h-full w-full flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100"
+                                : isSheet
+                                  ? "relative z-10 flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] text-gray-900 shadow-2xl dark:bg-gray-900 dark:text-gray-100"
+                                  : `
                             relative
                             z-10
+                            flex
+                            max-h-[90dvh]
                             w-full
+                            flex-col
                             rounded-xl
                             bg-white
                             text-gray-900
@@ -146,30 +215,55 @@ const Modal = ({
                             dark:bg-gray-900
                             dark:text-gray-100
                             ${sizes[size]}
-                        `}
+                        `
+                        }
                     >
+                        {isSheet && (
+                            <span
+                                aria-hidden="true"
+                                className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-gray-300 dark:bg-gray-700"
+                            />
+                        )}
+
                         <div
                             className="
                                 flex
+                                shrink-0
                                 items-center
                                 justify-between
+                                gap-3
                                 border-b
                                 border-gray-200
-                                px-6
-                                py-4
+                                px-4
+                                py-3
                                 dark:border-gray-800
+                                sm:px-6
+                                sm:py-4
                             "
                         >
-                            <h2 className="text-xl font-semibold">
-                                {title}
-                            </h2>
+                            <div className="min-w-0">
+                                <h2 className="text-lg font-semibold sm:text-xl">
+                                    {title}
+                                </h2>
+
+                                {description && (
+                                    <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                                        {description}
+                                    </p>
+                                )}
+                            </div>
 
                             <button
                                 type="button"
                                 onClick={onClose}
                                 className="
+                                    flex
+                                    h-10
+                                    w-10
+                                    shrink-0
+                                    items-center
+                                    justify-center
                                     rounded-md
-                                    p-1
                                     text-gray-500
                                     transition
                                     hover:bg-gray-100
@@ -187,11 +281,7 @@ const Modal = ({
                         <div
                             id="modal-body"
                             ref={bodyRef}
-                            className="
-                                max-h-[70vh]
-                                overflow-y-auto
-                                p-6
-                            "
+                            className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6"
                         >
                             {children}
                         </div>
@@ -200,13 +290,17 @@ const Modal = ({
                             <div
                                 className="
                                     flex
+                                    shrink-0
+                                    flex-wrap
                                     justify-end
                                     gap-3
                                     border-t
                                     border-gray-200
-                                    px-6
-                                    py-4
+                                    px-4
+                                    py-3
                                     dark:border-gray-800
+                                    sm:px-6
+                                    sm:py-4
                                 "
                             >
                                 {footer}

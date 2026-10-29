@@ -3,7 +3,10 @@ import { motion } from "framer-motion";
 
 import EmptyState from "../common/EmptyState";
 import LoadingSpinner from "../common/LoadingSpinner";
+import useMediaQuery from "../../hooks/ui/useMediaQuery";
 
+import { getCardSlots } from "./cardSlots";
+import DataTableCard from "./DataTableCard";
 import DataTableRow from "./DataTableRow";
 
 const ALIGNMENT = {
@@ -18,7 +21,11 @@ const DataTable = ({
     loading = false,
     leavingRowId,
     compact = false,
+    // Tighter padding and smaller header text, for tables with many columns.
+    dense = false,
     emptyMessage = "No records found.",
+    // Optional element (e.g. a help button) shown under the empty message.
+    emptyAction,
     onRowClick,
     caption,
     className = "",
@@ -28,10 +35,20 @@ const DataTable = ({
     onExpandedRowsChange,
     getRowId = (row) =>
         row?._id ?? row?.id,
+    // Keep the table on phones too (default: rows become cards there).
+    noCards = false,
 }) => {
-    const headerPadding = compact
-        ? "px-6 py-3"
-        : "px-6 py-4";
+    const isPhone = useMediaQuery("(width < 48rem)");
+
+    const headerPadding = dense
+        ? "px-3 py-2.5"
+        : compact
+          ? "px-6 py-3"
+          : "px-6 py-4";
+
+    const headerText = dense
+        ? "text-[11px] font-bold uppercase tracking-wider"
+        : "text-sm font-semibold uppercase tracking-wide";
 
     const [
         internalExpandedRows,
@@ -80,7 +97,39 @@ const DataTable = ({
                 description={
                     emptyMessage
                 }
+                action={emptyAction}
             />
+        );
+    }
+
+    if (isPhone && !noCards) {
+        const slots = getCardSlots(columns);
+
+        return (
+            <ul
+                aria-label={caption}
+                className={["space-y-3", className]
+                    .filter(Boolean)
+                    .join(" ")}
+            >
+                {data.map((row, index) => (
+                    <DataTableCard
+                        key={getRowId(row) ?? index}
+                        row={row}
+                        slots={slots}
+                        isLeaving={
+                            leavingRowId === getRowId(row)
+                        }
+                        expandable={expandable}
+                        expanded={activeExpandedRows.includes(
+                            getRowId(row)
+                        )}
+                        onToggle={toggleRow}
+                        renderDetails={renderDetails}
+                        onRowClick={onRowClick}
+                    />
+                ))}
+            </ul>
         );
     }
 
@@ -113,7 +162,7 @@ const DataTable = ({
                                         }
                                         scope="col"
                                         className={[
-                                            "text-sm font-semibold uppercase tracking-wide",
+                                            headerText,
                                             "text-gray-600 dark:text-gray-300",
                                             headerPadding,
                                             ALIGNMENT[
@@ -169,6 +218,7 @@ const DataTable = ({
                                     compact={
                                         compact
                                     }
+                                    dense={dense}
                                     expandable={
                                         expandable
                                     }

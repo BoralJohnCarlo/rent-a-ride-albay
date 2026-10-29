@@ -1,8 +1,25 @@
 import api from "../lib/axios";
 
-export const getAvailableDrivers = async () => {
+// Optional { startDate, endDate } (ISO): drivers booked then come back busy.
+export const getAvailableDrivers = async (
+    params = {}
+) => {
     const { data } = await api.get(
-        "/drivers/available"
+        "/drivers/available",
+        {
+            params,
+        }
+    );
+
+    return data;
+};
+
+// Bookings that still hold this driver (for the suspend/unavailable warning).
+export const getDriverUpcomingBookings = async (
+    driverId
+) => {
+    const { data } = await api.get(
+        `/drivers/${driverId}/upcoming-bookings`
     );
 
     return data;
@@ -26,6 +43,16 @@ export const getDriverById = async (
 ) => {
     const { data } = await api.get(
         `/drivers/${driverId}`
+    );
+
+    return data;
+};
+
+export const getPublicDriverProfile = async (
+    driverId
+) => {
+    const { data } = await api.get(
+        `/drivers/${driverId}/public`
     );
 
     return data;

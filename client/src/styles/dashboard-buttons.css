@@ -1,0 +1,24 @@
+/* Explicit action marker: status colors and navigation remain independent. */
+.dashboard-scope .dashboard-primary-button:not(:disabled),
+.dashboard-button-preview .dashboard-primary-button {
+    background-color: var(--dashboard-button, #2563eb);
+    color: var(--dashboard-button-text, #ffffff);
+}
+
+@media (hover: hover) {
+    .dashboard-scope .dashboard-primary-button:hover:not(:disabled),
+    .dashboard-button-preview .dashboard-primary-button:hover:not(:disabled) {
+        background-color: var(--dashboard-button-hover, #1d4ed8);
+        color: var(--dashboard-button-hover-text, #ffffff);
+    }
+}
+
+.dashboard-scope .dashboard-primary-button:focus-visible {
+    outline: 2px solid var(--dashboard-button, #2563eb);
+    outline-offset: 3px;
+}
+
+.dashboard-scope .dashboard-primary-button:disabled {
+    background-color: var(--color-surface-muted);
+    color: var(--color-text-muted);
+}

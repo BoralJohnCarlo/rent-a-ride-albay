@@ -1,7 +1,3 @@
-// ===============================
-// File: middleware/notFoundMiddleware.js
-// Purpose: Handle Unknown Routes
-// ===============================
 
 const notFoundMiddleware = (req, res) => {
     res.status(404).json({

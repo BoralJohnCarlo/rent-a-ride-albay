@@ -5,3 +5,9 @@ export const getDashboardData = async () => {
 
     return data;
 };
+
+export const getActivityCounts = async () => {
+    const { data } = await api.get("/dashboard/activity-counts");
+
+    return data;
+};

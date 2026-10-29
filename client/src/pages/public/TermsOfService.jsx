@@ -1,65 +1,57 @@
 import { motion } from "framer-motion";
 import {
+    AlertCircle,
     CheckCircle2,
     FileText,
+    RefreshCw,
     ShieldCheck,
 } from "lucide-react";
 
 import PageContainer from "../../components/sections/PageContainer";
 import Section from "../../components/sections/Section";
 
-const sections = [
-    {
-        number: "01",
-        title: "Using the Platform",
-        content:
-            "Rent-A-Ride Albay provides an online platform for browsing and managing vehicle rental services. Users are expected to provide accurate information and use the platform only for legitimate rental-related purposes.",
-    },
-    {
-        number: "02",
-        title: "Customer Accounts",
-        content:
-            "Customers are responsible for the information submitted during registration and for keeping their account credentials secure. Account information should remain accurate and up to date.",
-    },
-    {
-        number: "03",
-        title: "Vehicle Information",
-        content:
-            "Vehicle information displayed on the platform may include pricing, specifications, images, availability, and other relevant details. Availability may change depending on the current status of a vehicle.",
-    },
-    {
-        number: "04",
-        title: "Rental Transactions",
-        content:
-            "Customers should review the available vehicle information and rental details before proceeding with a transaction. Rental-related actions are subject to the information and conditions presented by the platform.",
-    },
-    {
-        number: "05",
-        title: "Vehicle Owners and Operators",
-        content:
-            "Vehicle owners and operators who participate in the platform are expected to provide accurate vehicle information and comply with the platform's approval and management procedures.",
-    },
-    {
-        number: "06",
-        title: "Acceptable Use",
-        content:
-            "Users should not misuse the platform, provide intentionally misleading information, interfere with system operation, or use the service for unlawful purposes.",
-    },
-    {
-        number: "07",
-        title: "Platform Availability",
-        content:
-            "The platform may occasionally be unavailable because of maintenance, technical issues, updates, or circumstances outside the platform's control.",
-    },
-    {
-        number: "08",
-        title: "Changes to These Terms",
-        content:
-            "The terms and information presented on this page may be updated as the Rent-A-Ride Albay system and its services develop. Users should review this page when necessary.",
-    },
-];
+import useLegalDocument from "../../hooks/legal/useLegalDocument";
 
+import { LEGAL_DOCUMENT_TYPES } from "../../constants/legalDocuments";
+import { formatLegalDate } from "../../utils/legalDocumentFormat";
+
+const BRAND = "Rent-A-Ride Albay";
+
+/* The title with the brand name in yellow, as the page always showed it. */
+const renderTitle = (title) => {
+    const at = title.lastIndexOf(BRAND);
+
+    if (at < 0) {
+        return title;
+    }
+
+    return (
+        <>
+            {title.slice(0, at)}
+            <span className="text-yellow-500">{BRAND}</span>
+            {title.slice(at + BRAND.length)}
+        </>
+    );
+};
+
+/*
+ * The public Terms of Service: the published version from Settings → Terms
+ * & Policies (nobody accepts these; they're for reading).
+ */
 const TermsOfService = () => {
+    const { document, error, reload } = useLegalDocument(
+        LEGAL_DOCUMENT_TYPES.TERMS_OF_SERVICE
+    );
+
+    const sections = (document?.sections ?? []).map((section, index) => ({
+        number: String(index + 1).padStart(2, "0"),
+        key: section.key,
+        title: section.title,
+        paragraphs: section.items
+            .map((item) => item.text)
+            .filter(Boolean),
+    }));
+
     return (
         <>
             <Section
@@ -128,29 +120,37 @@ const TermsOfService = () => {
                                 sm:text-5xl
                             "
                         >
-                            Terms for Using
-                            <span className="text-yellow-500">
-                                {" "}
-                                Rent-A-Ride Albay
-                            </span>
+                            {renderTitle(
+                                document?.title ||
+                                    `Terms for Using ${BRAND}`
+                            )}
                         </h1>
 
-                        <p
-                            className="
-                                mx-auto
-                                mt-5
-                                max-w-2xl
-                                text-base
-                                leading-7
-                                text-gray-600
-                                sm:text-lg
-                            "
-                        >
-                            Please review these general terms
-                            before using the Rent-A-Ride Albay
-                            platform and its rental-related
-                            services.
-                        </p>
+                        {document?.intro && (
+                            <p
+                                className="
+                                    mx-auto
+                                    mt-5
+                                    max-w-2xl
+                                    text-base
+                                    leading-7
+                                    text-gray-600
+                                    sm:text-lg
+                                "
+                            >
+                                {document.intro}
+                            </p>
+                        )}
+
+                        {document && (
+                            <p className="mt-4 text-xs font-medium text-gray-500">
+                                Version {document.version}
+                                {document.publishedAt &&
+                                    ` · Effective ${formatLegalDate(
+                                        document.publishedAt
+                                    )}`}
+                            </p>
+                        )}
                     </motion.div>
                 </PageContainer>
             </Section>
@@ -161,6 +161,33 @@ const TermsOfService = () => {
             >
                 <PageContainer>
                     <div className="mx-auto max-w-4xl">
+                        {!document && (
+                            <div className="flex flex-col items-center gap-3 rounded-3xl border border-gray-200 bg-white px-6 py-14 text-center">
+                                {error ? (
+                                    <>
+                                        <AlertCircle
+                                            size={24}
+                                            className="text-red-500"
+                                        />
+                                        <p className="text-sm text-gray-600">
+                                            {error}
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={reload}
+                                            className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2 text-sm font-bold text-gray-950 hover:bg-yellow-400"
+                                        >
+                                            <RefreshCw size={15} />
+                                            Try again
+                                        </button>
+                                    </>
+                                ) : (
+                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-yellow-500" />
+                                )}
+                            </div>
+                        )}
+
+                        {document?.notice?.body && (
                         <motion.div
                             initial={{
                                 opacity: 0,
@@ -220,36 +247,36 @@ const TermsOfService = () => {
                                             sm:text-lg
                                         "
                                     >
-                                        Please use the platform
-                                        responsibly
+                                        {document.notice.title}
                                     </h2>
 
                                     <p
                                         className="
                                             mt-2
+                                            whitespace-pre-line
                                             text-sm
                                             leading-7
                                             text-gray-600
                                         "
                                     >
-                                        By using Rent-A-Ride Albay,
-                                        users are expected to provide
-                                        truthful information and use
-                                        the system responsibly.
+                                        {document.notice.body}
                                     </p>
                                 </div>
                             </div>
                         </motion.div>
+                        )}
 
                         <div className="space-y-5">
                             {sections.map(
                                 ({
                                     number,
+                                    key,
                                     title,
-                                    content,
+                                    paragraphs,
                                 }) => (
                                     <motion.article
-                                        key={number}
+                                        key={key}
+                                        id={key}
                                         initial={{
                                             opacity: 0,
                                             y: 20,
@@ -318,16 +345,22 @@ const TermsOfService = () => {
                                                     {title}
                                                 </h2>
 
-                                                <p
-                                                    className="
-                                                        mt-3
-                                                        text-sm
-                                                        leading-7
-                                                        text-gray-600
-                                                    "
-                                                >
-                                                    {content}
-                                                </p>
+                                                {paragraphs.map(
+                                                    (paragraph, index) => (
+                                                        <p
+                                                            key={index}
+                                                            className="
+                                                                mt-3
+                                                                whitespace-pre-line
+                                                                text-sm
+                                                                leading-7
+                                                                text-gray-600
+                                                            "
+                                                        >
+                                                            {paragraph}
+                                                        </p>
+                                                    )
+                                                )}
                                             </div>
                                         </div>
                                     </motion.article>

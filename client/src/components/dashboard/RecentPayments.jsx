@@ -21,15 +21,17 @@ const RecentPayments = ({
                 bg-white
                 p-5
                 shadow-sm
+                dark:border-gray-800
+                dark:bg-gray-900
             "
         >
             <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-xl font-semibold text-gray-900">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                         Recent Payments
                     </h2>
 
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         Latest payment transactions.
                     </p>
                 </div>

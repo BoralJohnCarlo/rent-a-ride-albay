@@ -6,6 +6,7 @@ import {
     getAllReviews,
     getVehicleAverageRating,
     getDriverAverageRating,
+    uploadReviewImage as uploadReviewImageApi,
 } from "../api/reviewApi";
 
 export const submitReview = async (
@@ -51,5 +52,12 @@ export const fetchDriverAverageRating =
     async (driverId) => {
         return await getDriverAverageRating(
             driverId
+        );
+    };
+
+export const uploadReviewImage =
+    async (file) => {
+        return await uploadReviewImageApi(
+            file
         );
     };

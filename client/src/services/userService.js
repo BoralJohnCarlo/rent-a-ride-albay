@@ -1,7 +1,7 @@
 import {
-    createUser,
     getProfile,
     updateProfile,
+    uploadProfileImage as uploadProfileImageApi,
     changePassword,
     getUsers,
     getBlacklistedUsers,
@@ -13,6 +13,11 @@ import {
     unblacklistUser,
     verifyValidId as verifyValidIdApi,
     unverifyValidId as unverifyValidIdApi,
+    getValidIdHistory as getValidIdHistoryApi,
+    uploadRenewedValidId as uploadRenewedValidIdApi,
+    uploadProofOfBilling as uploadProofOfBillingApi,
+    grantRenewalAttempt as grantRenewalAttemptApi,
+    requestRenewalAttempt as requestRenewalAttemptApi,
 } from "../api/userApi";
 
 export const fetchProfile = async () => {
@@ -21,6 +26,10 @@ export const fetchProfile = async () => {
 
 export const saveProfile = async (profileData) => {
     return await updateProfile(profileData);
+};
+
+export const uploadProfileImage = async (file) => {
+    return await uploadProfileImageApi(file);
 };
 
 export const updatePassword = async (passwordData) => {
@@ -38,12 +47,6 @@ export const fetchBlacklistedUsers =
 
 export const fetchUserById = async (userId) => {
     return await getUserById(userId);
-};
-
-export const createUserAccount = async (
-    userData
-) => {
-    return await createUser(userData);
 };
 
 export const saveUser = async (userId, userData) => {
@@ -75,13 +78,35 @@ export const removeUserBlacklist = async (
 };
 
 export const verifyUserValidId = async (
-    userId
+    userId,
+    payload
 ) => {
-    return await verifyValidIdApi(userId);
+    return await verifyValidIdApi(userId, payload);
 };
+
+export const fetchValidIdHistory = (userId) =>
+    getValidIdHistoryApi(userId);
 
 export const unverifyUserValidId = async (
     userId
 ) => {
     return await unverifyValidIdApi(userId);
+};
+
+export const uploadRenewedValidId = async (file) => {
+    return await uploadRenewedValidIdApi(file);
+};
+
+export const uploadProofOfBilling = (file) =>
+    uploadProofOfBillingApi(file);
+
+export const grantRenewalAttempt = async (
+    userId,
+    amount
+) => {
+    return await grantRenewalAttemptApi(userId, amount);
+};
+
+export const requestRenewalAttempt = async (userId) => {
+    return await requestRenewalAttemptApi(userId);
 };

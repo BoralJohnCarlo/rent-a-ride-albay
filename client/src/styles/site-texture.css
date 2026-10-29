@@ -1,0 +1,231 @@
+/*
+ * Site-wide background texture for the public + customer sides only.
+ *
+ * PublicLayout / CustomerLayout add `.site-texture` to their wrapper; admin
+ * and operator layouts don't, so they're untouched.
+ *
+ * Painted as extra background-image layers (which sit above the element's
+ * background-color and below its content) — no overlay element, so nothing
+ * changes about stacking, clicks, or sticky/fixed children.
+ *
+ * Which elements get it: full-width page surfaces — `main` / `section` that
+ *   - aren't cards (no `rounded*` class, and not inside something rounded),
+ *   - don't already paint their own background image or gradient
+ *     (Featured / Testimonials / Available hero carry their own texture),
+ *   - are the innermost such surface (so nested sections don't double up).
+ *
+ * In @layer base so any Tailwind bg-image utility on an element still wins.
+ */
+
+@layer base {
+    .site-texture
+        :is(main, section):not(
+            [class*="rounded"],
+            [class*="bg-gradient"],
+            [class*="bg-linear"],
+            [class*="bg-radial"],
+            [class*="bg-conic"],
+            [class*="bg-[url"],
+            [class*="bg-[linear"],
+            [class*="bg-[radial"],
+            [style*="background"]
+        ):not([class*="rounded"] *):not(
+            :has(:is(main, section):not([class*="rounded"]))
+        ),
+    /* Admin / operator dashboards: the same light texture, on the fixed
+       backdrop behind the scrolling content (DashboardShell). The dark rule
+       below overrides it in dark mode. */
+    .dashboard-texture {
+        /* light: fine grain + faint square grid */
+        background-image:
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.06 0 0 0 0 0.09 0 0 0 0 0.16 0.09 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+            linear-gradient(to right, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+        background-size:
+            180px 180px,
+            44px 44px,
+            44px 44px;
+    }
+
+    [data-theme="dark"]
+        .site-texture
+        :is(main, section):not(
+            [class*="rounded"],
+            [class*="bg-gradient"],
+            [class*="bg-linear"],
+            [class*="bg-radial"],
+            [class*="bg-conic"],
+            [class*="bg-[url"],
+            [class*="bg-[linear"],
+            [class*="bg-[radial"],
+            [style*="background"]
+        ):not([class*="rounded"] *):not(
+            :has(:is(main, section):not([class*="rounded"]))
+        ),
+    /* Admin / operator dashboards: same dark atmosphere, on the fixed
+       backdrop behind the scrolling content (DashboardShell). */
+    [data-theme="dark"] .dashboard-texture {
+        /*
+         * dark: the Testimonials section's atmosphere, as background layers
+         * (top → bottom):
+         *   1. yellow glow, top-right — TestimonialsSection's
+         *      `-right-40 -top-40 h-[28rem] w-[28rem] bg-yellow-500/15 blur-3xl`
+         *   2. blue glow, bottom-left — `-bottom-48 -left-20 h-[26rem] w-[26rem]
+         *      bg-blue-500/10 blur-3xl`
+         *      Both are the blurred disc's falloff sampled as gradient stops
+         *      (radius R, 64px blur ≈ ±2σ of 4rem).
+         *   3. a fade from transparent to the surface colour, standing in for
+         *      that section's `mask-image: radial-gradient(ellipse at top,
+         *      black, transparent 72%)` on the dots (a single background layer
+         *      can't be masked on its own)
+         *   4. the 22px dot grid
+         * No grain in dark — the sections being matched have none.
+         */
+        background-image:
+            radial-gradient(
+                circle 22rem at calc(100% - 4rem) 4rem,
+                rgba(240, 177, 0, 0.15) 6rem,
+                rgba(240, 177, 0, 0.126) 10rem,
+                rgba(240, 177, 0, 0.075) 14rem,
+                rgba(240, 177, 0, 0.024) 18rem,
+                transparent 22rem
+            ),
+            radial-gradient(
+                circle 21rem at 8rem calc(100% - 1rem),
+                rgba(43, 127, 255, 0.1) 5rem,
+                rgba(43, 127, 255, 0.084) 9rem,
+                rgba(43, 127, 255, 0.05) 13rem,
+                rgba(43, 127, 255, 0.016) 17rem,
+                transparent 21rem
+            ),
+            radial-gradient(
+                ellipse at top,
+                transparent,
+                var(--site-dark-surface, var(--color-gray-950, #030712)) 85%
+            ),
+            radial-gradient(circle, rgba(255, 255, 255, 0.11) 1px, transparent 1px);
+        background-size:
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            22px 22px;
+        background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+    }
+
+    /* Surfaces banded in gray-900 (About, Contact, Privacy) fade to their own colour. */
+    [data-theme="dark"] .site-texture :is(main, section)[class*="dark:bg-gray-900"] {
+        --site-dark-surface: var(--color-gray-900, #101828);
+    }
+
+    /*
+     * The same textures, opt-in by class for surfaces the rules above can't
+     * reach — e.g. the fullscreen booking dialog, which renders outside the
+     * layouts' `.site-texture` wrapper.
+     */
+    .form-texture {
+        background-image:
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.06 0 0 0 0 0.09 0 0 0 0 0.16 0.09 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+            linear-gradient(to right, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+        background-size:
+            180px 180px,
+            44px 44px,
+            44px 44px;
+        background-attachment: local;
+    }
+
+    [data-theme="dark"] .form-texture {
+        background-image:
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.05 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+            radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+        background-size:
+            180px 180px,
+            22px 22px;
+    }
+}
+
+/*
+ * Public + customer pages, dark only: "lit seams" between stacked sections.
+ *
+ * Each section clips its own glows at its edges, so where two meet the blue
+ * glow above stops dead against the yellow glow below — a hard line. Instead
+ * of hiding it, each boundary becomes a deliberate lit edge:
+ *   - the upper section's bottom 3.5rem and the lower section's top 3.5rem
+ *     feather into the base colour, dissolving both clipped glows
+ *   - a brand-yellow hairline runs along the boundary, brightest mid-page
+ *   - a soft yellow bloom spills from its centre into both sections
+ * Drawn with pseudo-elements *inside* each section (sections are
+ * overflow-hidden), in their empty vertical padding — so only sections that
+ * have `py-*` padding take part (the full-bleed hero doesn't).
+ *
+ * PublicLayout and CustomerLayout add `.lit-seams`. Each half fades into
+ * its own section's colour (--seam-surface): gray-950 by default, gray-900
+ * for the lighter bands on About / Contact / Privacy.
+ */
+@layer base {
+    [data-theme="dark"] .lit-seams section {
+        --seam-surface: var(--color-gray-950, #030712);
+    }
+
+    [data-theme="dark"] .lit-seams section[class*="dark:bg-gray-900"] {
+        --seam-surface: var(--color-gray-900, #101828);
+    }
+
+    [data-theme="dark"] .lit-seams section[class*="py-"]:not([class*="rounded"]):has(+ section[class*="py-"]),
+    [data-theme="dark"] .lit-seams section + section[class*="py-"]:not([class*="rounded"]) {
+        position: relative;
+    }
+
+    /* Upper half: fade out + bloom rising from the seam. */
+    [data-theme="dark"] .lit-seams section[class*="py-"]:not([class*="rounded"]):has(+ section[class*="py-"])::after {
+        content: "";
+        position: absolute;
+        inset-inline: 0;
+        bottom: 0;
+        height: 3.5rem;
+        z-index: 1;
+        pointer-events: none;
+        background:
+            radial-gradient(34% 100% at 50% 100%, rgba(250, 204, 21, 0.09), transparent 75%),
+            linear-gradient(to bottom, transparent, var(--seam-surface));
+    }
+
+    /* Lower half: the hairline, bloom falling from it, fade in. */
+    [data-theme="dark"] .lit-seams section + section[class*="py-"]:not([class*="rounded"])::before {
+        content: "";
+        position: absolute;
+        inset-inline: 0;
+        top: 0;
+        height: 3.5rem;
+        z-index: 1;
+        pointer-events: none;
+        background:
+            linear-gradient(90deg, transparent 12%, rgba(250, 204, 21, 0.18) 32%, rgba(253, 224, 71, 0.55) 50%, rgba(250, 204, 21, 0.18) 68%, transparent 88%) top / 100% 1px no-repeat,
+            radial-gradient(34% 100% at 50% 0%, rgba(250, 204, 21, 0.09), transparent 75%),
+            linear-gradient(to top, transparent, var(--seam-surface));
+    }
+
+    /*
+     * The footer isn't a `section`, so it never pairs with the rule above —
+     * it always gets the lower-half treatment on its own top edge, painted
+     * inside its first 3.5rem (well within its `py-16` wrapper's padding),
+     * so the page above it always reads as a separate surface in dark mode.
+     */
+    [data-theme="dark"] .lit-seams footer {
+        position: relative;
+    }
+
+    [data-theme="dark"] .lit-seams footer::before {
+        content: "";
+        position: absolute;
+        inset-inline: 0;
+        top: 0;
+        height: 3.5rem;
+        z-index: 1;
+        pointer-events: none;
+        background:
+            linear-gradient(90deg, transparent 12%, rgba(250, 204, 21, 0.18) 32%, rgba(253, 224, 71, 0.55) 50%, rgba(250, 204, 21, 0.18) 68%, transparent 88%) top / 100% 1px no-repeat,
+            radial-gradient(34% 100% at 50% 0%, rgba(250, 204, 21, 0.09), transparent 75%),
+            linear-gradient(to top, transparent, var(--color-gray-950, #030712));
+    }
+}

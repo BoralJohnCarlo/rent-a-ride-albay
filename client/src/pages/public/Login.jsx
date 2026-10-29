@@ -5,10 +5,14 @@ import {
 
 import {
     Link,
+    useLocation,
     useNavigate,
+    useSearchParams,
 } from "react-router-dom";
 
 import {
+    ArrowRight,
+    Car,
     Lock,
     Mail,
 } from "lucide-react";
@@ -47,9 +51,14 @@ const Login = () => {
     } = useAuth();
 
     const navigate = useNavigate();
+    const location = useLocation();
+    const [searchParams] = useSearchParams();
+
+    // Arriving from a finished password reset (ForgotPassword.jsx).
+    const justReset = Boolean(location.state?.passwordReset);
 
     const [formData, setFormData] = useState({
-        email: "",
+        email: location.state?.email || "",
         password: "",
     });
 
@@ -62,17 +71,46 @@ const Login = () => {
     const [currentImage, setCurrentImage] =
         useState(0);
 
+    const [
+        leavingForPartner,
+        setLeavingForPartner,
+    ] = useState(false);
+
+    // In-app paths only (see GuestRoute) — never another site.
+    const requestedRedirect = searchParams.get("redirect") || "";
+    const redirectTo =
+        requestedRedirect.startsWith("/") &&
+        !requestedRedirect.startsWith("//") &&
+        !requestedRedirect.startsWith("/\\")
+            ? requestedRedirect
+            : "/";
+
+    const handleGoToPartner = (event) => {
+        // Let modified clicks (new tab / window) behave normally.
+        if (
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.button === 1
+        ) {
+            return;
+        }
+
+        event.preventDefault();
+        setLeavingForPartner(true);
+    };
+
     useEffect(() => {
         clearError();
     }, [clearError]);
 
     useEffect(() => {
         if (isAuthenticated) {
-            navigate("/", {
+            navigate(redirectTo, {
                 replace: true,
             });
         }
-    }, [isAuthenticated, navigate]);
+    }, [isAuthenticated, navigate, redirectTo]);
 
     useEffect(() => {
         if (LOGIN_IMAGES.length <= 1) {
@@ -258,7 +296,7 @@ const Login = () => {
                     className="
                         absolute
                         inset-0
-                        bg-gray-950/80
+                        bg-gray-950/55
                     "
                 />
 
@@ -266,7 +304,7 @@ const Login = () => {
                     className="
                         absolute
                         inset-0
-                        bg-yellow-500/10
+                        bg-yellow-500/15
                         mix-blend-color
                     "
                 />
@@ -276,9 +314,9 @@ const Login = () => {
                         absolute
                         inset-0
                         bg-gradient-to-br
-                        from-gray-950/90
-                        via-gray-950/65
-                        to-yellow-950/30
+                        from-gray-950/70
+                        via-gray-950/45
+                        to-yellow-950/20
                     "
                 />
 
@@ -286,7 +324,7 @@ const Login = () => {
                     className="
                         absolute
                         inset-0
-                        bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.35)_100%)]
+                        bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.20)_100%)]
                     "
                 />
             </div>
@@ -309,7 +347,7 @@ const Login = () => {
                     z-10
                     mx-auto
                     w-full
-                    max-w-xl
+                    max-w-md
                 "
             >
                 <div
@@ -323,17 +361,39 @@ const Login = () => {
                             x: -40,
                             scale: 0.97,
                         }}
-                        animate={{
-                            opacity: 1,
-                            x: 0,
-                            scale: 1,
-                        }}
-                        transition={{
-                            type: "spring",
-                            stiffness: 190,
-                            damping: 21,
-                            mass: 0.9,
-                            delay: 0.18,
+                        animate={
+                            leavingForPartner
+                                ? {
+                                      opacity: 0,
+                                      x: 60,
+                                      scale: 0.96,
+                                  }
+                                : {
+                                      opacity: 1,
+                                      x: 0,
+                                      scale: 1,
+                                  }
+                        }
+                        transition={
+                            leavingForPartner
+                                ? {
+                                      duration: 0.32,
+                                      ease: [0.4, 0, 1, 1],
+                                  }
+                                : {
+                                      type: "spring",
+                                      stiffness: 190,
+                                      damping: 21,
+                                      mass: 0.9,
+                                      delay: 0.18,
+                                  }
+                        }
+                        onAnimationComplete={() => {
+                            if (leavingForPartner) {
+                                navigate(
+                                    "/register-operator"
+                                );
+                            }
                         }}
                         className="
                             w-full
@@ -347,10 +407,12 @@ const Login = () => {
                                 border
                                 border-white/80
                                 bg-white
-                                p-7
+                                p-5
                                 shadow-2xl
                                 shadow-black/30
-                                sm:p-8
+                                sm:p-6
+                                dark:border-gray-700
+                                dark:bg-gray-900
                             "
                         >
                             <motion.div
@@ -369,12 +431,13 @@ const Login = () => {
                             >
                                 <h1
                                     className="
-                                        mb-2
+                                        mb-1
                                         text-center
-                                        text-3xl
+                                        text-xl
                                         font-bold
                                         tracking-tight
                                         text-gray-950
+                                        dark:text-white
                                     "
                                 >
                                     Welcome Back
@@ -382,10 +445,11 @@ const Login = () => {
 
                                 <p
                                     className="
-                                        mb-6
+                                        mb-5
                                         text-center
-                                        text-sm
+                                        text-xs
                                         text-gray-500
+                                        dark:text-gray-400
                                     "
                                 >
                                     Sign in to your
@@ -393,6 +457,14 @@ const Login = () => {
                                     account
                                 </p>
                             </motion.div>
+
+                            {justReset && !error && !validationError && (
+                                <Alert
+                                    variant="success"
+                                    message="Password updated. Sign in with your new password."
+                                    className="mb-5"
+                                />
+                            )}
 
                             {error && (
                                 <Alert
@@ -414,7 +486,7 @@ const Login = () => {
                                 onSubmit={
                                     handleSubmit
                                 }
-                                className="space-y-5"
+                                className="space-y-3.5"
                             >
                                 <Input
                                     id="email"
@@ -429,10 +501,11 @@ const Login = () => {
                                         handleChange
                                     }
                                     autoComplete="email"
+                                    className="!py-2.5 text-sm"
                                     leftIcon={
                                         <Mail
                                             size={
-                                                18
+                                                16
                                             }
                                         />
                                     }
@@ -458,10 +531,11 @@ const Login = () => {
                                         handleChange
                                     }
                                     autoComplete="current-password"
+                                    className="!py-2.5 text-sm"
                                     leftIcon={
                                         <Lock
                                             size={
-                                                18
+                                                16
                                             }
                                         />
                                     }
@@ -474,9 +548,10 @@ const Login = () => {
                                     required
                                 />
 
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <Button
                                         type="submit"
+                                        size="sm"
                                         fullWidth
                                         loading={
                                             loading
@@ -493,14 +568,40 @@ const Login = () => {
                                 </div>
                             </form>
 
+                            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-center text-xs dark:border-yellow-500/20 dark:bg-yellow-500/10">
+                                <span className="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+                                    <Car
+                                        size={13}
+                                        className="text-yellow-500 dark:text-yellow-400"
+                                    />
+                                    Have a Vehicle you want to consign?
+                                </span>
+
+                                <Link
+                                    to="/register-operator"
+                                    onClick={handleGoToPartner}
+                                    className="inline-flex items-center gap-1 font-semibold text-yellow-600 transition-colors hover:text-yellow-700 hover:underline dark:text-yellow-400 dark:hover:text-yellow-300"
+                                >
+                                    Apply as partner instead
+                                    <ArrowRight
+                                        size={12}
+                                        className={
+                                            leavingForPartner
+                                                ? "animate-pulse"
+                                                : ""
+                                        }
+                                    />
+                                </Link>
+                            </div>
+
                             <div
                                 className="
-                                    mt-6
+                                    mt-3
                                     flex
                                     items-center
                                     justify-between
                                     gap-4
-                                    text-sm
+                                    text-xs
                                 "
                             >
                                 <Link
@@ -510,6 +611,8 @@ const Login = () => {
                                         transition-colors
                                         hover:text-gray-950
                                         hover:underline
+                                        dark:text-gray-400
+                                        dark:hover:text-white
                                     "
                                 >
                                     Forgot Password?
@@ -523,6 +626,8 @@ const Login = () => {
                                         transition-colors
                                         hover:text-gray-950
                                         hover:underline
+                                        dark:text-gray-400
+                                        dark:hover:text-white
                                     "
                                 >
                                     Create Account

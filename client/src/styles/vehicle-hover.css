@@ -1,0 +1,147 @@
+/*
+ * Customer-side vehicle cards and list rows, dark mode only: an admin-chosen
+ * hover effect (Settings -> Themes & Display). Light mode is untouched.
+ *
+ * Add `.vehicle-hover-fx` to the card/row (it needs a border-radius). Which
+ * effect shows, and its colour, are read off <html> via
+ * data-hover-mode="neon" | "spotlight" and data-hover-color="<name>"
+ * (ThemeProvider mirrors the admin's saved choice there, next to
+ * data-theme). Both modes share the one `--hover-rgb` variable below so a
+ * colour change never needs touching the effect rules themselves.
+ *
+ * "neon": a thin light travels clockwise around the rounded border, like a
+ * racing stripe - a conic gradient on a ::before ring, masked to the edge,
+ * rotated by animating the registered `--neon-angle`.
+ *
+ * "spotlight": a soft glow that leans toward the cursor, cast from behind
+ * the card rather than painted over it - a colour box-shadow (box-shadow
+ * is never clipped by the card's own `overflow-hidden`, unlike a ::before
+ * layer would be) offset by `--spot-x`/`--spot-y`, which the card updates
+ * on pointer move (see utils/spotlightHover.js).
+ *
+ * Unlayered on purpose: the hover border colour and glow must beat the
+ * cards' own Tailwind border/shadow utilities. Everything is scoped to
+ * [data-theme="dark"], so light mode never sees it.
+ *
+ * Inner hover accents (yellow price chip / button) stay in the components as
+ * `dark:group-hover:` utilities.
+ */
+
+:root {
+    --hover-rgb: 250, 204, 21;
+}
+
+[data-hover-color="blue"] {
+    --hover-rgb: 56, 152, 255;
+}
+
+[data-hover-color="purple"] {
+    --hover-rgb: 168, 85, 247;
+}
+
+[data-hover-color="green"] {
+    --hover-rgb: 34, 197, 94;
+}
+
+[data-hover-color="red"] {
+    --hover-rgb: 239, 68, 68;
+}
+
+[data-hover-color="white"] {
+    --hover-rgb: 255, 255, 255;
+}
+
+@property --neon-angle {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+}
+
+@keyframes vehicle-neon-sweep {
+    to {
+        --neon-angle: 360deg;
+    }
+}
+
+[data-theme="dark"] .vehicle-hover-fx {
+    position: relative;
+}
+
+/* ---- neon: travelling edge light (default mode) ---- */
+
+[data-theme="dark"][data-hover-mode="neon"] .vehicle-hover-fx {
+    --neon-width: 1.5px;
+}
+
+[data-theme="dark"][data-hover-mode="neon"] .vehicle-hover-fx::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    padding: var(--neon-width);
+    pointer-events: none;
+    /* A short bright head with a fading tail; the rest is dark. */
+    background: conic-gradient(
+        from var(--neon-angle),
+        transparent 0deg,
+        transparent 200deg,
+        rgba(var(--hover-rgb), 0.18) 270deg,
+        rgba(var(--hover-rgb), 0.6) 325deg,
+        rgba(var(--hover-rgb), 0.95) 350deg,
+        transparent 360deg
+    );
+    /* Keep only the ring: the full box minus the content box. */
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+        linear-gradient(#000 0 0) content-box exclude,
+        linear-gradient(#000 0 0);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+[data-theme="dark"][data-hover-mode="neon"] .vehicle-hover-fx:hover,
+[data-theme="dark"][data-hover-mode="neon"] .vehicle-hover-fx:focus-within {
+    border-color: rgba(var(--hover-rgb), 0.14);
+    box-shadow:
+        0 0 0 1px rgba(var(--hover-rgb), 0.06),
+        0 18px 40px -18px rgba(var(--hover-rgb), 0.35);
+}
+
+/* Keyboard users get the same edge on the focused card/row. */
+[data-theme="dark"][data-hover-mode="neon"] .vehicle-hover-fx:hover::before,
+[data-theme="dark"][data-hover-mode="neon"] .vehicle-hover-fx:focus-within::before {
+    opacity: 1;
+    animation: vehicle-neon-sweep 2.4s linear infinite;
+}
+
+/* No travelling light: a steady soft edge instead. */
+@media (prefers-reduced-motion: reduce) {
+    [data-theme="dark"][data-hover-mode="neon"] .vehicle-hover-fx:hover::before,
+    [data-theme="dark"][data-hover-mode="neon"] .vehicle-hover-fx:focus-within::before {
+        animation: none;
+        background: rgba(var(--hover-rgb), 0.45);
+    }
+}
+
+/* ---- spotlight: glow cast from behind the card, leaning toward the cursor ---- */
+
+[data-theme="dark"][data-hover-mode="spotlight"] .vehicle-hover-fx {
+    transition:
+        border-color 0.3s ease,
+        box-shadow 0.3s ease;
+}
+
+[data-theme="dark"][data-hover-mode="spotlight"] .vehicle-hover-fx:hover,
+[data-theme="dark"][data-hover-mode="spotlight"] .vehicle-hover-fx:focus-within {
+    border-color: rgba(var(--hover-rgb), 0.14);
+    /* The glow leans toward whichever side the cursor is on (--spot-x/-y,
+       -1..1), like the card is lit from that direction; the last layer is
+       the same ambient lift neon uses. */
+    box-shadow:
+        calc(var(--spot-x, 0) * 22px) calc(var(--spot-y, 0) * 22px) 70px 6px rgba(var(--hover-rgb), 0.4),
+        0 18px 40px -18px rgba(var(--hover-rgb), 0.35);
+}

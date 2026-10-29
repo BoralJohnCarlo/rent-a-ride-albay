@@ -1,11 +1,16 @@
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
     ChevronDown,
     HelpCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import Collapse from "../../components/common/Collapse";
+import {
+    jellyCardVariants,
+    jellyChevronTransition,
+} from "../../components/common/jellyMotion";
 import PageContainer from "../../components/sections/PageContainer";
 import Section from "../../components/sections/Section";
 
@@ -50,13 +55,19 @@ const faqs = [
         question:
             "Can vehicle owners provide vehicles for rental?",
         answer:
-            "Yes. Rent-A-Ride Albay supports vehicle owners and operators who can provide vehicles for the rental fleet, subject to the platform's approval and management process.",
+            "Yes. Rent-A-Ride Albay supports vehicle owners and partners who can provide vehicles for the rental fleet, subject to the platform's approval and management process.",
     },
     {
         question:
             "Are all vehicles immediately available for rent?",
         answer:
-            "No. Vehicle availability depends on the vehicle's current status and rental conditions. A vehicle may be unavailable because it is reserved, rented, under maintenance, or otherwise unavailable.",
+            "Not always — availability is decided by date. A vehicle that's reserved, out on a rental or under maintenance stays listed, and its calendar shows which dates are still free. A vehicle marked \"Under maintenance until…\" can be booked for any date after that; one marked \"Temporarily off the road\" has no bookable dates until it's back in service.",
+    },
+    {
+        question:
+            "What happens if my booked vehicle needs maintenance before my rental?",
+        answer:
+            "We'll notify you and let you choose: switch to another available vehicle for the same dates (any price difference is charged or refunded), or cancel for a full refund with no cancellation fee. You'll have up to 48 hours to decide (and no later than 24 hours before pickup); if you don't choose in time, your booking is cancelled and fully refunded automatically. If the vehicle ends up ready in time, your booking simply goes ahead.",
     },
     {
         question:
@@ -78,23 +89,30 @@ const FAQItem = ({
     isOpen,
     onToggle,
 }) => {
+    const reduceMotion = useReducedMotion();
+
     return (
         <motion.div
-            layout
-            className="
+            initial={false}
+            animate={isOpen ? "open" : "closed"}
+            variants={reduceMotion ? undefined : jellyCardVariants}
+            className={`
                 overflow-hidden
                 rounded-2xl
                 border
-                border-gray-200
                 bg-white
                 shadow-sm
-                transition-shadow
+                transition-[border-color,box-shadow]
                 duration-300
                 hover:shadow-md
-                dark:border-gray-800
                 dark:bg-gray-900
                 dark:hover:shadow-black/20
-            "
+                ${
+                    isOpen
+                        ? "border-yellow-300 shadow-md dark:border-yellow-500/40"
+                        : "border-gray-200 dark:border-gray-800"
+                }
+            `}
         >
             <button
                 type="button"
@@ -111,16 +129,18 @@ const FAQItem = ({
                     text-left
                     transition-colors
                     hover:bg-gray-50
-                    focus:outline-none
-                    focus:ring-2
-                    focus:ring-inset
-                    focus:ring-yellow-500
+                    outline-none
+                    focus-visible:ring-2
+                    focus-visible:ring-inset
+                    focus-visible:ring-yellow-500
+                    [-webkit-tap-highlight-color:transparent]
                     sm:px-6
                     dark:hover:bg-gray-800/70
                 "
             >
                 <span
                     className="
+                        min-w-0
                         text-base
                         font-bold
                         leading-6
@@ -149,65 +169,42 @@ const FAQItem = ({
                         }
                     `}
                 >
-                    <ChevronDown
-                        size={18}
-                        className={`
-                            transition-transform
-                            duration-300
-                            ${
-                                isOpen
-                                    ? "rotate-180"
-                                    : ""
-                            }
-                        `}
-                    />
+                    <motion.span
+                        animate={{
+                            rotate: isOpen ? 180 : 0,
+                        }}
+                        transition={jellyChevronTransition}
+                        className="flex"
+                    >
+                        <ChevronDown size={18} />
+                    </motion.span>
                 </span>
             </button>
 
-            <AnimatePresence initial={false}>
-                {isOpen && (
-                    <motion.div
-                        initial={{
-                            height: 0,
-                            opacity: 0,
-                        }}
-                        animate={{
-                            height: "auto",
-                            opacity: 1,
-                        }}
-                        exit={{
-                            height: 0,
-                            opacity: 0,
-                        }}
-                        transition={{
-                            duration: 0.25,
-                        }}
+            <Collapse open={isOpen}>
+                <div
+                    className="
+                        border-t
+                        border-gray-100
+                        px-5
+                        pb-5
+                        pt-4
+                        sm:px-6
+                        dark:border-gray-800
+                    "
+                >
+                    <p
+                        className="
+                            text-sm
+                            leading-7
+                            text-gray-600
+                            dark:text-gray-300
+                        "
                     >
-                        <div
-                            className="
-                                border-t
-                                border-gray-100
-                                px-5
-                                pb-5
-                                pt-4
-                                sm:px-6
-                                dark:border-gray-800
-                            "
-                        >
-                            <p
-                                className="
-                                    text-sm
-                                    leading-7
-                                    text-gray-600
-                                    dark:text-gray-300
-                                "
-                            >
-                                {answer}
-                            </p>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        {answer}
+                    </p>
+                </div>
+            </Collapse>
         </motion.div>
     );
 };
@@ -326,7 +323,7 @@ const FAQ = () => {
                 "
             >
                 <PageContainer>
-                    <div className="mx-auto max-w-4xl">
+                    <div className="mx-auto w-full max-w-4xl">
                         <motion.div
                             initial="hidden"
                             whileInView="visible"
@@ -362,7 +359,8 @@ const FAQ = () => {
                                                 opacity: 1,
                                                 y: 0,
                                                 transition: {
-                                                    duration: 0.4,
+                                                    duration: 0.5,
+                                                    ease: [0.22, 1, 0.36, 1],
                                                 },
                                             },
                                         }}
@@ -400,7 +398,14 @@ const FAQ = () => {
                 "
             >
                 <PageContainer>
-                    <div
+                    <motion.div
+                        initial={{ opacity: 0, y: 24 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, amount: 0.4 }}
+                        transition={{
+                            duration: 0.6,
+                            ease: [0.22, 1, 0.36, 1],
+                        }}
                         className="
                             mx-auto
                             max-w-3xl
@@ -471,7 +476,7 @@ const FAQ = () => {
                         >
                             Contact Us
                         </Link>
-                    </div>
+                    </motion.div>
                 </PageContainer>
             </Section>
         </>

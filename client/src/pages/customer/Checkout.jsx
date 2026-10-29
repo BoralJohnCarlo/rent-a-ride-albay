@@ -209,6 +209,21 @@ const Checkout = () => {
     const booking =
         selectedPayment.booking ?? {};
 
+    const formatRentalDates = ({ startDate, endDate } = {}) => {
+        const format = (value) =>
+            new Date(value).toLocaleString("en-PH", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+            });
+
+        return startDate && endDate
+            ? `${format(startDate)} – ${format(endDate)}`
+            : "—";
+    };
+
     const formatCurrency = (value) =>
         `₱${Number(
             value || 0
@@ -248,12 +263,11 @@ const Checkout = () => {
                         <div className="mt-4 space-y-3">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-gray-600 dark:text-gray-300">
-                                    Booking
+                                    Rental dates
                                 </span>
 
                                 <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {booking.bookingCode ||
-                                        "—"}
+                                    {formatRentalDates(booking)}
                                 </span>
                             </div>
 

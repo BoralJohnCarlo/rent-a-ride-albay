@@ -1,4 +1,10 @@
-import { useEffect, useCallback, useRef, useState } from "react";
+import {
+    useEffect,
+    useCallback,
+    useRef,
+    useState,
+} from "react";
+
 import {
     AlertCircle,
     CheckCircle2,
@@ -43,6 +49,15 @@ const variants = {
             "bg-blue-50 dark:bg-blue-950/40",
         progress: "bg-blue-500",
     },
+
+    welcome: {
+        icon: CheckCircle2,
+        iconColor:
+            "text-emerald-600 dark:text-emerald-400",
+        iconBackground:
+            "bg-emerald-100 dark:bg-emerald-900/50",
+        progress: "bg-emerald-600",
+    },
 };
 
 const Toast = ({
@@ -53,7 +68,8 @@ const Toast = ({
     onClose,
 }) => {
     const [isPaused, setIsPaused] = useState(false);
-    const startTimeRef = useRef(Date.now());
+
+    const startTimeRef = useRef(null);
     const remainingRef = useRef(duration);
     const timerRef = useRef(null);
     const onCloseRef = useRef(onClose);
@@ -61,6 +77,10 @@ const Toast = ({
     useEffect(() => {
         onCloseRef.current = onClose;
     }, [onClose]);
+
+    useEffect(() => {
+        remainingRef.current = duration;
+    }, [duration]);
 
     const clearTimer = useCallback(() => {
         if (timerRef.current) {
@@ -71,6 +91,9 @@ const Toast = ({
 
     const startTimer = useCallback(() => {
         clearTimer();
+
+        startTimeRef.current = Date.now();
+
         timerRef.current = setTimeout(() => {
             onCloseRef.current?.();
         }, remainingRef.current);
@@ -84,13 +107,26 @@ const Toast = ({
 
     const handleMouseEnter = useCallback(() => {
         clearTimer();
-        const elapsed = Date.now() - startTimeRef.current;
-        remainingRef.current = Math.max(0, remainingRef.current - elapsed);
+
+        if (startTimeRef.current !== null) {
+            const elapsed =
+                Date.now() - startTimeRef.current;
+
+            remainingRef.current = Math.max(
+                0,
+                remainingRef.current - elapsed
+            );
+        }
+
         setIsPaused(true);
     }, [clearTimer]);
 
     const handleMouseLeave = useCallback(() => {
-        startTimeRef.current = Date.now();
+        if (remainingRef.current <= 0) {
+            onCloseRef.current?.();
+            return;
+        }
+
         startTimer();
         setIsPaused(false);
     }, [startTimer]);
@@ -100,24 +136,31 @@ const Toast = ({
 
     const Icon = selected.icon;
 
+    const containerClassName = `
+        relative
+        w-full
+        overflow-hidden
+        rounded-xl
+        border
+        border-gray-200
+        bg-white
+        shadow-[0_8px_30px_rgba(0,0,0,0.08)]
+        dark:border-gray-800
+        dark:bg-gray-900
+        dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)]
+        ${
+            variant === "welcome"
+                ? "ring-2 ring-emerald-400/30 dark:ring-emerald-500/30"
+                : ""
+        }
+    `;
+
     return (
         <div
             role="alert"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            className="
-                relative
-                w-full
-                overflow-hidden
-                rounded-xl
-                border
-                border-gray-200
-                bg-white
-                shadow-[0_8px_30px_rgba(0,0,0,0.08)]
-                dark:border-gray-800
-                dark:bg-gray-900
-                dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)]
-            "
+            className={containerClassName}
         >
             <div className="flex items-start gap-3 px-4 py-3.5">
                 <div

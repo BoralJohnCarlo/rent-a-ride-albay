@@ -8,7 +8,15 @@ import {
 } from "../api/notificationApi";
 
 export const fetchNotifications = async (filters = {}) => {
-    return await getNotifications(filters);
+    // Normalize category to match server PascalCase enum
+    const normalizedFilters = { ...filters };
+    if (normalizedFilters.category) {
+        // Convert to PascalCase: first letter uppercase, rest lowercase
+        normalizedFilters.category = 
+            normalizedFilters.category.charAt(0).toUpperCase() + 
+            normalizedFilters.category.slice(1).toLowerCase();
+    }
+    return await getNotifications(normalizedFilters);
 };
 
 export const fetchUnreadCount = async () => {

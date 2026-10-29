@@ -18,44 +18,79 @@ import OperatorRoute from "./OperatorRoute";
 import Home from "../pages/public/Home";
 import Login from "../pages/public/Login";
 import Register from "../pages/public/Register";
+import RegisterOperator from "../pages/public/RegisterOperator";
 import Unauthorized from "../pages/public/Unauthorized";
 import NotFound from "../pages/public/NotFound";
 import PublicVehicles from "../pages/public/PublicVehicles";
+import AvailableVehicles from "../pages/public/AvailableVehicles";
 import VehicleDetails from "../pages/public/VehicleDetails";
+import DriverProfile from "../pages/public/DriverProfile";
 import About from "../pages/public/About";
+import ExploreAlbay from "../pages/public/ExploreAlbay";
 import Contact from "../pages/public/Contact";
 import FAQ from "../pages/public/FAQ";
 import TermsOfService from "../pages/public/TermsOfService";
 import Privacy from "../pages/public/Privacy";
 import ForgotPassword from "../pages/public/ForgotPassword";
-import ResetPassword from "../pages/public/ResetPassword";
-import VerifyEmail from "../pages/public/VerifyEmail";
 
 import Dashboard from "../pages/admin/Dashboard/Dashboard";
 import UserModeration from "../pages/admin/UserModeration/UserModeration";
 import Vehicles from "../pages/admin/Vehicles/Vehicles";
-import VehicleCategories from "../pages/admin/categories";
-import VehicleOwners from "../pages/admin/VehicleOwners/VehicleOwners";
 import Consignments from "../pages/admin/Consignments/Consignments";
+import GPS from "../pages/admin/GPS/GPS";
 import Drivers from "../pages/admin/Drivers/Drivers";
 import Bookings from "../pages/admin/Bookings/Bookings";
-import Rentals from "../pages/admin/Rentals/Rentals";
 import Payments from "../pages/admin/Payments/Payments";
-import Statistics from "../pages/admin/Statistics/Statistics";
 import Settings from "../pages/admin/settings/Settings";
 import ServiceLocations from "../pages/admin/settings/ServiceLocations";
+import PenaltySettings from "../pages/admin/settings/PenaltySettings";
+import RefundSettings from "../pages/admin/settings/RefundSettings";
+import DriverSettings from "../pages/admin/settings/DriverSettings";
+import ValidIdRenewalSettings from "../pages/admin/settings/ValidIdRenewalSettings";
+import CommissionSettings from "../pages/admin/settings/CommissionSettings";
+import VehicleRegistrationSettings from "../pages/admin/settings/VehicleRegistrationSettings";
+import CustomerSettings from "../pages/admin/settings/CustomerSettings";
+import RegistrationSettings from "../pages/admin/settings/RegistrationSettings";
+import BookingSettings from "../pages/admin/settings/BookingSettings";
+import ThemeSettings from "../pages/admin/settings/ThemeSettings";
+import TestimonialSettings from "../pages/admin/settings/TestimonialSettings";
+import LegalDocumentSettings from "../pages/admin/settings/LegalDocumentSettings";
+import DestinationSettings from "../pages/admin/settings/DestinationSettings";
+import AdminNotifications from "../pages/admin/Notifications";
+// eslint-disable-next-line no-unused-vars
 import ReviewManagement from "../pages/admin/Reviews/Reviews";
+import Promotions from "../pages/admin/Promotions/Promotions";
+
+// Import new payout pages
+import CustomerServicePage from "../pages/admin/CustomerService";
 
 import OperatorDashboard from "../pages/operator/Dashboard";
 import OperatorConsignments from "../pages/operator/Consignments";
-import OperatorRentals from "../pages/operator/Rentals";
-import OperatorStatistics from "../pages/operator/Statistics";
+import OperatorVehicles from "../pages/operator/Vehicles";
+import OperatorTracking from "../pages/operator/Tracking";
+import OperatorNotifications from "../pages/operator/Notifications";
+import OperatorBookings from "../pages/operator/Bookings";
+import OperatorProfile from "../pages/operator/Profile";
+import OperatorSettings from "../pages/operator/Settings";
+
+// Import new earnings page
+import Earnings from "../pages/operator/Earnings/Earnings";
 
 import CustomerHome from "../pages/customer/Home";
 import CustomerBookings from "../pages/customer/Bookings";
+import CustomerBookingDetails from "../pages/customer/BookingDetails";
+import RateBooking from "../pages/customer/RateBooking";
+import CustomerNotifications from "../pages/customer/Notifications";
 import Checkout from "../pages/customer/Checkout";
 import PaymentResult from "../pages/customer/PaymentResult";
 import Profile from "../pages/customer/Profile";
+// Not CustomerSettings - that name is the admin's customer-policy settings page.
+import CustomerAccountSettings from "../pages/customer/Settings";
+import Favorites from "../pages/customer/Favorites";
+import CustomerService from "../pages/customer/CustomerService";
+
+import ReceiptPage from "../pages/documents/ReceiptPage";
+import BookingStatementPage from "../pages/documents/BookingStatementPage";
 
 const AppRoutes = () => {
     return (
@@ -76,8 +111,23 @@ const AppRoutes = () => {
                 />
 
                 <Route
+                    path="available"
+                    element={<AvailableVehicles />}
+                />
+
+                <Route
                     path="vehicles/:vehicleId"
                     element={<VehicleDetails />}
+                />
+
+                <Route
+                    path="drivers/:driverId"
+                    element={<DriverProfile />}
+                />
+
+                <Route
+                    path="explore"
+                    element={<ExploreAlbay />}
                 />
 
                 <Route
@@ -98,11 +148,6 @@ const AppRoutes = () => {
                 <Route
                     path="terms"
                     element={<TermsOfService />}
-                />
-
-                <Route
-                    path="/verify-email"
-                    element={<VerifyEmail />}
                 />
 
                 <Route
@@ -128,13 +173,19 @@ const AppRoutes = () => {
                     />
 
                     <Route
+                        path="register-operator"
+                        element={<RegisterOperator />}
+                    />
+
+                    <Route
                         path="forgot-password"
                         element={<ForgotPassword />}
                     />
 
+                    {/* Reset is code-based now (all on /forgot-password). */}
                     <Route
-                        path="reset-password/:token"
-                        element={<ResetPassword />}
+                        path="reset-password/*"
+                        element={<Navigate to="/forgot-password" replace />}
                     />
 
                 </Route>
@@ -142,6 +193,20 @@ const AppRoutes = () => {
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
+                {/*
+                    Printable documents: no layout chrome, so they print
+                    clean. Admins and the booking's customer (server-checked).
+                */}
+                <Route
+                    path="documents/receipts/:receiptId"
+                    element={<ReceiptPage />}
+                />
+
+                <Route
+                    path="documents/statements/:bookingId"
+                    element={<BookingStatementPage />}
+                />
+
                 {/* Admin */}
                 <Route element={<AdminRoute />}>
                     <Route
@@ -159,11 +224,6 @@ const AppRoutes = () => {
                         />
 
                         <Route
-                            path="vehicle-owners"
-                            element={<VehicleOwners />}
-                        />
-
-                        <Route
                             path="vehicles"
                             element={<Vehicles />}
                         />
@@ -173,14 +233,22 @@ const AppRoutes = () => {
                             element={<Drivers />}
                         />
 
+                        <Route path="consignments" element={<Consignments />} />
+
                         <Route
-                            path="categories"
-                            element={<VehicleCategories />}
+                            path="gps"
+                            element={<GPS />}
+                        />
+
+                        {/* Trackers and GPS Alerts merged into the GPS Tracking page above. */}
+                        <Route
+                            path="trackers"
+                            element={<Navigate to="/admin/gps" replace />}
                         />
 
                         <Route
-                            path="consignments"
-                            element={<Consignments />}
+                            path="gps-alerts"
+                            element={<Navigate to="/admin/gps" replace />}
                         />
 
                         <Route
@@ -189,29 +257,112 @@ const AppRoutes = () => {
                         />
 
                         <Route
-                            path="rentals"
-                            element={<Rentals />}
-                        />
-
-                        <Route
                             path="payments"
                             element={<Payments />}
                         />
 
                         <Route
-                            path="statistics"
-                            element={<Statistics />}
+                            path="promotions"
+                            element={<Promotions />}
+                        />
+
+                        {/* Old link: the Vouchers page is now a tab. */}
+                        <Route
+                            path="vouchers"
+                            element={
+                                <Navigate
+                                    to="/admin/promotions"
+                                    replace
+                                />
+                            }
                         />
 
                         <Route
-                            path="settings"
-                            element={<Settings />}
-                        >
-                            <Route
-                                path="service-locations"
-                                element={<ServiceLocations />}
-                            />
-                        </Route>
+                            path="customer-service"
+                            element={<CustomerServicePage />}
+                        />
+
+<Route
+                              path="settings"
+                              element={<Settings />}
+                          >
+                               <Route
+                                   path="service-locations"
+                                   element={<ServiceLocations />}
+                               />
+                               
+                               <Route
+                                   path="penalties"
+                                   element={<PenaltySettings />}
+                               />
+                               
+                               <Route
+                                   path="refunds"
+                                   element={<RefundSettings />}
+                               />
+                               
+                               <Route
+                                   path="driver-settings"
+                                   element={<DriverSettings />}
+                               />
+                               
+                               <Route
+                                   path="valid-id-renewal"
+                                   element={<ValidIdRenewalSettings />}
+                               />
+
+                               <Route
+                                   path="commission"
+                                   element={<CommissionSettings />}
+                               />
+
+                               <Route
+                                   path="vehicle-registration"
+                                   element={<VehicleRegistrationSettings />}
+                               />
+
+                               <Route
+                                   path="customer-settings"
+                                   element={<CustomerSettings />}
+                               />
+
+                               <Route
+                                   path="registration"
+                                   element={<RegistrationSettings />}
+                               />
+
+                               <Route
+                                   path="bookings"
+                                   element={<BookingSettings />}
+                               />
+
+                               <Route
+                                   path="themes"
+                                   element={<ThemeSettings />}
+                               />
+
+                               <Route
+                                   path="testimonials"
+                                   element={<TestimonialSettings />}
+                               />
+
+                               <Route
+                                   path="destinations"
+                                   element={<DestinationSettings />}
+                               />
+
+                               <Route
+                                   path="legal"
+                                   element={<LegalDocumentSettings />}
+                               />
+                           </Route>
+
+                         <Route
+                             path="notifications"
+                             element={<AdminNotifications />}
+                         />
+
+                     </Route>
 
                     {/*
                         Future Admin Routes
@@ -270,8 +421,28 @@ const AppRoutes = () => {
                     />
 
                     <Route
+                        path="bookings/:bookingId"
+                        element={<CustomerBookingDetails />}
+                    />
+
+                    <Route
+                        path="bookings/:bookingId/rate"
+                        element={<RateBooking />}
+                    />
+
+                    <Route
+                        path="favorites"
+                        element={<Favorites />}
+                    />
+
+                    <Route
                         path="profile"
                         element={<Profile />}
+                    />
+
+                    <Route
+                        path="settings"
+                        element={<CustomerAccountSettings />}
                     />
 
                     <Route
@@ -285,11 +456,16 @@ const AppRoutes = () => {
                     />
 
                     <Route
-                        path="dashboard"
-                        element={<Dashboard />}
-                        />
-                    </Route>
+                        path="customer-service"
+                        element={<CustomerService />}
+                    />
+
+                    <Route
+                        path="notifications"
+                        element={<CustomerNotifications />}
+                    />
                 </Route>
+            </Route>
 
                 {/* Operator */}
                 <Route element={<OperatorRoute />}>
@@ -308,13 +484,40 @@ const AppRoutes = () => {
                         />
 
                         <Route
-                            path="rentals"
-                            element={<OperatorRentals />}
+                            path="vehicles"
+                            element={<OperatorVehicles />}
                         />
 
                         <Route
-                            path="statistics"
-                            element={<OperatorStatistics />}
+                            path="tracking"
+                            element={<OperatorTracking />}
+                        />
+
+                        <Route
+                            path="notifications"
+                            element={<OperatorNotifications />}
+                        />
+
+                        {/* Operator Earnings */}
+                        <Route
+                            path="earnings"
+                            element={<Earnings />}
+                        />
+
+                        {/* Operator Bookings */}
+                        <Route
+                            path="bookings"
+                            element={<OperatorBookings />}
+                        />
+
+                        <Route
+                            path="profile"
+                            element={<OperatorProfile />}
+                        />
+
+                        <Route
+                            path="settings"
+                            element={<OperatorSettings />}
                         />
 
                         {/*
@@ -326,11 +529,6 @@ const AppRoutes = () => {
                             />
 
                             <Route
-                                path="bookings"
-                                element={<OperatorBookings />}
-                            />
-
-                            <Route
                                 path="rental-history"
                                 element={<RentalHistory />}
                             />
@@ -339,14 +537,9 @@ const AppRoutes = () => {
                                 path="gps"
                                 element={<GpsTracking />}
                             />
-
-                            <Route
-                                path="profile"
-                                element={<OperatorProfile />}
-                            />
                         */}
-                    </Route>
-                </Route>
+</Route>
+
             </Route>
 
             {/* 404 */}

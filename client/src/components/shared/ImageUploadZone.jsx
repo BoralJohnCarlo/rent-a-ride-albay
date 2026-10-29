@@ -465,16 +465,16 @@ if (
         <div className="space-y-6">
             <div>
                 {title && (
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         {title}
                     </h3>
                 )}
 
-                {helperText && (
-                    <p className="mt-1 text-sm text-gray-500">
-                        {helperText}
-                    </p>
-                )}
+{helperText && (
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            {helperText}
+                        </p>
+                    )}
             </div>
 
             {canUpload && (
@@ -517,36 +517,36 @@ if (
                         "flex select-none flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition",
 
                         isDragging
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-300 bg-white",
+                            ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40"
+                            : "border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900",
 
                         canAddMoreImages
-                            ? "cursor-pointer hover:border-blue-400 hover:bg-gray-50"
+                            ? "cursor-pointer hover:border-blue-400 hover:bg-gray-50 dark:hover:border-blue-500 dark:hover:bg-gray-800"
                             : "cursor-not-allowed opacity-60",
                     ]
                         .filter(Boolean)
                         .join(" ")}
                 >
-                    <div className="mb-4 rounded-full bg-blue-100 p-4">
+                    <div className="mb-4 rounded-full bg-blue-100 p-4 dark:bg-blue-900/40">
                         <Upload
                             size={32}
-                            className="text-blue-600"
+                            className="text-blue-600 dark:text-blue-400"
                         />
                     </div>
 
-                    <h4 className="text-lg font-semibold text-gray-800">
+                    <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
                         {uploadTitle}
                     </h4>
 
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                         {uploadDescription}
                     </p>
 
-                    <p className="mt-4 text-xs text-gray-400">
+                    <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
                         JPG • JPEG • PNG • WEBP
                     </p>
 
-                    <p className="mt-1 text-xs text-gray-400">
+                    <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                         {imageList.length}
                         {" / "}
                         {maxFiles}
@@ -571,27 +571,27 @@ if (
                 </div>
             )}
 
-            {error && (
-                <p
-                    className="text-sm font-medium text-red-600"
-                    role="alert"
-                >
-                    {error}
+{error && (
+                    <p
+                        className="text-sm font-medium text-red-600 dark:text-red-400"
+                        role="alert"
+                    >
+                        {error}
                 </p>
             )}
 
             <div>
-                <h4 className="mb-4 text-base font-semibold text-gray-900">
+                <h4 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">
                     Uploaded Images
                 </h4>
 
                 {imageList.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center">
-                        <p className="text-sm font-medium text-gray-600">
+                    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center dark:border-gray-600 dark:bg-gray-900">
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                             No images uploaded yet.
                         </p>
 
-                        <p className="mt-2 text-sm text-gray-500">
+                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                             Upload one or more images to preview them here.
                         </p>
                     </div>
@@ -632,7 +632,7 @@ if (
                                                         }
                                                         aria-label="Set as primary image"
                                                         title="Set as Primary"
-                                                        className="rounded-full bg-white p-2 shadow transition hover:bg-yellow-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        className="rounded-full bg-white p-2 shadow transition hover:bg-yellow-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-900 dark:hover:bg-yellow-900/30"
                                                     >
                                                         <Star
                                                             size={16}
@@ -654,11 +654,11 @@ if (
                                                     }
                                                     aria-label="Remove image"
                                                     title="Remove Image"
-                                                    className="rounded-full bg-white p-2 shadow transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    className="rounded-full bg-white p-2 shadow transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-900 dark:hover:bg-red-900/30"
                                                 >
                                                     <Trash2
                                                         size={16}
-                                                        className="text-red-600"
+                                                        className="text-red-600 dark:text-red-400"
                                                     />
                                                 </button>
                                             )}
@@ -675,9 +675,9 @@ if (
                                         )}
                                     </div>
 
-                                    <div className="border-t border-gray-100 px-3 py-2">
+                                    <div className="border-t border-gray-100 px-3 py-2 dark:border-gray-700">
                                         <p
-                                            className="truncate text-xs font-medium text-gray-700"
+                                            className="truncate text-xs font-medium text-gray-700 dark:text-gray-300"
                                             title={
                                                 image.originalName
                                             }

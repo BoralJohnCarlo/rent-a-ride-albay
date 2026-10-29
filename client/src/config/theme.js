@@ -8,8 +8,57 @@ import {
 
 export const COLOR_THEMES = Object.freeze({
     SYSTEM: "system",
+    LIGHT: "light",
     DARK: "dark",
+    // Seasonal, opt-in. Only selectable while the admin-configured window
+    // is active (see ThemeProvider / utils/seasonalTheme).
+    CHRISTMAS: "christmas",
 });
+
+// Mirrors the server default in models/Settings.js: every year, Sep 1
+// through Jan 1 (inclusive).
+export const DEFAULT_CHRISTMAS_WINDOW = Object.freeze({
+    enabled: true,
+    startMonth: 9,
+    startDay: 1,
+    endMonth: 1,
+    endDay: 1,
+});
+
+// Admin-chosen look of the public/customer navbar (Settings -> Themes &
+// Display). Mirrors themeSettings.navbarStyle in models/Settings.js.
+export const NAVBAR_STYLES = Object.freeze({
+    DEFAULT: "default",
+    PILL: "pill",
+});
+
+export const isValidNavbarStyle = (value) =>
+    Object.values(NAVBAR_STYLES).includes(value);
+
+/*
+ * Customer-side vehicle card hover effect (Settings -> Themes & Display).
+ * Mirrors themeSettings.cardHoverMode / .cardHoverColor in models/Settings.js.
+ * Dark mode only - see styles/vehicle-hover.css.
+ */
+export const CARD_HOVER_MODES = Object.freeze({
+    NEON: "neon",
+    SPOTLIGHT: "spotlight",
+});
+
+export const CARD_HOVER_COLORS = Object.freeze({
+    YELLOW: "yellow",
+    BLUE: "blue",
+    PURPLE: "purple",
+    GREEN: "green",
+    RED: "red",
+    WHITE: "white",
+});
+
+export const isValidCardHoverMode = (value) =>
+    Object.values(CARD_HOVER_MODES).includes(value);
+
+export const isValidCardHoverColor = (value) =>
+    Object.values(CARD_HOVER_COLORS).includes(value);
 
 export const EXPERIENCES = Object.freeze({
     CLASSIC: "classic",
@@ -142,6 +191,21 @@ export const DEFAULT_UI_CONFIGURATION = Object.freeze({
 
 export const UI_STORAGE_KEYS = Object.freeze({
     CONFIGURATION: "rent-a-ride-ui",
+    // Last Christmas window fetched from the server, kept so the theme can
+    // apply on the first paint instead of after the network round trip.
+    SEASON_WINDOW: "rent-a-ride-season-window",
+    // Same idea for the navbar style, so the pill doesn't flash in late.
+    NAVBAR_STYLE: "rent-a-ride-navbar-style",
+    // And the hero background video, so a custom one doesn't start as the
+    // default and then swap.
+    HERO_VIDEO: "rent-a-ride-hero-video",
+    // Hero mode (video | image) + custom image URL, for the first paint.
+    HERO_MEDIA: "rent-a-ride-hero-media",
+    // Featured Fleet image frame on/off, so it's right on the first paint.
+    FEATURED_IMAGE_FRAME: "rent-a-ride-featured-image-frame",
+    // Vehicle card hover effect (mode + colour), so it's right first paint.
+    CARD_HOVER_MODE: "rent-a-ride-card-hover-mode",
+    CARD_HOVER_COLOR: "rent-a-ride-card-hover-color",
 });
 
 export const isValidColorTheme = (value) =>

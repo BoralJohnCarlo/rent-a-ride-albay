@@ -1,11 +1,14 @@
 import {
     createPayment,
     verifyPayment,
-    rejectPayment,
     cancelPayment,
     getPaymentById,
     getPayments,
     createCheckout,
+    reconcilePayment,
+    reconcilePaymentRefund,
+    sendPaymentRefund,
+    completePaymentRefund,
 } from "../api/paymentApi";
 
 export const fetchPayments = async (
@@ -40,16 +43,6 @@ export const verifyExistingPayment = async (
     );
 };
 
-export const rejectExistingPayment = async (
-    paymentId,
-    reason
-) => {
-    return await rejectPayment(
-        paymentId,
-        reason
-    );
-};
-
 export const cancelExistingPayment = async (
     paymentId
 ) => {
@@ -63,5 +56,33 @@ export const createNewCheckout = async (
     return await createCheckout(
         paymentId,
         force
+    );
+};
+
+export const reconcileExistingPayment = async (
+    paymentId
+) => {
+    return await reconcilePayment(paymentId);
+};
+
+export const reconcileExistingPaymentRefund = async (
+    paymentId
+) => {
+    return await reconcilePaymentRefund(paymentId);
+};
+
+export const sendExistingPaymentRefund = async (
+    paymentId
+) => {
+    return await sendPaymentRefund(paymentId);
+};
+
+export const completeExistingPaymentRefund = async (
+    paymentId,
+    options = {}
+) => {
+    return await completePaymentRefund(
+        paymentId,
+        options
     );
 };

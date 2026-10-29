@@ -67,3 +67,24 @@ export const getDriverAverageRating = async (
 
     return data;
 };
+
+export const uploadReviewImage = async (
+    file
+) => {
+    const formData = new FormData();
+
+    formData.append("image", file);
+
+    const { data } = await api.post(
+        "/reviews/upload-image",
+        formData,
+        {
+            headers: {
+                "Content-Type":
+                    undefined,
+            },
+        }
+    );
+
+    return data;
+};

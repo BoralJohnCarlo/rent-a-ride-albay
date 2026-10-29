@@ -1,0 +1,77 @@
+/*
+ * Hand-built tables on phones (below md): each row becomes a card — the
+ * first cell is its title, the rest label/value pairs in two columns, an
+ * "Actions" cell along the bottom. Labels come from the header cells via
+ * data-label (StackedTable.jsx fills them in). Unlayered, so it beats the
+ * cells' Tailwind padding/alignment/nowrap utilities.
+ */
+@media (width < 48rem) {
+    .stack-table,
+    .stack-table > tbody {
+        display: block;
+        width: 100%;
+    }
+
+    .stack-table > thead {
+        display: none;
+    }
+
+    .stack-table > tbody > tr {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem 1rem;
+        padding: 1rem;
+    }
+
+    .stack-table > tbody > tr > td {
+        display: block;
+        min-width: 0;
+        padding: 0;
+        text-align: left;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .stack-table > tbody > tr > td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.25rem;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: rgb(156 163 175);
+    }
+
+    /* Title, actions and full-width messages (empty/loading rows). */
+    .stack-table > tbody > tr > td:first-child,
+    .stack-table > tbody > tr > td[data-label="Actions"],
+    .stack-table > tbody > tr > td[colspan] {
+        grid-column: 1 / -1;
+    }
+
+    .stack-table > tbody > tr > td:first-child::before,
+    .stack-table > tbody > tr > td[data-label="Actions"]::before,
+    .stack-table > tbody > tr > td[colspan]::before,
+    .stack-table > tbody > tr > td:not([data-label])::before {
+        display: none;
+    }
+
+    .stack-table > tbody > tr > td[colspan] {
+        text-align: center;
+    }
+
+    .stack-table > tbody > tr > td[data-label="Actions"] {
+        border-top: 1px solid rgb(243 244 246);
+        padding-top: 0.75rem;
+    }
+
+    [data-theme="dark"] .stack-table > tbody > tr > td[data-label="Actions"] {
+        border-top-color: rgb(31 41 55);
+    }
+
+    .stack-table > tbody > tr > td[data-label="Actions"] > * {
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+}

@@ -15,10 +15,39 @@ export const updateProfile = async (profileData) => {
     return data;
 };
 
+export const uploadProfileImage = async (file) => {
+    const formData = new FormData();
+
+    formData.append("profileImage", file);
+
+    const { data } = await api.post(
+        "/users/profile/upload-image",
+        formData,
+        {
+            headers: {
+                "Content-Type":
+                    undefined,
+            },
+        }
+    );
+
+    return data;
+};
+
 export const changePassword = async (passwordData) => {
     const { data } = await api.patch(
         "/users/change-password",
         passwordData
+    );
+
+    return data;
+};
+
+// { soundVolume?: 0-100, soundMuted?: boolean } → the saved preferences.
+export const updateNotificationPreferences = async (preferences) => {
+    const { data } = await api.patch(
+        "/users/notification-preferences",
+        preferences
     );
 
     return data;
@@ -104,23 +133,28 @@ export const unblacklistUser = async (
     return data;
 };
 
-export const createUser = async (
-    userData
+/*
+ * `payload.expirationDate`: the expiry printed on the ID ("YYYY-MM-DD"),
+ * null when the ID has none, or left out to keep the date on file.
+ */
+export const verifyValidId = async (
+    userId,
+    payload = {}
 ) => {
-    const { data } =
-        await api.post(
-            "/users",
-            userData
-        );
+    const { data } = await api.post(
+        `/users/${userId}/verify-valid-id`,
+        payload
+    );
 
     return data;
 };
 
-export const verifyValidId = async (
+// Every valid ID the user has had on file, current one first.
+export const getValidIdHistory = async (
     userId
 ) => {
-    const { data } = await api.post(
-        `/users/${userId}/verify-valid-id`
+    const { data } = await api.get(
+        `/users/${userId}/valid-id-history`
     );
 
     return data;
@@ -131,6 +165,94 @@ export const unverifyValidId = async (
 ) => {
     const { data } = await api.post(
         `/users/${userId}/unverify-valid-id`
+    );
+
+    return data;
+};
+
+export const grantRenewalAttempt = async (
+    userId,
+    amount
+) => {
+    const { data } = await api.post(
+        `/users/${userId}/grant-renewal-attempt`,
+        {
+            amount,
+        }
+    );
+
+    return data;
+};
+
+export const requestRenewalAttempt = async () => {
+    const { data } = await api.post(
+        `/users/request-renewal-attempt`,
+        {}
+    );
+
+    return data;
+};
+
+export const uploadProofOfBilling = async (file) => {
+    const formData = new FormData();
+
+    formData.append("proofOfBillingImage", file);
+
+    const { data } = await api.post(
+        "/users/profile/proof-of-billing",
+        formData,
+        {
+            headers: {
+                "Content-Type": undefined,
+            },
+        }
+    );
+
+    return data;
+};
+
+export const uploadRenewedValidId = async (
+    file,
+    licenseUpgrade = null
+) => {
+    const formData = new FormData();
+
+    formData.append("validIdImage", file);
+
+    /*
+     * Deliberately just the type + basic license identity fields here, not
+     * licenseCodes/transmissions too - those are plain strings, safe to
+     * send as ordinary multipart fields (unlike arrays, which multer only
+     * turns into a real array when a field repeats more than once,
+     * otherwise leaving a single value as a bare string). A customer
+     * upgrading their ID type can declare what they're licensed to drive
+     * afterward in the Driver's License section, which becomes visible as
+     * soon as hasDriversLicense flips to true.
+     */
+    if (licenseUpgrade?.validIdType) {
+        formData.append(
+            "validIdType",
+            licenseUpgrade.validIdType
+        );
+        formData.append(
+            "licenseNumber",
+            licenseUpgrade.licenseNumber || ""
+        );
+        formData.append(
+            "licenseExpirationDate",
+            licenseUpgrade.licenseExpirationDate || ""
+        );
+    }
+
+    const { data } = await api.post(
+        `/users/profile/renew-valid-id`,
+        formData,
+        {
+            headers: {
+                "Content-Type":
+                    undefined,
+            },
+        }
     );
 
     return data;

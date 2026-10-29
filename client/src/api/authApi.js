@@ -9,6 +9,15 @@ export const register = async (userData) => {
     return data;
 };
 
+export const registerOperator = async (userData) => {
+    const { data } = await api.post(
+        "/auth/register-operator",
+        userData
+    );
+
+    return data;
+};
+
 export const login = async (credentials) => {
     const { data } = await api.post(
         "/auth/login",
@@ -35,14 +44,14 @@ export const getCurrentUser = async () => {
 };
 
 export const verifyEmail = async (
-    token
+    email,
+    code
 ) => {
-    const { data } = await api.get(
+    const { data } = await api.post(
         "/auth/verify-email",
         {
-            params: {
-                token,
-            },
+            email,
+            code,
         }
     );
 
@@ -61,6 +70,42 @@ export const resendVerificationEmail =
         return data;
     };
 
+/*
+ * Forgot password: request a code → trade it for a reset token → set the
+ * new password with that token.
+ */
+export const requestPasswordReset = async (email) => {
+    const { data } = await api.post(
+        "/auth/forgot-password",
+        { email }
+    );
+
+    return data;
+};
+
+export const verifyPasswordResetCode = async (email, code) => {
+    const { data } = await api.post(
+        "/auth/forgot-password/verify",
+        { email, code }
+    );
+
+    return data;
+};
+
+export const resetPassword = async ({
+    email,
+    resetToken,
+    newPassword,
+    confirmPassword,
+}) => {
+    const { data } = await api.post(
+        "/auth/reset-password",
+        { email, resetToken, newPassword, confirmPassword }
+    );
+
+    return data;
+};
+
 export const uploadValidId = async (file) => {
     const formData = new FormData();
 
@@ -75,7 +120,58 @@ export const uploadValidId = async (file) => {
         {
             headers: {
                 "Content-Type":
-                    "multipart/form-data",
+                    undefined,
+            },
+        }
+    );
+
+    return data;
+};
+
+export const uploadProofOfBilling = async (file) => {
+    const formData = new FormData();
+
+    formData.append(
+        "proofOfBillingImage",
+        file
+    );
+
+    const { data } = await api.post(
+        "/auth/upload-proof-of-billing",
+        formData,
+        {
+            headers: {
+                "Content-Type":
+                    undefined,
+            },
+        }
+    );
+
+    return data;
+};
+
+export const removeTemporaryValidId = async (uploadId) => {
+    const { data } = await api.delete(
+        `/auth/temporary-valid-id/${uploadId}`
+    );
+    return data;
+};
+
+export const uploadRegistrationVehicleImage = async (file) => {
+    const formData = new FormData();
+
+    formData.append(
+        "image",
+        file
+    );
+
+    const { data } = await api.post(
+        "/auth/upload-vehicle-image",
+        formData,
+        {
+            headers: {
+                "Content-Type":
+                    undefined,
             },
         }
     );

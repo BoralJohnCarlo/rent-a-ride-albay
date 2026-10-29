@@ -1,19 +1,24 @@
 import {
     Users,
+    User,
     LayoutDashboard,
     Car,
-    CarFront,
-    Tags,
-    UserRound,
     FileCheck2,
     IdCard,
     CalendarCheck,
     CreditCard,
-    BarChart3,
     Settings,
+    Wallet,
+    Info,
+    MessageCircle,
+    HelpCircle,
+    LocateFixed,
+    TicketPercent,
     /*
     FileText,
     Star,
+    Mail,
+    Search,
     */
 } from "lucide-react";
 
@@ -49,25 +54,8 @@ export const adminNavigation = [
     },
 
     {
-        label: "Vehicle Owners",
-        title: "Vehicle Owner Management",
-        path: "/admin/vehicle-owners",
-        icon: UserRound,
-        breadcrumb: [
-            {
-                label: "Dashboard",
-                active: false,
-            },
-            {
-                label: "Vehicle Owner Management",
-                active: true,
-            },
-        ],
-    },
-
-    {
-        label: "Vehicles",
-        title: "Vehicle Management",
+        label: "Fleet",
+        title: "Fleet Management",
         path: "/admin/vehicles",
         icon: Car,
         breadcrumb: [
@@ -76,24 +64,7 @@ export const adminNavigation = [
                 active: false,
             },
             {
-                label: "Vehicle Management",
-                active: true,
-            },
-        ],
-    },
-
-    {
-        label: "Categories",
-        title: "Vehicle Categories",
-        path: "/admin/categories",
-        icon: Tags,
-        breadcrumb: [
-            {
-                label: "Dashboard",
-                active: false,
-            },
-            {
-                label: "Vehicle Categories",
+                label: "Fleet Management",
                 active: true,
             },
         ],
@@ -104,6 +75,7 @@ export const adminNavigation = [
         title: "Consignment Management",
         path: "/admin/consignments",
         icon: FileCheck2,
+        badgeKey: "consignments",
         breadcrumb: [
             {
                 label: "Dashboard",
@@ -111,6 +83,24 @@ export const adminNavigation = [
             },
             {
                 label: "Consignment Management",
+                active: true,
+            },
+        ],
+    },
+
+    {
+        label: "GPS Tracking",
+        title: "GPS Tracking",
+        path: "/admin/gps",
+        icon: LocateFixed,
+        badgeKey: "gpsAlerts",
+        breadcrumb: [
+            {
+                label: "Dashboard",
+                active: false,
+            },
+            {
+                label: "GPS Tracking",
                 active: true,
             },
         ],
@@ -134,68 +124,71 @@ export const adminNavigation = [
     },
 
     {
-    label: "Bookings",
-    title: "Booking Management",
-    path: "/admin/bookings",
-    icon: CalendarCheck,
-    breadcrumb: [
-        {
-            label: "Dashboard",
-            active: false,
-        },
-        {
-            label: "Booking Management",
-            active: true,
-        },
-    ],
-},
-
-{
-    label: "Rentals",
-    title: "Rental Management",
-    path: "/admin/rentals",
-    icon: CarFront,
-    breadcrumb: [
-        {
-            label: "Dashboard",
-            active: false,
-        },
-        {
-            label: "Rental Management",
-            active: true,
-        },
-    ],
-},
-
-{
-    label: "Payments",
-    title: "Payment Management",
-    path: "/admin/payments",
-    icon: CreditCard,
-    breadcrumb: [
-        {
-            label: "Dashboard",
-            active: false,
-        },
-        {
-            label: "Payment Management",
-            active: true,
-        },
-    ],
-},
-    {
-        label: "Statistics",
-        title: "Statistics & Analytics",
-        path: "/admin/statistics",
-        icon: BarChart3,
+        label: "Bookings",
+        title: "Booking Management",
+        path: "/admin/bookings",
+        icon: CalendarCheck,
+        badgeKey: "bookings",
         breadcrumb: [
             {
                 label: "Dashboard",
                 active: false,
             },
-
             {
-                label: "Statistics & Analytics",
+                label: "Booking Management",
+                active: true,
+            },
+        ],
+    },
+
+    {
+        label: "Financials",
+        title: "Financial Management",
+        path: "/admin/payments",
+        icon: CreditCard,
+        badgeKey: "financials",
+        breadcrumb: [
+            {
+                label: "Dashboard",
+                active: false,
+            },
+            {
+                label: "Payment Management",
+                active: true,
+            },
+        ],
+    },
+
+    {
+        label: "Promotions",
+        title: "Promotions",
+        path: "/admin/promotions",
+        icon: TicketPercent,
+        breadcrumb: [
+            {
+                label: "Dashboard",
+                active: false,
+            },
+            {
+                label: "Promotions",
+                active: true,
+            },
+        ],
+    },
+
+    {
+        label: "Customer Service",
+        title: "Customer Service Management",
+        path: "/admin/customer-service",
+        icon: MessageCircle,
+        badgeKey: "support",
+        breadcrumb: [
+            {
+                label: "Dashboard",
+                active: false,
+            },
+            {
+                label: "Customer Service Management",
                 active: true,
             },
         ],
@@ -278,7 +271,7 @@ export const adminNavigation = [
 export const operatorNavigation = [
     {
         label: "Dashboard",
-        title: "Operator Dashboard",
+        title: "Partner Dashboard",
         path: "/operator",
         icon: LayoutDashboard,
         breadcrumb: [
@@ -294,6 +287,7 @@ export const operatorNavigation = [
         title: "My Consignments",
         path: "/operator/consignments",
         icon: FileCheck2,
+        badgeKey: "consignments",
         breadcrumb: [
             {
                 label: "Dashboard",
@@ -307,41 +301,109 @@ export const operatorNavigation = [
     },
 
     {
-        label: "Rentals",
-        title: "My Rentals",
-        path: "/operator/rentals",
-        icon: CarFront,
+        label: "My Vehicles",
+        title: "My Vehicles",
+        path: "/operator/vehicles",
+        icon: Car,
         breadcrumb: [
             {
                 label: "Dashboard",
                 active: false,
             },
             {
-                label: "My Rentals",
+                label: "My Vehicles",
                 active: true,
             },
         ],
     },
 
     {
-        label: "Statistics",
-        title: "Statistics",
-        path: "/operator/statistics",
-        icon: BarChart3,
+        label: "Live Tracking",
+        title: "Live Tracking",
+        path: "/operator/tracking",
+        icon: LocateFixed,
         breadcrumb: [
             {
                 label: "Dashboard",
                 active: false,
             },
             {
-                label: "Statistics",
+                label: "Live Tracking",
+                active: true,
+            },
+        ],
+    },
+
+    {
+        label: "Earnings",
+        title: "My Earnings",
+        path: "/operator/earnings",
+        icon: Wallet,
+        breadcrumb: [
+            {
+                label: "Dashboard",
+                active: false,
+            },
+            {
+                label: "My Earnings",
+                active: true,
+            },
+        ],
+    },
+
+    {
+        label: "Bookings & Rentals",
+        title: "Bookings & Rentals",
+        path: "/operator/bookings",
+        icon: CalendarCheck,
+        breadcrumb: [
+            {
+                label: "Dashboard",
+                active: false,
+            },
+            {
+                label: "Bookings & Rentals",
+                active: true,
+            },
+        ],
+    },
+
+    {
+        label: "My Profile",
+        title: "My Profile",
+        path: "/operator/profile",
+        icon: User,
+        breadcrumb: [
+            {
+                label: "Dashboard",
+                active: false,
+            },
+            {
+                label: "My Profile",
+                active: true,
+            },
+        ],
+    },
+
+    {
+        label: "Settings",
+        title: "Settings",
+        path: "/operator/settings",
+        icon: Settings,
+        breadcrumb: [
+            {
+                label: "Dashboard",
+                active: false,
+            },
+            {
+                label: "Settings",
                 active: true,
             },
         ],
     },
 
     /*
-    Future Operator Features
+    Future Partner Features
 
     {
         label: "Fleet",
@@ -355,23 +417,6 @@ export const operatorNavigation = [
             },
             {
                 label: "Fleet Management",
-                active: true,
-            },
-        ],
-    },
-
-    {
-        label: "Bookings",
-        title: "Bookings",
-        path: "/operator/bookings",
-        icon: CalendarCheck,
-        breadcrumb: [
-            {
-                label: "Dashboard",
-                active: false,
-            },
-            {
-                label: "Bookings",
                 active: true,
             },
         ],
@@ -392,7 +437,6 @@ export const customerNavigation = [
             },
         ],
     },
-
     {
         label: "My Bookings",
         title: "My Bookings",
@@ -408,5 +452,43 @@ export const customerNavigation = [
                 active: true,
             },
         ],
+    },
+];
+
+export const publicNavigation = [
+    {
+        label: "Home",
+        title: "Home",
+        path: "/customer/home",
+        icon: LayoutDashboard,
+        enabled: true,
+    },
+    {
+        label: "Vehicles",
+        title: "Vehicles",
+        path: "/vehicles",
+        icon: Car,
+        enabled: true,
+    },
+    {
+        label: "About",
+        title: "About",
+        path: "/about",
+        icon: Info,
+        enabled: true,
+    },
+    {
+        label: "Contact",
+        title: "Contact",
+        path: "/contact",
+        icon: MessageCircle,
+        enabled: true,
+    },
+    {
+        label: "FAQ",
+        title: "FAQ",
+        path: "/faq",
+        icon: HelpCircle,
+        enabled: true,
     },
 ];

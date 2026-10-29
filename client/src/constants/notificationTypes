@@ -1,0 +1,17 @@
+export const ALL = "all";
+export const UNREAD = "unread";
+export const SYSTEM = "system";
+export const CONSIGNMENT = "consignment";
+export const VEHICLE = "vehicle";
+export const BOOKING = "booking";
+export const RENTAL = "rental";
+export const PAYMENT = "payment";
+export const REFUND = "refund";
+export const DOCUMENT = "document";
+export const PROMO = "promo";
+export const ACCOUNT = "account";
+export const AGREEMENT = "agreement";
+export const DISPUTE = "dispute";
+export const USER = "user";
+export const VOUCHER = "voucher";
+export const PAYOUT = "payout";

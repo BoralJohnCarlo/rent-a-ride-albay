@@ -1,373 +1,279 @@
 import {
     AlertCircle,
-    Bell,
+    Check,
     CheckCircle2,
-    FileText,
-    Info,
-    Package,
+    ChevronRight,
     TriangleAlert,
-    UserPlus,
-    Wallet,
+    X,
     XCircle,
 } from "lucide-react";
 
-import {
-    AnimatePresence,
-    motion,
-} from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
-const STATUS_VARIANTS = {
-    info: {
-        icon: Info,
-        bg: "bg-blue-50 dark:bg-blue-950/40",
-        border: "border-blue-200 dark:border-blue-800",
-        iconColor: "text-blue-600 dark:text-blue-400",
-        text: "text-blue-900 dark:text-blue-100",
-        subtext: "text-blue-700 dark:text-blue-300",
-    },
+import { motion } from "framer-motion";
+
+import {
+    getCategoryMeta,
+    resolveNotificationPath,
+} from "./notificationMeta";
+
+/*
+ * The card's icon comes from its category; the server's `variant` only adds
+ * a severity cue — the unread accent bar/dot colour, plus a small status
+ * badge on the icon for outcomes worth noticing at a glance.
+ */
+const SEVERITY = {
     success: {
-        icon: CheckCircle2,
-        bg: "bg-green-50 dark:bg-green-950/40",
-        border: "border-green-200 dark:border-green-800",
-        iconColor: "text-green-600 dark:text-green-400",
-        text: "text-green-900 dark:text-green-100",
-        subtext: "text-green-700 dark:text-green-300",
+        accent: "bg-emerald-500",
+        badge: CheckCircle2,
+        badgeColor: "text-emerald-500",
     },
     warning: {
-        icon: TriangleAlert,
-        bg: "bg-yellow-50 dark:bg-yellow-950/40",
-        border: "border-yellow-200 dark:border-yellow-800",
-        iconColor: "text-yellow-600 dark:text-yellow-400",
-        text: "text-yellow-900 dark:text-yellow-100",
-        subtext: "text-yellow-700 dark:text-yellow-300",
+        accent: "bg-amber-500",
+        badge: TriangleAlert,
+        badgeColor: "text-amber-500",
     },
     error: {
-        icon: AlertCircle,
-        bg: "bg-red-50 dark:bg-red-950/40",
-        border: "border-red-200 dark:border-red-800",
-        iconColor: "text-red-600 dark:text-red-400",
-        text: "text-red-900 dark:text-red-100",
-        subtext: "text-red-700 dark:text-red-300",
-    },
-    system: {
-        icon: Bell,
-        bg: "bg-purple-50 dark:bg-purple-950/40",
-        border: "border-purple-200 dark:border-purple-800",
-        iconColor: "text-purple-600 dark:text-purple-400",
-        text: "text-purple-900 dark:text-purple-100",
-        subtext: "text-purple-700 dark:text-purple-300",
-    },
-    payment: {
-        icon: Wallet,
-        bg: "bg-emerald-50 dark:bg-emerald-950/40",
-        border: "border-emerald-200 dark:border-emerald-800",
-        iconColor: "text-emerald-600 dark:text-emerald-400",
-        text: "text-emerald-900 dark:text-emerald-100",
-        subtext: "text-emerald-700 dark:text-emerald-300",
-    },
-    document: {
-        icon: FileText,
-        bg: "bg-orange-50 dark:bg-orange-950/40",
-        border: "border-orange-200 dark:border-orange-800",
-        iconColor: "text-orange-600 dark:text-orange-400",
-        text: "text-orange-900 dark:text-orange-100",
-        subtext: "text-orange-700 dark:text-orange-300",
-    },
-    user: {
-        icon: UserPlus,
-        bg: "bg-indigo-50 dark:bg-indigo-950/40",
-        border: "border-indigo-200 dark:border-indigo-800",
-        iconColor: "text-indigo-600 dark:text-indigo-400",
-        text: "text-indigo-900 dark:text-indigo-100",
-        subtext: "text-indigo-700 dark:text-indigo-300",
-    },
-    consignment: {
-        icon: Package,
-        bg: "bg-teal-50 dark:bg-teal-950/40",
-        border: "border-teal-200 dark:border-teal-800",
-        iconColor: "text-teal-600 dark:text-teal-400",
-        text: "text-teal-900 dark:text-teal-100",
-        subtext: "text-teal-700 dark:text-teal-300",
+        accent: "bg-red-500",
+        badge: AlertCircle,
+        badgeColor: "text-red-500",
     },
     rejected: {
-        icon: XCircle,
-        bg: "bg-rose-50 dark:bg-rose-950/40",
-        border: "border-rose-200 dark:border-rose-800",
-        iconColor: "text-rose-600 dark:text-rose-400",
-        text: "text-rose-900 dark:text-rose-100",
-        subtext: "text-rose-700 dark:text-rose-300",
+        accent: "bg-rose-500",
+        badge: XCircle,
+        badgeColor: "text-rose-500",
     },
 };
+
+const DEFAULT_SEVERITY = { accent: "bg-blue-500" };
 
 const SPRING = {
     type: "spring",
-    stiffness: 300,
-    damping: 24,
+    stiffness: 320,
+    damping: 28,
 };
+
+const timeAgo = (timestamp) => {
+    if (!timestamp) return "";
+
+    const date = new Date(timestamp);
+    const diffMs = Date.now() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60_000);
+    const diffHours = Math.floor(diffMs / 3_600_000);
+    const diffDays = Math.floor(diffMs / 86_400_000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    return date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+    });
+};
+
+const fullTimestamp = (timestamp) =>
+    timestamp
+        ? new Date(timestamp).toLocaleString(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short",
+          })
+        : "";
 
 const NotificationItem = ({
     notification,
     onClick,
+    onMarkAsRead,
     onDismiss,
     index = 0,
+    role,
 }) => {
-    const variant =
-        STATUS_VARIANTS[
-            notification?.variant || "info"
-        ] || STATUS_VARIANTS.info;
+    const navigate = useNavigate();
 
-    const Icon = variant.icon;
+    const category = getCategoryMeta(notification?.category);
+    const CategoryIcon = category.icon;
 
-    const timeAgo = (timestamp) => {
-        if (!timestamp) return "";
+    const severity =
+        SEVERITY[notification?.variant] || DEFAULT_SEVERITY;
+    const SeverityBadge = severity.badge;
 
-        const date = new Date(
-            timestamp
-        );
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(
-            diffMs / 60000
-        );
-        const diffHours = Math.floor(
-            diffMs / 3600000
-        );
-        const diffDays = Math.floor(
-            diffMs / 86400000
-        );
+    const isRead = Boolean(notification?.read);
+    const target = resolveNotificationPath(notification, role);
+    const timestamp =
+        notification?.timestamp || notification?.createdAt;
 
-        if (diffMins < 1)
-            return "Just now";
-        if (diffMins < 60)
-            return `${diffMins}m ago`;
-        if (diffHours < 24)
-            return `${diffHours}h ago`;
-        if (diffDays < 7)
-            return `${diffDays}d ago`;
+    const handleClick = () => {
+        onClick?.(notification);
 
-        return date.toLocaleDateString(
-            undefined,
-            {
-                month: "short",
-                day: "numeric",
-            }
-        );
+        if (target) {
+            navigate(target);
+        }
+    };
+
+    const handleKeyDown = (event) => {
+        if (event.target !== event.currentTarget) return;
+
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleClick();
+        }
     };
 
     return (
         <motion.div
             layout
-            initial={{
-                opacity: 0,
-                y: 12,
-                scale: 0.97,
-            }}
-            animate={{
-                opacity: 1,
-                y: 0,
-                scale: 1,
-            }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{
                 opacity: 0,
-                y: -8,
-                scale: 0.97,
+                x: 24,
+                transition: { duration: 0.18 },
             }}
             transition={{
                 ...SPRING,
-                delay: index * 0.04,
+                delay: Math.min(index * 0.03, 0.2),
             }}
-            onClick={() =>
-                onClick?.(
-                    notification
-                )
-            }
-            className={`
-                group
-                relative
-                flex
-                cursor-pointer
-                gap-3.5
-                rounded-xl
-                border
-                p-4
-                transition-all
-                duration-200
-                hover:shadow-md
-                ${
-                    !notification?.read
-                        ? variant.bg
-                        : "bg-white dark:bg-gray-900"
-                }
-                ${
-                    notification?.read
-                        ? "border-gray-200 dark:border-gray-800"
-                        : variant.border
-                }
-                ${
-                    notification?.read
-                        ? "opacity-75"
-                        : "opacity-100"
-                }
-            `}
+            role="button"
+            tabIndex={0}
+            onClick={handleClick}
+            onKeyDown={handleKeyDown}
+            className={`group relative flex cursor-pointer gap-3.5 overflow-hidden rounded-2xl border p-4 transition-[border-color,box-shadow,background-color] duration-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-4 sm:p-5 ${
+                isRead
+                    ? "border-gray-200 bg-white hover:border-gray-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900/60 dark:hover:border-gray-700"
+                    : "border-gray-200 bg-white shadow-sm hover:border-gray-300 hover:shadow-md dark:border-gray-700/80 dark:bg-gray-900 dark:hover:border-gray-600"
+            }`}
         >
-            {!notification?.read && (
-                <div
-                    className="
-                        absolute
-                        left-2
-                        top-1/2
-                        h-2
-                        w-2
-                        -translate-y-1/2
-                        rounded-full
-                        bg-blue-500
-                        dark:bg-blue-400
-                    "
+            {!isRead && (
+                <span
+                    aria-hidden
+                    className={`absolute inset-y-3 left-0 w-1 rounded-r-full ${severity.accent}`}
                 />
             )}
 
-            <div
-                className={`
-                    mt-0.5
-                    shrink-0
-                    rounded-lg
-                    border
-                    p-2
-                    ${
-                        notification?.read
-                            ? "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
-                            : `${variant.border} ${variant.bg}`
-                    }
-                `}
-            >
-                <Icon
-                    size={20}
-                    className={
-                        notification?.read
-                            ? "text-gray-400 dark:text-gray-500"
-                            : variant.iconColor
-                    }
-                />
+            {/* Category icon */}
+            <div className="relative shrink-0">
+                <div
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl ring-1 ${
+                        category.tile
+                    } ${isRead ? "opacity-60" : ""}`}
+                >
+                    <CategoryIcon
+                        size={20}
+                        className={category.text}
+                    />
+                </div>
+
+                {SeverityBadge && (
+                    <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white dark:bg-gray-900">
+                        <SeverityBadge
+                            size={16}
+                            className={severity.badgeColor}
+                        />
+                    </span>
+                )}
             </div>
 
-            <div className="flex-1 min-w-0">
-                <div
-                    className={`
-                        flex
-                        items-start
-                        justify-between
-                        gap-2
-                    `}
-                >
+            {/* Content */}
+            <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-2 pr-20">
                     <h4
-                        className={`
-                            text-sm
-                            font-semibold
-                            leading-tight
-                            ${
-                                notification?.read
-                                    ? "text-gray-700 dark:text-gray-300"
-                                    : variant.text
-                            }
-                        `}
+                        className={`text-[15px] leading-snug ${
+                            isRead
+                                ? "font-medium text-gray-600 dark:text-gray-400"
+                                : "font-semibold text-gray-900 dark:text-white"
+                        }`}
                     >
-                        {notification?.title ||
-                            "Notification"}
+                        {notification?.title || "Notification"}
                     </h4>
 
-                    {onDismiss && (
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDismiss?.(
-                                    notification?._id
-                                );
-                            }}
-                            className="
-                                shrink-0
-                                rounded-md
-                                p-1
-                                opacity-0
-                                transition-all
-                                duration-200
-                                hover:bg-gray-200
-                                dark:hover:bg-gray-700
-                                group-hover:opacity-100
-                            "
-                            aria-label="Dismiss notification"
-                        >
-                            <XCircle
-                                size={14}
-                                className="text-gray-400 dark:text-gray-500"
-                            />
-                        </button>
+                    {!isRead && (
+                        <span
+                            aria-label="Unread"
+                            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${severity.accent}`}
+                        />
                     )}
                 </div>
 
                 {notification?.message && (
                     <p
-                        className={`
-                            mt-1
-                            text-sm
-                            leading-relaxed
-                            ${
-                                notification?.read
-                                    ? "text-gray-500 dark:text-gray-400"
-                                    : variant.subtext
-                            }
-                        `}
+                        className={`mt-1 text-sm leading-relaxed ${
+                            isRead
+                                ? "text-gray-500 dark:text-gray-500"
+                                : "text-gray-600 dark:text-gray-300"
+                        }`}
                     >
                         {notification.message}
                     </p>
                 )}
 
-                {notification?.metadata
-                    ?.reference && (
-                    <p
-                        className="
-                            mt-1.5
-                            text-xs
-                            font-medium
-                            text-gray-400
-                            dark:text-gray-500
-                        "
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                    <span
+                        title={fullTimestamp(timestamp)}
+                        className="font-medium text-gray-400 dark:text-gray-500"
                     >
-                        {notification.metadata.reference}
-                    </p>
-                )}
-
-                <div
-                    className="
-                        mt-2.5
-                        flex
-                        items-center
-                        gap-2
-                        text-xs
-                        text-gray-400
-                        dark:text-gray-500
-                    "
-                >
-                    <span>
-                        {timeAgo(
-                            notification?.timestamp ||
-                                notification?.createdAt
-                        )}
+                        {timeAgo(timestamp)}
                     </span>
 
-                    {notification?.category && (
-                        <>
-                            <span>•</span>
-                            <span
-                                className="
-                                    capitalize
-                                "
-                            >
-                                {notification.category}
-                            </span>
-                        </>
+                    <span
+                        aria-hidden
+                        className="h-1 w-1 rounded-full bg-gray-300 dark:bg-gray-700"
+                    />
+
+                    <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                        <CategoryIcon
+                            size={12}
+                            className={category.text}
+                        />
+                        {notification?.category || "General"}
+                    </span>
+
+                    {notification?.metadata?.reference && (
+                        <span className="rounded-md border border-gray-200 px-1.5 py-0.5 font-mono text-[11px] text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                            {notification.metadata.reference}
+                        </span>
+                    )}
+
+                    {target && (
+                        <span className="ml-auto inline-flex items-center gap-0.5 font-semibold text-blue-600 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 dark:text-blue-400">
+                            View
+                            <ChevronRight size={14} />
+                        </span>
                     )}
                 </div>
+            </div>
+
+            {/* Actions — always shown on touch, on hover/focus elsewhere */}
+            <div className="absolute right-3 top-3 flex items-center gap-1 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                {!isRead && onMarkAsRead && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onMarkAsRead(notification._id);
+                        }}
+                        title="Mark as read"
+                        aria-label="Mark as read"
+                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+                    >
+                        <Check size={16} />
+                    </button>
+                )}
+
+                {onDismiss && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDismiss(notification._id);
+                        }}
+                        title="Dismiss"
+                        aria-label="Dismiss notification"
+                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                    >
+                        <X size={16} />
+                    </button>
+                )}
             </div>
         </motion.div>
     );
