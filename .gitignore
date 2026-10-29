@@ -1,0 +1,9 @@
+# Dependencies & Build Files
+node_modules/
+.next/
+dist/
+build/
+*.log
+
+# Binaries & Tools
+tools/ngrok.exe
