@@ -21,6 +21,8 @@ import {
 } from "../../constants/bookingConstants.js";
 import {
     PAYMENT_METHOD,
+    PAYMENT_REFUND_STATUS,
+    MANUAL_REFUND_STATUS,
     PAYMENT_STATUS,
     PAYMENT_TYPE,
 } from "../../constants/paymentConstants.js";
@@ -31,6 +33,7 @@ import {
 
 import {
     cancelBooking,
+    requestBookingReschedule,
     changeVehicleForMaintenanceConflict,
     ensurePickupPaymentVerified,
     getMaintenanceConflictOptions,
@@ -38,6 +41,7 @@ import {
     refundMaintenanceConflict,
     sendMaintenanceConflictOptions,
 } from "../../services/bookingService.js";
+import { createRental } from "../../services/rentalService.js";
 import {
     checkVehicleAvailability,
     checkVehiclesAvailabilityBulk,
@@ -290,6 +294,70 @@ describe("maintenance window availability", () => {
 });
 
 describe("refunds including paid reschedule top-ups", () => {
+    it("blocks cancellation, pickup, and a second price change until settlement is recorded", async () => {
+        const { booking } = await conflictedBooking();
+        const payment = await payFor(booking, 5300);
+        const target = await insertVehicle({ pricing: { dailyRate: 1200, reservationFee: 500 } });
+        let entered;
+        const settling = new Promise((resolve) => { entered = resolve; });
+        let release;
+        const paused = new Promise((resolve) => { release = resolve; });
+        const original = Payment.findOneAndUpdate;
+        Payment.findOneAndUpdate = function (filter, ...args) {
+            if (String(filter._id) === String(payment._id) && filter.refund === null) {
+                entered();
+                return paused.then(() => original.call(this, filter, ...args));
+            }
+            return original.call(this, filter, ...args);
+        };
+        const move = changeVehicleForMaintenanceConflict(booking._id, target, booking.customer, "customer");
+        try {
+            await Promise.race([settling, move.then(() => { throw new Error("Move completed before reaching refund"); })]);
+            assert.equal((await Booking.findById(booking._id)).priceChangeSettlementPending, true);
+            await assert.rejects(cancelBooking(booking._id, adminId, "Concurrent cancel", "admin"), /changed while you were cancelling/);
+            await assert.rejects(createRental(booking._id, adminId), /still settling/);
+            await assert.rejects(requestBookingReschedule(booking._id, {
+                startDate: booking.startDate, endDate: booking.endDate,
+            }, adminId, "admin"), /still settling/);
+        } finally {
+            release();
+            await move.finally(() => { Payment.findOneAndUpdate = original; });
+        }
+        assert.equal((await Booking.findById(booking._id)).priceChangeSettlementPending, false);
+        await cancelBooking(booking._id, adminId, "Cancel after settlement", "admin");
+        const payments = await Payment.find({ booking: booking._id }).lean();
+        const owed = await ManualRefund.find({ booking: booking._id }).lean();
+        assert.equal(payments.reduce((sum, p) => sum + Number(p.refund?.amount || 0), 0) + owed.reduce((sum, r) => sum + r.amount, 0), 5300);
+    });
+
+    it("counts manual price-change refunds and an independent late-payment refund once each", async () => {
+        const { booking } = await conflictedBooking();
+        const reservation = await payFor(booking, 7700);
+        await Payment.updateOne({ _id: reservation._id }, { $set: { refund: {
+            amount: 1000, reason: "others", method: "manual", status: PAYMENT_REFUND_STATUS.SUCCEEDED,
+        } } });
+        await ManualRefund.create({ booking: booking._id, customer: booking.customer,
+            payment: reservation._id, amount: 1400, status: MANUAL_REFUND_STATUS.OWED,
+            reason: "Refund of the price difference after moving booking. Additional manual share." });
+        await Booking.updateOne({ _id: booking._id }, { $push: { vehicleChanges: {
+            changeId: newId(), previousVehicle: newId(), newVehicle: booking.vehicle,
+            settlement: { kind: BOOKING_RESCHEDULE_SETTLEMENT.REFUND, amount: 2400,
+                allocations: [{ payment: reservation._id, amount: 2400 }] },
+        } } });
+        await Payment.create({ booking: booking._id, customer: booking.customer,
+            paymentType: PAYMENT_TYPE.EXTENSION_FEE, bookingExtension: newId(),
+            paymentMethod: PAYMENT_METHOD.GCASH, amount: 2400, status: PAYMENT_STATUS.REFUNDED,
+            refund: { amount: 2400, reason: "others", method: "manual", status: PAYMENT_REFUND_STATUS.SUCCEEDED },
+            audit: { createdBy: adminId } });
+        const options = await getMaintenanceConflictOptions(booking._id, booking.customer, "customer");
+        assert.equal(options.refundAmount, 5300);
+        const target = await insertVehicle({ pricing: { dailyRate: 1200, reservationFee: 500 } });
+        await changeVehicleForMaintenanceConflict(booking._id, target, booking.customer, "customer");
+        const saved = await Booking.findById(booking._id).lean();
+        assert.equal(saved.vehicleChanges.at(-1).settlement.amount, 2400);
+        assert.equal(await ManualRefund.countDocuments({ booking: booking._id }), 2);
+    });
+
     it("keeps the vehicle and price unchanged while an earlier top-up is pending", async () => {
         const { booking, vehicle } = await conflictedBooking();
         await payFor(booking, 500);

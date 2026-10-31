@@ -916,6 +916,8 @@ const auditSchema = new mongoose.Schema(
 
 const bookingSchema = new mongoose.Schema(
     {
+        // Held across external refund calls; cleared with the settlement record.
+        priceChangeSettlementPending: { type: Boolean, default: false },
         bookingCode: {
             type: String,
             required: true,

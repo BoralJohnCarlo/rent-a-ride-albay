@@ -1,5 +1,5 @@
 import createError from "../utils/createError.js";
-import { getAllocatedPriceChangeRefund } from "../utils/bookingRefundAllocations.js";
+import { getActiveAllocatedPriceChangeRefund } from "../utils/bookingRefundAllocations.js";
 
 import mongoose from "mongoose";
 
@@ -146,6 +146,7 @@ import {
 } from "../constants/driverConstants.js";
 
 import {
+    MANUAL_REFUND_STATUS,
     PAYMENT_TYPE,
     PAYMENT_STATUS,
     PAYMENT_METHOD,
@@ -688,7 +689,7 @@ const getApprovedReschedules = (booking) =>
  * promised to, when handed to an admin). A Payment carries only one refund,
  * so later refunds on the booking must count this first.
  */
-const getRescheduleRefundedAmount = (booking) => getAllocatedPriceChangeRefund(booking);
+const getRescheduleRefundedAmount = (booking) => getActiveAllocatedPriceChangeRefund(booking);
 /*
  * Cancellation fees follow the EARLIER of the original and current pickup
  * dates, so a customer can't reschedule far out just to cancel later for a
@@ -756,7 +757,7 @@ const getVerifiedPrePickupPaymentAmount = async (
     return Math.max(
         0,
         Math.round(
-            (amount - getAllocatedPriceChangeRefund(booking, payment._id)) * 100
+            (amount - (await getActiveAllocatedPriceChangeRefund(booking, payment._id))) * 100
         ) / 100
     );
 };
@@ -768,11 +769,25 @@ const getPrePickupTotalPaid = async (bookingId) => {
         booking: bookingId,
         paymentType: { $in: [PAYMENT_TYPE.RESERVATION_FEE, PAYMENT_TYPE.EXTENSION_FEE] },
         status: { $in: [PAYMENT_STATUS.VERIFIED, PAYMENT_STATUS.REFUNDED] },
-    }).select("amount refund").lean();
+    }).select("amount refund paymentType").lean();
     const booking = await Booking.findById(bookingId).select("reschedules vehicleChanges").lean();
-    const gross = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    const refunded = payments.reduce((sum, p) => sum + (p.refund?.status !== PAYMENT_REFUND_STATUS.FAILED ? Number(p.refund?.amount || 0) : 0), 0);
-    return Math.max(0, roundMoney(gross - Math.max(refunded, getRescheduleRefundedAmount(booking))));
+    const manualRefunds = await ManualRefund.find({ booking: bookingId,
+        status: { $in: [MANUAL_REFUND_STATUS.OWED, MANUAL_REFUND_STATUS.PAID] } }).select("payment amount").lean();
+    let balance = 0;
+    for (const payment of payments) {
+        const allocated = await getActiveAllocatedPriceChangeRefund(booking, payment._id,
+            payment.paymentType === PAYMENT_TYPE.RESERVATION_FEE);
+        const recorded = (payment.refund?.status !== PAYMENT_REFUND_STATUS.FAILED
+            ? Number(payment.refund?.amount || 0) : 0) + manualRefunds
+            .filter((refund) => String(refund.payment) === String(payment._id))
+            .reduce((sum, refund) => sum + Number(refund.amount || 0), 0);
+        // Settlement history overlaps payment/manual records for this payment,
+        // but refunds on different payments are independent and must be added.
+        balance += Math.max(0, Number(payment.amount) - Math.max(allocated, recorded));
+    }
+    const unlinked = manualRefunds.filter((refund) => !refund.payment)
+        .reduce((sum, refund) => sum + Number(refund.amount || 0), 0);
+    return Math.max(0, roundMoney(balance - unlinked));
 };
 
 const allocatePriceChangeRefund = async (booking, amount, options, initiatedBy, settlement) => {
@@ -788,8 +803,9 @@ const allocatePriceChangeRefund = async (booking, amount, options, initiatedBy, 
     let manual = false;
     for (const payment of payments) {
         if (remaining <= 0) break;
-        const reserved = getAllocatedPriceChangeRefund(booking, payment._id, payment.paymentType === PAYMENT_TYPE.RESERVATION_FEE);
-        const available = roundMoney(Number(payment.amount) - Math.max(reserved, Number(payment.refund?.amount || 0)));
+        const reserved = await getActiveAllocatedPriceChangeRefund(booking, payment._id, payment.paymentType === PAYMENT_TYPE.RESERVATION_FEE);
+        const refunded = payment.refund?.status === PAYMENT_REFUND_STATUS.FAILED ? 0 : Number(payment.refund?.amount || 0);
+        const available = roundMoney(Number(payment.amount) - Math.max(reserved, refunded));
         const part = Math.min(remaining, Math.max(0, available));
         if (!part) continue;
         if (payment.refund) {
@@ -884,16 +900,15 @@ const refundPrePickupBooking = async (
      * automatically, so it goes on the Owed Refunds list for an admin to pay
      * by hand, instead of living only in a notification.
      */
-    if (
-        Number(amount) > 0 &&
-        getRescheduleRefundedAmount(booking) > 0
-    ) {
-        const reservationPayment = await Payment.findOne({
+    const reservationPayment = Number(amount) > 0
+        ? await Payment.findOne({
             booking: booking._id,
             paymentType: PAYMENT_TYPE.RESERVATION_FEE,
         })
-            .select("_id")
-            .lean();
+            .select("_id refund")
+            .lean()
+        : null;
+    if (Number(amount) > 0 && (reservationPayment?.refund || (await getRescheduleRefundedAmount(booking)) > 0)) {
 
         await createManualRefund({
             booking,
@@ -2198,6 +2213,9 @@ const withBookingChangeTransaction = async (booking, changes, persist) => {
         ],
         async (session) => {
             const fresh = await Booking.findById(booking._id).session(session);
+            if (fresh?.priceChangeSettlementPending) {
+                throw createError("The booking's price change is still settling. Please refresh and try again shortly.", 409);
+            }
             if (!fresh || fresh.status !== booking.status ||
                 fresh.updatedAt?.getTime() !== booking.updatedAt?.getTime() ||
                 String(fresh.vehicle) !== String(booking.vehicle) ||
@@ -4699,6 +4717,7 @@ const rejectBooking = async (
                 status: {
                     $in: eligibleStatuses,
                 },
+                priceChangeSettlementPending: { $ne: true },
             },
             {
                 $set: {
@@ -4969,6 +4988,7 @@ const cancelBooking = async (
                             status === existingBooking.status
                     ),
                 },
+                priceChangeSettlementPending: { $ne: true },
             },
             {
                 $set: {
@@ -5594,6 +5614,7 @@ const expireBooking = async (
                 status: {
                     $in: eligibleStatuses,
                 },
+                priceChangeSettlementPending: { $ne: true },
             },
             {
                 $set: {
@@ -5799,6 +5820,7 @@ const markBookingNoShow = async (
             {
                 _id: existingBooking._id,
                 status: BOOKING_STATUS.APPROVED,
+                priceChangeSettlementPending: { $ne: true },
             },
             {
                 $set: {
@@ -6470,6 +6492,7 @@ export const expireUnpaidBookings = async () => {
                     {
                         _id: booking._id,
                         status: BOOKING_STATUS.PENDING,
+                        priceChangeSettlementPending: { $ne: true },
                     },
                     {
                         $set: {
@@ -7418,6 +7441,9 @@ const getRescheduleDeadline = (booking) => {
  * skips the customer notice deadline (an admin can override it).
  */
 const assertBookingReschedulable = async (booking, role) => {
+    if (booking.priceChangeSettlementPending) {
+        throw createError("The booking's price change is still settling. Please refresh and try again shortly.", 409);
+    }
     if (!RESCHEDULABLE_STATUSES.includes(booking.status)) {
         throw createError(
             "Only bookings that haven't been picked up yet can be rescheduled.",
@@ -8366,7 +8392,7 @@ const settleApprovedReschedule = async (
 
     await Booking.updateOne(
         { _id: booking._id, "reschedules._id": reschedule._id },
-        { $set: { "reschedules.$.settlement": settlement } }
+        { $set: { "reschedules.$.settlement": settlement, priceChangeSettlementPending: false } }
     );
 
     return settlement;
@@ -8532,6 +8558,7 @@ const approveBookingReschedule = async (
                         startDate: quote.start,
                         endDate: quote.end,
                         pricing: quote.pricing,
+                        priceChangeSettlementPending: true,
                         ...voucherUpdate,
                         "audit.updatedBy": approvedBy,
                         "reschedules.$.status":
@@ -9454,6 +9481,7 @@ const changeVehicleForMaintenanceConflict = async (
                     $set: {
                         vehicle: newVehicle._id,
                         pricing,
+                        priceChangeSettlementPending: true,
                         ...voucherUpdate,
                         "audit.updatedBy": userId,
                         "maintenanceConflict.status":
@@ -9556,6 +9584,7 @@ const changeVehicleForMaintenanceConflict = async (
                 $set: {
                     "maintenanceConflict.vehicleChange.settlement":
                         settlement,
+                    priceChangeSettlementPending: false,
                     "vehicleChanges.$[change].settlement": {
                         kind: settlement.kind,
                         amount: settlement.amount,
@@ -9565,6 +9594,10 @@ const changeVehicleForMaintenanceConflict = async (
             },
             { arrayFilters: [{ "change.changeId": changeId }] }
         );
+    } else {
+        await Booking.updateOne({ _id: updated._id,
+            "maintenanceConflict.vehicleChange.changeId": changeId },
+        { $set: { priceChangeSettlementPending: false } });
     }
 
     // The old vehicle no longer holds this booking; the new one does.

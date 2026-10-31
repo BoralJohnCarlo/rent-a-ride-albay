@@ -24,7 +24,7 @@ import { getReservationPaymentDeadline } from "./cancellationPolicyService.js";
 import createError from "../utils/createError.js";
 import { normalizeRefundAmount } from "../utils/refundAmount.js";
 import { getUpfrontFees } from "../utils/bookingFees.js";
-import { getAllocatedPriceChangeRefund } from "../utils/bookingRefundAllocations.js";
+import { getActiveAllocatedPriceChangeRefund } from "../utils/bookingRefundAllocations.js";
 import { createManualRefund } from "./manualRefundService.js";
 
 import {
@@ -2099,8 +2099,9 @@ const refundBookingExtensionFees = async (
 
     for (const payment of extensionPayments) {
         try {
-            const allocated = getAllocatedPriceChangeRefund(booking, payment._id, false);
-            const remaining = Math.max(0, Math.round((Number(payment.amount) - Math.max(allocated, Number(payment.refund?.amount || 0))) * 100) / 100);
+            const allocated = await getActiveAllocatedPriceChangeRefund(booking, payment._id, false);
+            const previousRefund = payment.refund?.status === PAYMENT_REFUND_STATUS.FAILED ? 0 : Number(payment.refund?.amount || 0);
+            const remaining = Math.max(0, Math.round((Number(payment.amount) - Math.max(allocated, previousRefund)) * 100) / 100);
             if (!remaining) continue;
             if (payment.refund) {
                 await createManualRefund({ booking, payment: payment._id, amount: remaining,

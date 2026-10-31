@@ -495,6 +495,9 @@ const getOperatorVehicleIds = async (
 const ensureBookingEligibleForPickup = (
     booking
 ) => {
+    if (booking.priceChangeSettlementPending) {
+        throw createError("The booking's price change is still settling. Please refresh and try pickup again shortly.", 409);
+    }
     if (
         booking.status !==
         BOOKING_STATUS.APPROVED
@@ -4286,18 +4289,19 @@ const syncBookingRefundAmountSafely = async (
 };
 
 /*
- * Recomputes the totals of every rental whose refund is tracked by
- * `paymentId`, after that payment's refund was settled as not completed
- * (completeManualRefund in paymentService): the refund no longer counts, so
- * the rental's final amount and the booking's refund total go back up.
+ * Recomputes rentals for this payment's booking as well as rentals with an
+ * explicit refund link. Pre-pickup refunds have no rental refund entry, but
+ * their failure still restores payment credit on an existing rental.
  */
 export const refreshRentalsTrackedByPayment = async (
     paymentId,
     actorId = null
 ) => {
-    const rentals = await Rental.find({
-        "refunds.gatewayPayment": paymentId,
-    });
+    const payment = await Payment.findById(paymentId).select("booking").lean();
+    const rentals = await Rental.find({ $or: [
+        { "refunds.gatewayPayment": paymentId },
+        ...(payment?.booking ? [{ booking: payment.booking }] : []),
+    ] });
 
     for (const rental of rentals) {
         await calculateFinancials(rental);

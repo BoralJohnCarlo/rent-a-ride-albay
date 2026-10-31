@@ -106,6 +106,24 @@ const createRental = (overrides = {}) =>
     });
 
 describe("separate price-change refunds in rental balances", () => {
+    it("refreshes a rental when a pre-pickup payment refund fails without a rental refund entry", async () => {
+        const bookingId = newId(), customerId = newId();
+        await Booking.collection.insertOne({ _id: bookingId, customer: customerId,
+            bookingCode: `BK-${bookingId}`, pricing: { totalAmount: 4300 } });
+        const payment = await createPayment({ booking: bookingId, customer: customerId, amount: 5300,
+            refund: { amount: 1000, reason: "others", method: "manual",
+                status: PAYMENT_REFUND_STATUS.REQUIRES_MANUAL_ACTION } });
+        const rental = await createRental({ booking: bookingId, customer: customerId });
+        await calculateFinancials(rental);
+        await rental.save();
+        assert.equal(rental.financial.amountPaid, 4300);
+        assert.equal(rental.refunds.length, 0);
+        await completeManualRefund(payment._id, { succeeded: false }, adminId);
+        const saved = await Rental.findById(rental._id);
+        assert.equal(saved.financial.amountPaid, 5300);
+        assert.equal(saved.refunds.length, 0);
+    });
+
     it("refreshes a saved rental when an owed refund is marked Not Paid", async () => {
         const bookingId = newId(), customerId = newId();
         await Booking.collection.insertOne({ _id: bookingId, customer: customerId,
@@ -724,6 +742,61 @@ describe("owed (manual) refunds", () => {
 
         return bookingId;
     };
+
+    for (const legacy of [true, false]) {
+        it(`restores failed payment-refund credit before cancellation (${legacy ? "legacy" : "allocated"} history)`, async () => {
+            const bookingId = await setUpRescheduledBooking();
+            const payment = await Payment.findOne({ booking: bookingId });
+            await Payment.updateOne({ _id: payment._id }, { $set: {
+                "refund.status": PAYMENT_REFUND_STATUS.REQUIRES_MANUAL_ACTION,
+            } });
+            if (!legacy) {
+                await Booking.updateOne({ _id: bookingId }, { $set: {
+                    "reschedules.0.settlement.allocations": [{ payment: payment._id, amount: 1000 }],
+                } });
+            }
+            await completeManualRefund(payment._id, { succeeded: false }, adminId);
+            await cancelBooking(bookingId, adminId, "Cancel after failed refund", "admin");
+            const owed = await ManualRefund.find({ booking: bookingId, status: MANUAL_REFUND_STATUS.OWED }).lean();
+            assert.equal(owed.reduce((sum, refund) => sum + refund.amount, 0), 5300);
+        });
+    }
+
+    it("restores a failed manual price-change share without removing the successful payment share", async () => {
+        const bookingId = await setUpRescheduledBooking();
+        const payment = await Payment.findOne({ booking: bookingId });
+        const booking = await Booking.findById(bookingId).lean();
+        await Booking.updateOne({ _id: bookingId }, { $set: {
+            "reschedules.0.settlement.amount": 2000,
+            "reschedules.0.settlement.allocations": [{ payment: payment._id, amount: 2000 }],
+        } });
+        const manual = await ManualRefund.create({ booking: bookingId, customer: booking.customer,
+            payment: payment._id, amount: 1000,
+            reason: "Refund of the price difference after rescheduling booking. This payment already carries a refund; settle the remaining share manually." });
+        await settleManualRefund(manual._id, { succeeded: false }, adminId);
+        await cancelBooking(bookingId, adminId, "Cancel after failed manual share", "admin");
+        const owed = await ManualRefund.find({ booking: bookingId, status: MANUAL_REFUND_STATUS.OWED }).lean();
+        assert.equal(owed.reduce((sum, refund) => sum + refund.amount, 0), 4300);
+        assert.equal((await Payment.findById(payment._id)).refund.amount, 1000);
+        assert.equal((await Payment.findById(payment._id)).refund.status, PAYMENT_REFUND_STATUS.SUCCEEDED);
+    });
+
+    it("returns the full top-up balance when its earlier price-change refund failed", async () => {
+        const bookingId = await setUpRescheduledBooking();
+        const booking = await Booking.findById(bookingId).lean();
+        const topUp = await createPayment({ booking: bookingId, customer: booking.customer,
+            paymentType: PAYMENT_TYPE.EXTENSION_FEE, bookingExtension: newId(), amount: 2400,
+            refund: { amount: 1000, reason: "others", method: "manual", status: PAYMENT_REFUND_STATUS.FAILED } });
+        await Booking.updateOne({ _id: bookingId }, { $push: { vehicleChanges: {
+            changeId: newId(), previousVehicle: newId(), newVehicle: newId(),
+            settlement: { kind: BOOKING_RESCHEDULE_SETTLEMENT.REFUND, amount: 1000,
+                allocations: [{ payment: topUp._id, amount: 1000 }] },
+        } } });
+        await cancelBooking(bookingId, adminId, "Cancel after failed top-up refund", "admin");
+        const owed = await ManualRefund.find({ booking: bookingId, status: MANUAL_REFUND_STATUS.OWED }).lean();
+        assert.equal(owed.find((refund) => String(refund.payment) === String(topUp._id)).amount, 2400);
+        assert.equal(owed.reduce((sum, refund) => sum + refund.amount, 0), 6700);
+    });
 
     it("puts a refund the payment can't carry on the Owed list", async () => {
         const bookingId = await setUpRescheduledBooking();
