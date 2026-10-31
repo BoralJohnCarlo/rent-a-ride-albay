@@ -29,6 +29,7 @@ import { VEHICLE_STATUS } from "../../constants/vehicleConstants.js";
 
 import {
     approveBooking,
+    cancelBooking,
     createBooking,
     updateBooking,
     requestBookingExtension,
@@ -36,6 +37,7 @@ import {
     changeBookingDriver,
     requestBookingReschedule,
     approveBookingReschedule,
+    previewBookingReschedule,
     changeVehicleForMaintenanceConflict,
 } from "../../services/bookingService.js";
 import {
@@ -45,7 +47,7 @@ import {
 } from "../../services/driverService.js";
 import { reassignDriver } from "../../services/rentalService.js";
 import { areDriversOfferedForVehicle } from "../../services/driverPricingService.js";
-import { createPaymongoCheckout } from "../../services/paymentService.js";
+import { createPaymongoCheckout, cancelPayment, verifyPayment, verifyPaymentByCheckoutSession } from "../../services/paymentService.js";
 
 import { connectTestDb, disconnectTestDb } from "../helpers/testDb.js";
 
@@ -584,6 +586,300 @@ describe("booking creation transactions", () => {
         assert.equal(await Booking.countDocuments({ vehicle: target }), 1);
         // A forced vehicle move retains the booking's original zero deposit.
         assert.equal(await Payment.countDocuments({}), 0);
+    });
+
+    const reschedule = async (booking, dates) => {
+        return requestBookingReschedule(booking._id, dates, adminId, "admin");
+    };
+
+    for (const status of ["PENDING", "CANCELLED"]) {
+        it(`reduces an unpaid full ${status.toLowerCase()} payment after a cheaper reschedule`, async () => {
+            const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+            const booking = await book(vehicle, customerId, { payInFull: true });
+            await Payment.updateOne({ booking: booking._id }, { $set: { status } });
+            const start = manilaMorning(10);
+            if (status === "PENDING") {
+                await assert.rejects(reschedule(booking, {
+                    startDate: start.toISOString(), endDate: new Date(start.getTime() + DAY).toISOString(),
+                }), /Pay the reservation fee/);
+                assert.equal((await Payment.findOne({ booking: booking._id })).amount, 5300);
+                return;
+            }
+            const saved = await reschedule(booking, {
+                startDate: start.toISOString(), endDate: new Date(start.getTime() + DAY).toISOString(),
+            });
+            const payments = await Payment.find({ booking: booking._id }).lean();
+            assert.equal(saved.pricing.totalAmount, 2900);
+            assert.equal(payments.length, 1);
+            assert.equal(payments[0].amount, 2900);
+            assert.equal(payments[0].status, status);
+            assert.equal(saved.reschedules.at(-1).settlement.kind, "none");
+        });
+    }
+
+    it("expires an old full-payment checkout before saving the cheaper reschedule", async (t) => {
+        const booking = await book(await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } }), customerId, { payInFull: true });
+        await Payment.updateOne({ booking: booking._id }, { $set: { status: "CANCELLED", "paymongo.checkoutSessionId": "cs_reschedule_old" } });
+        const previousKey = process.env.PAYMONGO_SECRET_KEY;
+        process.env.PAYMONGO_SECRET_KEY = "sk_test_stubbed";
+        t.after(() => {
+            if (previousKey === undefined) delete process.env.PAYMONGO_SECRET_KEY;
+            else process.env.PAYMONGO_SECRET_KEY = previousKey;
+        });
+        const request = mock.method(globalThis, "fetch", async (url, options) => {
+            if (String(url).endsWith("/checkout_sessions")) {
+                assert.equal(JSON.parse(options.body).data.attributes.line_items[0].amount, 290000);
+                return { ok: true, json: async () => ({ data: {
+                    id: "cs_reschedule_new", attributes: { checkout_url: "https://checkout.example.test/new" },
+                } }) };
+            }
+            assert.match(String(url), /checkout_sessions\/cs_reschedule_old\/expire$/);
+            return { ok: true, json: async () => ({ data: { id: "cs_reschedule_old", attributes: { status: "expired" } } }) };
+        });
+        const start = manilaMorning(10);
+        await reschedule(booking, { startDate: start.toISOString(), endDate: new Date(start.getTime() + DAY).toISOString() });
+        const payment = await Payment.findOne({ booking: booking._id });
+        assert.equal(request.mock.callCount(), 1);
+        assert.equal(payment.amount, 2900);
+        assert.ok(!payment.paymongo?.checkoutSessionId);
+        const checkout = await createPaymongoCheckout(payment._id, customerId, "https://example.test");
+        assert.equal(checkout.checkoutSessionId, "cs_reschedule_new");
+        assert.equal(request.mock.callCount(), 2);
+    });
+
+    it("resizes an unpaid full payment upwards without charging the difference twice", async () => {
+        const booking = await book(await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } }), customerId, { payInFull: true });
+        await Payment.updateOne({ booking: booking._id }, { $set: { status: "CANCELLED" } });
+        const start = manilaMorning(10);
+        const dates = { startDate: start.toISOString(), endDate: new Date(start.getTime() + 3 * DAY).toISOString() };
+        const preview = await previewBookingReschedule(booking._id, dates, adminId, "admin");
+        const saved = await reschedule(booking, dates);
+        assert.equal(preview.settlement.amount, 0);
+        assert.equal(saved.pricing.totalAmount, 7700);
+        assert.equal((await Payment.findOne({ booking: booking._id })).amount, 7700);
+        assert.equal(await Payment.countDocuments({ booking: booking._id }), 1);
+    });
+
+    it("rolls back a reschedule payment resize if saving the approved dates fails", async () => {
+        const booking = await book(await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } }), customerId, { payInFull: true });
+        await Payment.updateOne({ booking: booking._id }, { $set: { status: "CANCELLED" } });
+        const start = manilaMorning(10);
+        mock.method(Booking, "findOneAndUpdate", async () => { throw new Error("Reschedule storage unavailable"); });
+        await assert.rejects(reschedule(booking, {
+            startDate: start.toISOString(), endDate: new Date(start.getTime() + DAY).toISOString(),
+        }), /Reschedule storage unavailable/);
+        assert.equal((await Payment.findOne({ booking: booking._id })).amount, 5300);
+        assert.equal((await Booking.findById(booking._id)).startDate.getTime(), new Date(booking.startDate).getTime());
+    });
+
+    it("keeps verified full payments intact and refunds a cheaper reschedule", async () => {
+        const booking = await book(await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } }), customerId, { payInFull: true });
+        await Payment.updateOne({ booking: booking._id }, { $set: { status: "VERIFIED" } });
+        const start = manilaMorning(10);
+        await reschedule(booking, { startDate: start.toISOString(), endDate: new Date(start.getTime() + DAY).toISOString() });
+        const payment = await Payment.findOne({ booking: booking._id });
+        assert.equal(payment.amount, 5300);
+        assert.equal(payment.status, "VERIFIED");
+        assert.equal(payment.refund.amount, 2400);
+    });
+
+    it("checks a self-drive customer's license at reschedule preview, request and approval", async () => {
+        const booking = await book(await insertVehicle(), customerId, { driverOption: BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER });
+        const dates = laterDates();
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: manilaMorning(8) } });
+        await assert.rejects(previewBookingReschedule(booking._id, dates, customerId, "customer"), /before this rental ends/);
+        await assert.rejects(requestBookingReschedule(booking._id, dates, customerId, "customer"), /before this rental ends/);
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: manilaMorning(20) } });
+        const requested = await requestBookingReschedule(booking._id, dates, customerId, "customer");
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: manilaMorning(8) } });
+        await assert.rejects(approveBookingReschedule(booking._id, requested.reschedules[0]._id, adminId), /before this rental ends/);
+    });
+
+    it("checks self-drive license coverage when requesting and approving an extension", async () => {
+        const booking = await book(await insertVehicle(), customerId, { driverOption: BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER });
+        await approveBooking(booking._id, adminId);
+        const requestedEndDate = manilaMorning(10);
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: manilaMorning(8) } });
+        await assert.rejects(requestBookingExtension(booking._id, { requestedEndDate }, customerId), /before this rental ends/);
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: manilaMorning(20) } });
+        const requested = await requestBookingExtension(booking._id, { requestedEndDate }, customerId);
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: manilaMorning(8) } });
+        await assert.rejects(approveBookingExtension(booking._id, requested.extensions[0]._id, adminId), /before this rental ends/);
+        assert.equal((await Booking.findById(booking._id)).endDate.getTime(), new Date(booking.endDate).getTime());
+    });
+
+    for (const driverOption of [BOOKING_DRIVER_OPTIONS.WITH_DRIVER, BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER]) {
+        it(`preserves license policy exceptions for ${driverOption.toLowerCase()} reschedules`, async () => {
+            if (driverOption === BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER) {
+                await Settings.updateOne({}, { $set: { "customerBookingSettings.licenseRestrictionEnabled": false } });
+            }
+            const booking = await book(await insertVehicle(), customerId, { driverOption });
+            await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: manilaMorning(8) } });
+            const saved = await reschedule(booking, laterDates());
+            assert.equal(new Date(saved.startDate).getTime(), manilaMorning(10).getTime());
+        });
+    }
+
+    it("applies booking-hours lead time to reschedule previews and admin approvals", async () => {
+        const booking = await book(await insertVehicle());
+        const dates = { startDate: "2030-11-02T08:00:00+08:00", endDate: "2030-11-03T08:00:00+08:00" };
+        const requested = await requestBookingReschedule(booking._id, dates, customerId, "customer");
+        await Settings.updateOne({}, { $set: { "bookingSettings.bookingHours": { enabled: true, openTime: "08:00", closeTime: "20:00" } } });
+        mock.method(Date, "now", () => Date.parse("2030-11-01T23:00:00+08:00"));
+        await assert.rejects(previewBookingReschedule(booking._id, dates, adminId, "admin"), /earliest pickup/);
+        await assert.rejects(approveBookingReschedule(booking._id, requested.reschedules[0]._id, adminId), /earliest pickup/);
+        const preview = await previewBookingReschedule(booking._id, {
+            startDate: "2030-11-02T10:00:00+08:00", endDate: "2030-11-03T10:00:00+08:00",
+        }, adminId, "admin");
+        assert.equal(new Date(preview.startDate).toISOString(), "2030-11-02T02:00:00.000Z");
+    });
+
+    const stubRefundGateway = (t) => {
+        const previousKey = process.env.PAYMONGO_SECRET_KEY;
+        process.env.PAYMONGO_SECRET_KEY = "sk_test_stubbed";
+        t.after(() => {
+            if (previousKey === undefined) delete process.env.PAYMONGO_SECRET_KEY;
+            else process.env.PAYMONGO_SECRET_KEY = previousKey;
+        });
+        let refunds = 0;
+        mock.method(globalThis, "fetch", async (url, options) => {
+            if (String(url).endsWith("/expire")) {
+                return { ok: true, json: async () => ({ data: { id: "cs_confirmation_race", attributes: { status: "expired" } } }) };
+            }
+            assert.ok(String(url).endsWith("/refunds"));
+            assert.equal(JSON.parse(options.body).data.attributes.amount, 50000);
+            refunds++;
+            return { ok: true, json: async () => ({ data: { id: "ref_confirmation_race", attributes: { status: "succeeded" } } }) };
+        });
+        return () => refunds;
+    };
+
+    const bookingWithCheckout = async () => {
+        const booking = await book(await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } }));
+        await Payment.updateOne({ booking: booking._id }, { $set: { "paymongo.checkoutSessionId": "cs_confirmation_race" } });
+        return booking;
+    };
+
+    it("refunds once when cancellation finishes after confirmation reads the live booking", async (t) => {
+        const refundCount = stubRefundGateway(t);
+        const booking = await bookingWithCheckout();
+        const original = Booking.findById;
+        let cancelled = false;
+        mock.method(Booking, "findById", function (...args) {
+            const query = original.apply(this, args);
+            const exec = query.exec.bind(query);
+            query.exec = async () => {
+                const result = await exec();
+                if (!cancelled && query.getOptions().session && String(args[0]) === String(booking._id)) {
+                    cancelled = true;
+                    await cancelBooking(booking._id, adminId, "Cancelled during confirmation", "admin");
+                }
+                return result;
+            };
+            return query;
+        });
+        await verifyPaymentByCheckoutSession("cs_confirmation_race", "intent_test", "pay_test");
+        const payment = await Payment.findOne({ booking: booking._id });
+        assert.equal((await Booking.findById(booking._id)).status, BOOKING_STATUS.CANCELLED);
+        assert.equal(payment.refund.amount, 500);
+        assert.equal(payment.refund.status, "succeeded");
+        assert.equal(refundCount(), 1);
+        await verifyPaymentByCheckoutSession("cs_confirmation_race", "intent_test", "pay_test");
+        assert.equal(refundCount(), 1);
+    });
+
+    it("refunds normally when confirmation commits before cancellation", async (t) => {
+        const refundCount = stubRefundGateway(t);
+        const booking = await bookingWithCheckout();
+        await verifyPaymentByCheckoutSession("cs_confirmation_race", "intent_test", "pay_test");
+        assert.equal((await Booking.findById(booking._id)).status, BOOKING_STATUS.PAYMENT_RECEIVED);
+        await cancelBooking(booking._id, adminId, "Admin cancellation", "admin");
+        assert.equal((await Payment.findOne({ booking: booking._id })).refund.amount, 500);
+        assert.equal(refundCount(), 1);
+    });
+
+    it("rolls back verification if updating the booking fails", async () => {
+        const booking = await bookingWithCheckout();
+        mock.method(Booking, "findOneAndUpdate", async () => { throw new Error("Booking storage unavailable"); });
+        await assert.rejects(verifyPaymentByCheckoutSession("cs_confirmation_race", "intent_test", "pay_test"), /Booking storage unavailable/);
+        assert.equal((await Payment.findOne({ booking: booking._id })).status, "PENDING");
+        assert.equal((await Booking.findById(booking._id)).status, BOOKING_STATUS.PENDING);
+    });
+
+    it("handles concurrent confirmation calls without duplicating payment notices", async () => {
+        const booking = await bookingWithCheckout();
+        await Promise.all([
+            verifyPaymentByCheckoutSession("cs_confirmation_race", "intent_test", "pay_test"),
+            verifyPaymentByCheckoutSession("cs_confirmation_race", "intent_test", "pay_test"),
+        ]);
+        assert.equal((await Payment.findOne({ booking: booking._id })).status, "VERIFIED");
+        assert.equal((await Booking.findById(booking._id)).status, BOOKING_STATUS.PAYMENT_RECEIVED);
+        assert.equal(await Notification.countDocuments({ recipient: adminId, title: "Booking Payment Received" }), 1);
+    });
+
+    it("does not allow cancelling an already refunded payment attempt", async () => {
+        const booking = await bookingWithCheckout();
+        const payment = await Payment.findOneAndUpdate({ booking: booking._id }, { $set: { status: "REFUNDED" } }, { new: true });
+        await assert.rejects(cancelPayment(payment._id, customerId), /cannot be cancelled/);
+        assert.equal((await Payment.findById(payment._id)).status, "REFUNDED");
+    });
+
+    it("does not overwrite verification when cancelling a payment attempt races it", async () => {
+        const booking = await bookingWithCheckout();
+        const payment = await Payment.findOne({ booking: booking._id });
+        const find = Payment.findById;
+        let verified = false;
+        mock.method(Payment, "findById", function (...args) {
+            const query = find.apply(this, args);
+            const exec = query.exec.bind(query);
+            query.exec = async () => {
+                const result = await exec();
+                if (!verified && String(args[0]) === String(payment._id)) {
+                    verified = true;
+                    await Payment.updateOne({ _id: payment._id }, { $set: { status: "VERIFIED" } });
+                }
+                return result;
+            };
+            return query;
+        });
+        await assert.rejects(cancelPayment(payment._id, customerId), /payment changed/);
+        assert.equal((await Payment.findById(payment._id)).status, "VERIFIED");
+    });
+
+    it("still cancels a pending payment attempt and closes its checkout", async (t) => {
+        const refunds = stubRefundGateway(t);
+        const booking = await bookingWithCheckout();
+        const payment = await Payment.findOne({ booking: booking._id });
+        await cancelPayment(payment._id, customerId);
+        const saved = await Payment.findById(payment._id);
+        assert.equal(saved.status, "CANCELLED");
+        assert.ok(saved.paymongo.checkoutExpiredAt);
+        assert.equal(refunds(), 0);
+    });
+
+    it("does not force-verify a payment after cancellation wins during admin verification", async (t) => {
+        const refundCount = stubRefundGateway(t);
+        const booking = await bookingWithCheckout();
+        const payment = await Payment.findOne({ booking: booking._id });
+        const original = Booking.findById;
+        let cancelled = false;
+        mock.method(Booking, "findById", function (...args) {
+            const query = original.apply(this, args);
+            const exec = query.exec.bind(query);
+            query.exec = async () => {
+                const result = await exec();
+                if (!cancelled && query.getOptions().session) {
+                    cancelled = true;
+                    await cancelBooking(booking._id, adminId, "Cancelled during verification", "admin");
+                }
+                return result;
+            };
+            return query;
+        });
+        await assert.rejects(verifyPayment(payment._id, adminId, { force: true }), /Cancelled payments cannot be verified/);
+        assert.equal((await Payment.findById(payment._id)).status, "CANCELLED");
+        assert.equal((await Booking.findById(booking._id)).status, BOOKING_STATUS.CANCELLED);
+        assert.equal(refundCount(), 0);
     });
 });
 

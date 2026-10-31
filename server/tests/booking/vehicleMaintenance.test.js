@@ -289,6 +289,100 @@ describe("maintenance window availability", () => {
     });
 });
 
+describe("refunds including paid reschedule top-ups", () => {
+    it("keeps the vehicle and price unchanged while an earlier top-up is pending", async () => {
+        const { booking, vehicle } = await conflictedBooking();
+        await payFor(booking, 500);
+        const payment = await Payment.create({
+            booking: booking._id, customer: booking.customer,
+            paymentType: PAYMENT_TYPE.EXTENSION_FEE, paymentMethod: PAYMENT_METHOD.GCASH,
+            bookingExtension: newId(), bookingReschedule: newId(), amount: 2400,
+            status: PAYMENT_STATUS.PENDING, audit: { createdBy: adminId },
+        });
+        const target = await insertVehicle({ pricing: { dailyRate: 1200, reservationFee: 500 } });
+        await assert.rejects(changeVehicleForMaintenanceConflict(booking._id, target, booking.customer, "customer"), /Pay or cancel the outstanding top-up/);
+        const saved = await Booking.findById(booking._id).lean();
+        assert.equal(String(saved.vehicle), String(vehicle));
+        assert.equal(saved.pricing.totalAmount, 5300);
+        assert.equal((await Payment.findById(payment._id)).status, PAYMENT_STATUS.PENDING);
+    });
+
+    it("records only successful shares when a later refund allocation fails", async () => {
+        const { booking } = await conflictedBooking();
+        await payFor(booking, 500);
+        const topUp = await Payment.create({
+            booking: booking._id, customer: booking.customer,
+            paymentType: PAYMENT_TYPE.EXTENSION_FEE, paymentMethod: PAYMENT_METHOD.GCASH,
+            bookingExtension: newId(), bookingReschedule: newId(), amount: 7200,
+            status: PAYMENT_STATUS.VERIFIED, audit: { createdBy: adminId },
+        });
+        await Booking.collection.updateOne({ _id: booking._id }, { $set: {
+            "pricing.dailyRate": 3600, "pricing.subtotal": 7200, "pricing.totalAmount": 7700,
+        } });
+        const target = await insertVehicle();
+        const original = Payment.findOneAndUpdate;
+        Payment.findOneAndUpdate = function (filter, ...args) {
+            if (String(filter._id) === String(topUp._id) && filter.refund === null) {
+                throw new Error("Simulated second allocation failure");
+            }
+            return original.call(this, filter, ...args);
+        };
+        try {
+            await changeVehicleForMaintenanceConflict(booking._id, target, booking.customer, "customer");
+        } finally {
+            Payment.findOneAndUpdate = original;
+        }
+        const saved = await Booking.findById(booking._id).lean();
+        const settlement = saved.vehicleChanges.at(-1).settlement;
+        assert.equal(settlement.amount, 500);
+        assert.equal(settlement.allocations.length, 1);
+        assert.equal(settlement.allocations[0].amount, 500);
+        assert.equal((await Payment.findById(topUp._id)).refund, null);
+        await cancelBooking(booking._id, adminId, "Cancel after partial allocation", "admin");
+        const payments = await Payment.find({ booking: booking._id }).lean();
+        const owed = await ManualRefund.find({ booking: booking._id }).lean();
+        assert.equal(payments.reduce((sum, p) => sum + Number(p.refund?.amount || 0), 0) + owed.reduce((sum, r) => sum + r.amount, 0), 7700);
+    });
+
+    for (const reservationAmount of [5300, 500]) {
+        it(`refunds a cheaper move across payments after a ${reservationAmount} reservation payment`, async () => {
+            await ManualRefund.deleteMany({});
+            const { booking } = await conflictedBooking();
+            await payFor(booking, reservationAmount);
+            const topUp = await Payment.create({
+                booking: booking._id, customer: booking.customer,
+                paymentType: PAYMENT_TYPE.EXTENSION_FEE, paymentMethod: PAYMENT_METHOD.GCASH,
+                bookingExtension: newId(), bookingReschedule: newId(),
+                amount: 7700 - reservationAmount, status: PAYMENT_STATUS.VERIFIED,
+                audit: { createdBy: adminId, updatedBy: adminId },
+            });
+            await Booking.collection.updateOne({ _id: booking._id }, { $set: {
+                "pricing.dailyRate": 3600, "pricing.subtotal": 7200, "pricing.totalAmount": 7700,
+            } });
+            const target = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+            const options = await getMaintenanceConflictOptions(booking._id, booking.customer, "customer");
+            assert.equal(options.refundAmount, 7700);
+            await changeVehicleForMaintenanceConflict(booking._id, target, booking.customer, "customer");
+            const saved = await Booking.findById(booking._id).lean();
+            assert.equal(saved.pricing.totalAmount, 5300);
+            assert.equal(saved.vehicleChanges.at(-1).settlement.amount, 2400);
+            assert.equal(saved.vehicleChanges.at(-1).settlement.allocations.reduce((sum, allocation) => sum + allocation.amount, 0), 2400);
+            const refunds = await Payment.find({ booking: booking._id }).lean();
+            assert.equal(refunds.reduce((sum, payment) => sum + Number(payment.refund?.amount || 0), 0), 2400);
+            if (reservationAmount === 500) {
+                assert.equal((await Payment.findById(topUp._id)).refund.amount, 1900);
+            }
+            // Cancelling later returns only the remaining 5,300, even when
+            // a top-up's one refund slot was partly used by the vehicle move.
+            await cancelBooking(booking._id, adminId, "Cancel after move", "admin");
+            const payments = await Payment.find({ booking: booking._id }).lean();
+            const owed = await ManualRefund.find({ booking: booking._id }).lean();
+            const totalAllocated = payments.reduce((sum, payment) => sum + Number(payment.refund?.amount || 0), 0) + owed.reduce((sum, refund) => sum + refund.amount, 0);
+            assert.equal(totalAllocated, 7700);
+        });
+    }
+});
+
 describe("maintenance conflicts", () => {
     it("flags only the bookings inside the window and alerts admins", async () => {
         const vehicle = await insertVehicle();

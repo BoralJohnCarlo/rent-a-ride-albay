@@ -1,5 +1,6 @@
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
+import { withBookingCreationTransaction } from "./bookingCreationTransaction.js";
 import Rental from "../models/Rental.js";
 import ManualRefund from "../models/ManualRefund.js";
 
@@ -23,6 +24,8 @@ import { getReservationPaymentDeadline } from "./cancellationPolicyService.js";
 import createError from "../utils/createError.js";
 import { normalizeRefundAmount } from "../utils/refundAmount.js";
 import { getUpfrontFees } from "../utils/bookingFees.js";
+import { getAllocatedPriceChangeRefund } from "../utils/bookingRefundAllocations.js";
+import { createManualRefund } from "./manualRefundService.js";
 
 import {
     createCheckoutSession,
@@ -907,170 +910,163 @@ const verifyPayment = async (
 ) => {
     const { force = false } = options;
 
-    const payment =
-        await Payment.findById(
-            paymentId
-        );
+    const originalPayment = await Payment.findById(paymentId).select("booking");
+    if (!originalPayment) throw createError("Payment not found.", 404);
+    const { payment, booking, bookingPaid } = await withBookingCreationTransaction(
+        [`booking:${originalPayment.booking}`],
+        async (session) => {
+            const payment =
+                await Payment.findById(
+                    paymentId
+                ).session(session);
 
-    if (!payment) {
-        throw createError(
-            "Payment not found.",
-            404
-        );
-    }
-
-    if (
-        payment.status ===
-        PAYMENT_STATUS.VERIFIED
-    ) {
-        throw createError(
-            "This payment has already been verified.",
-            409
-        );
-    }
-
-    if (
-        payment.status ===
-        PAYMENT_STATUS.CANCELLED
-    ) {
-        throw createError(
-            "Cancelled payments cannot be verified.",
-            400
-        );
-    }
-
-    const booking =
-        await Booking.findById(
-            payment.booking
-        );
-
-    if (!booking) {
-        throw createError(
-            "Associated booking not found.",
-            404
-        );
-    }
-
-    validateBookingForPayment(
-        booking
-    );
-
-    const hasCheckoutSession =
-        Boolean(
-            payment.paymongo
-                ?.checkoutSessionId
-        );
-
-    if (
-        payment.paymentMethod ===
-        PAYMENT_METHOD.GCASH
-    ) {
-        if (
-            hasCheckoutSession &&
-            force &&
-            payment.status ===
-                PAYMENT_STATUS.PENDING
-        ) {
-            payment.status =
-                PAYMENT_STATUS.VERIFIED;
-        } else {
-            throw createError(
-                "Only PayMongo payments with a checkout session can be force verified.",
-                400
-            );
-        }
-    } else if (
-        payment.paymentMethod ===
-        PAYMENT_METHOD.CASH_ON_PICKUP
-    ) {
-        if (
-            payment.status !==
-            PAYMENT_STATUS.PENDING
-        ) {
-            throw createError(
-                "Only pending Cash on Pickup payments can be verified.",
-                400
-            );
-        }
-
-        payment.status =
-            PAYMENT_STATUS.VERIFIED;
-    } else {
-        throw createError(
-            "Unsupported payment method.",
-            400
-        );
-    }
-
-    payment.verification = {
-        verifiedBy: adminId,
-        verifiedAt: new Date(),
-        rejectionReason: "",
-    };
-
-    payment.processedBy =
-        adminId;
-
-    payment.processedAt =
-        new Date();
-
-    payment.audit.updatedBy =
-        adminId;
-
-    await payment.save();
-
-    /*
-     * A manually verified reservation payment (e.g. Cash on Pickup, or a
-     * force-verified GCash payment) must move the booking out of Pending the
-     * same way the PayMongo checkout-session path does, so lists and the
-     * unpaid-booking sweep see it as paid.
-     */
-    if (
-        payment.paymentType ===
-            PAYMENT_TYPE.RESERVATION_FEE &&
-        payment.status === PAYMENT_STATUS.VERIFIED
-    ) {
-        const bookingPaid =
-            await Booking.findOneAndUpdate(
-                {
-                    _id: booking._id,
-                    status: BOOKING_STATUS.PENDING,
-                },
-                {
-                    $set: {
-                        status: BOOKING_STATUS.PAYMENT_RECEIVED,
-                    },
-                },
-                { new: true }
-            );
-
-        if (bookingPaid) {
-            try {
-                await notifyAdmins({
-                    type: "payment",
-                    title: "Booking Payment Received",
-                    message: `Payment of ${formatPaymentAmount(
-                        payment.amount
-                    )} was recorded for booking ${
-                        bookingPaid.bookingCode
-                    }. The booking is now awaiting approval.`,
-                    variant: "payment",
-                    category: "Payment",
-                    metadata: {
-                        reference: bookingPaid.bookingCode,
-                        relatedId: bookingPaid._id,
-                        relatedModel: "Booking",
-                    },
-                });
-            } catch (notificationError) {
-                console.error(
-                    "Failed to notify admins of booking payment:",
-                    notificationError
+            if (!payment) {
+                throw createError(
+                    "Payment not found.",
+                    404
                 );
             }
+
+            if (
+                payment.status ===
+                PAYMENT_STATUS.VERIFIED
+            ) {
+                throw createError(
+                    "This payment has already been verified.",
+                    409
+                );
+            }
+
+            if (
+                payment.status ===
+                PAYMENT_STATUS.CANCELLED
+            ) {
+                throw createError(
+                    "Cancelled payments cannot be verified.",
+                    400
+                );
+            }
+
+            const booking =
+                await Booking.findById(
+                    payment.booking
+                ).session(session);
+
+            if (!booking) {
+                throw createError(
+                    "Associated booking not found.",
+                    404
+                );
+            }
+
+            validateBookingForPayment(
+                booking
+            );
+
+            const hasCheckoutSession =
+                Boolean(
+                    payment.paymongo
+                        ?.checkoutSessionId
+                );
+
+            if (
+                payment.paymentMethod ===
+                PAYMENT_METHOD.GCASH
+            ) {
+                if (
+                    hasCheckoutSession &&
+                    force &&
+                    payment.status ===
+                        PAYMENT_STATUS.PENDING
+                ) {
+                    payment.status =
+                        PAYMENT_STATUS.VERIFIED;
+                } else {
+                    throw createError(
+                        "Only PayMongo payments with a checkout session can be force verified.",
+                        400
+                    );
+                }
+            } else if (
+                payment.paymentMethod ===
+                PAYMENT_METHOD.CASH_ON_PICKUP
+            ) {
+                if (
+                    payment.status !==
+                    PAYMENT_STATUS.PENDING
+                ) {
+                    throw createError(
+                        "Only pending Cash on Pickup payments can be verified.",
+                        400
+                    );
+                }
+
+                payment.status =
+                    PAYMENT_STATUS.VERIFIED;
+            } else {
+                throw createError(
+                    "Unsupported payment method.",
+                    400
+                );
+            }
+
+            payment.verification = {
+                verifiedBy: adminId,
+                verifiedAt: new Date(),
+                rejectionReason: "",
+            };
+
+            payment.processedBy =
+                adminId;
+
+            payment.processedAt =
+                new Date();
+
+            payment.audit.updatedBy =
+                adminId;
+
+            await payment.save({ session });
+
+            const wasPending = payment.paymentType === PAYMENT_TYPE.RESERVATION_FEE &&
+                booking.status === BOOKING_STATUS.PENDING;
+            const currentBooking = await Booking.findOneAndUpdate(
+                { _id: booking._id, status: booking.status },
+                {
+                    $set: { status: wasPending ? BOOKING_STATUS.PAYMENT_RECEIVED : booking.status },
+                    $currentDate: { updatedAt: true },
+                },
+                { new: true, session, timestamps: false }
+            );
+            if (!currentBooking) throw createError("This booking changed while confirming payment. Please retry.", 409);
+            return { payment, booking: currentBooking, bookingPaid: wasPending ? currentBooking : null };
+        }
+    );
+
+    if (bookingPaid) {
+        try {
+            await notifyAdmins({
+                type: "payment",
+                title: "Booking Payment Received",
+                message: `Payment of ${formatPaymentAmount(
+                    payment.amount
+                )} was recorded for booking ${
+                    bookingPaid.bookingCode
+                }. The booking is now awaiting approval.`,
+                variant: "payment",
+                category: "Payment",
+                metadata: {
+                    reference: bookingPaid.bookingCode,
+                    relatedId: bookingPaid._id,
+                    relatedModel: "Booking",
+                },
+            });
+        } catch (notificationError) {
+            console.error(
+                "Failed to notify admins of booking payment:",
+                notificationError
+            );
         }
     }
-
     await notifyPaymentCustomer(payment, booking);
 
     return findPaymentById(
@@ -1112,125 +1108,108 @@ const verifyPaymentByCheckoutSession = async (
         );
     }
 
-    const booking =
-        await Booking.findById(
-            payment.booking
-        );
+    const outcome = await withBookingCreationTransaction(
+        [`booking:${payment.booking}`],
+        async (session) => {
+            const payment = await Payment.findOne({
+                "paymongo.checkoutSessionId": checkoutSessionId,
+            }).session(session);
+            if (!payment) throw createError("Payment not found for this checkout session.", 404);
+            if (payment.status === PAYMENT_STATUS.VERIFIED) {
+                return { alreadyVerified: true, paymentId: payment._id };
+            }
+            const booking = await Booking.findById(payment.booking).session(session);
+            if (!booking) throw createError("Associated booking not found.", 404);
+            if (BOOKING_ENDED_WITHOUT_TRIP_STATUSES.includes(booking.status)) {
+                // Gateway calls must run outside the retryable transaction.
+                return { latePayment: payment, closedStatus: booking.status };
+            }
 
-    if (!booking) {
-        throw createError(
-            "Associated booking not found.",
-            404
-        );
-    }
+            const revivesCancelledPayment =
+                payment.status ===
+                PAYMENT_STATUS.CANCELLED;
 
-    /*
-     * Only ever reached once PayMongo says the checkout was paid (the paid
-     * webhook, or a reconcile that saw `paid`). Only a booking that ended
-     * WITHOUT the trip happening makes that money unhonourable — refund it
-     * rather than rejecting the call, which left the customer charged with
-     * nothing recorded and PayMongo retrying the webhook to no effect.
-     *
-     * A COMPLETED booking is different: an extension fee paid after the
-     * rental finished is money genuinely owed for days already used, so it is
-     * recorded normally below.
-     */
-    const closedStatuses = BOOKING_ENDED_WITHOUT_TRIP_STATUSES;
+            /*
+             * Atomic flip: the webhook and the customer's client-side reconcile can
+             * arrive at nearly the same moment. Only the call that actually moves the
+             * payment out of a non-final state proceeds to send notifications; the
+             * other one falls through to the idempotent read below.
+             */
+            const verifiedPayment =
+                await Payment.findOneAndUpdate(
+                    {
+                        _id: payment._id,
+                        status: {
+                            $in: [
+                                PAYMENT_STATUS.PENDING,
+                                PAYMENT_STATUS.CANCELLED,
+                            ],
+                        },
+                    },
+                    {
+                        $set: {
+                            ...(revivesCancelledPayment
+                                ? {
+                                      notes: "Paid on a checkout left open after the payment attempt was cancelled; the booking was still open, so it was accepted.",
+                                  }
+                                : {}),
+                            status: PAYMENT_STATUS.VERIFIED,
+                            "paymongo.paymentId":
+                                paymongoPaymentId ||
+                                payment.paymongo
+                                    ?.paymentId ||
+                                "",
+                            "paymongo.chargeId":
+                                chargeId ||
+                                payment.paymongo
+                                    ?.chargeId ||
+                                "",
+                            ...paidWithFields(paidWith),
+                            verification: {
+                                verifiedBy: null,
+                                verifiedAt: new Date(),
+                                rejectionReason: "",
+                            },
+                            processedBy: null,
+                            processedAt: new Date(),
+                            "audit.updatedBy": null,
+                        },
+                    },
+                    { new: true, session }
+                );
 
-    if (
-        closedStatuses.includes(
-            booking.status
-        )
-    ) {
-        return refundLatePayment(payment, {
-            paymongoPaymentId,
-            chargeId,
-            paidWith,
-            closedBecause:
-                booking.status === BOOKING_STATUS.NO_SHOW
-                    ? "the booking was marked as a no-show"
-                    : `the booking was ${booking.status.toLowerCase()}`,
+            if (!verifiedPayment) {
+                // Another path already verified this payment.
+                return { alreadyVerified: true, paymentId: payment._id };
+            }
+
+
+            // Write the booking as well as the payment. Cancellation writes
+            // this same document, so a concurrent closure forces a retry and
+            // a fresh status check before either result can commit.
+            const wasPending = booking.status === BOOKING_STATUS.PENDING;
+            const currentBooking = await Booking.findOneAndUpdate(
+                { _id: booking._id, status: booking.status },
+                {
+                    $set: { status: wasPending ? BOOKING_STATUS.PAYMENT_RECEIVED : booking.status },
+                    $currentDate: { updatedAt: true },
+                },
+                { new: true, session, timestamps: false }
+            );
+            if (!currentBooking) throw createError("This booking changed while confirming payment. Please retry.", 409);
+            return { verifiedPayment, booking: currentBooking, bookingPaid: wasPending ? currentBooking : null };
+        }
+    );
+    if (outcome.alreadyVerified) return findPaymentById(outcome.paymentId);
+    if (outcome.latePayment) {
+        return refundLatePayment(outcome.latePayment, {
+            paymongoPaymentId, chargeId, paidWith,
+            closedBecause: outcome.closedStatus === BOOKING_STATUS.NO_SHOW
+                ? "the booking was marked as a no-show"
+                : `the booking was ${outcome.closedStatus.toLowerCase()}`,
         });
     }
-
-    /*
-     * A payment the customer cancelled themselves that is then paid on the
-     * checkout they left open, while the booking is STILL open: they clearly
-     * meant to pay, and a cancelled reservation payment blocks starting
-     * another for the same booking — refunding it would just strand them.
-     * So accept it, and say so on the record.
-     */
-    const revivesCancelledPayment =
-        payment.status ===
-        PAYMENT_STATUS.CANCELLED;
-
-    /*
-     * Atomic flip: the webhook and the customer's client-side reconcile can
-     * arrive at nearly the same moment. Only the call that actually moves the
-     * payment out of a non-final state proceeds to send notifications; the
-     * other one falls through to the idempotent read below.
-     */
-    const verifiedPayment =
-        await Payment.findOneAndUpdate(
-            {
-                _id: payment._id,
-                status: {
-                    $in: [
-                        PAYMENT_STATUS.PENDING,
-                        PAYMENT_STATUS.CANCELLED,
-                    ],
-                },
-            },
-            {
-                $set: {
-                    ...(revivesCancelledPayment
-                        ? {
-                              notes: "Paid on a checkout left open after the payment attempt was cancelled; the booking was still open, so it was accepted.",
-                          }
-                        : {}),
-                    status: PAYMENT_STATUS.VERIFIED,
-                    "paymongo.paymentId":
-                        paymongoPaymentId ||
-                        payment.paymongo
-                            ?.paymentId ||
-                        "",
-                    "paymongo.chargeId":
-                        chargeId ||
-                        payment.paymongo
-                            ?.chargeId ||
-                        "",
-                    ...paidWithFields(paidWith),
-                    verification: {
-                        verifiedBy: null,
-                        verifiedAt: new Date(),
-                        rejectionReason: "",
-                    },
-                    processedBy: null,
-                    processedAt: new Date(),
-                    "audit.updatedBy": null,
-                },
-            },
-            { new: true }
-        );
-
-    if (!verifiedPayment) {
-        // Another path already verified this payment.
-        return findPaymentById(payment._id);
-    }
-
-    const bookingPaid =
-        await Booking.findOneAndUpdate(
-            {
-                _id: booking._id,
-                status: BOOKING_STATUS.PENDING,
-            },
-            {
-                $set: {
-                    status: BOOKING_STATUS.PAYMENT_RECEIVED,
-                },
-            },
-            { new: true }
-        );
+    const { verifiedPayment, booking, bookingPaid } = outcome;
 
     if (bookingPaid) {
         try {
@@ -1427,28 +1406,24 @@ const cancelPayment = async (
         );
     }
 
-    if (
-        [
-            PAYMENT_STATUS.VERIFIED,
-            PAYMENT_STATUS.CANCELLED,
-        ].includes(payment.status)
-    ) {
+    if (payment.status !== PAYMENT_STATUS.PENDING) {
         throw createError(
             "This payment cannot be cancelled.",
             400
         );
     }
 
-    payment.status =
-        PAYMENT_STATUS.CANCELLED;
-
-    payment.audit.updatedBy =
-        userId;
-
-    await payment.save();
+    const cancelled = await Payment.findOneAndUpdate(
+        { _id: payment._id, customer: userId, status: PAYMENT_STATUS.PENDING },
+        { $set: { status: PAYMENT_STATUS.CANCELLED, "audit.updatedBy": userId } },
+        { new: true }
+    );
+    if (!cancelled) {
+        throw createError("This payment changed while you were cancelling it. Please refresh.", 409);
+    }
 
     // Close the checkout too, or it could still be completed afterwards.
-    await closeCheckoutSession(payment);
+    await closeCheckoutSession(cancelled);
 
     return findPaymentById(
         payment._id
@@ -2120,13 +2095,23 @@ const refundBookingExtensionFees = async (
         });
 
     const refunded = [];
+    const booking = await Booking.findById(bookingId).select("customer bookingCode reschedules vehicleChanges").lean();
 
     for (const payment of extensionPayments) {
         try {
+            const allocated = getAllocatedPriceChangeRefund(booking, payment._id, false);
+            const remaining = Math.max(0, Math.round((Number(payment.amount) - Math.max(allocated, Number(payment.refund?.amount || 0))) * 100) / 100);
+            if (!remaining) continue;
+            if (payment.refund) {
+                await createManualRefund({ booking, payment: payment._id, amount: remaining,
+                    reason: `${notes} This top-up was partly refunded earlier; return only its remaining balance.`, createdBy: initiatedBy });
+                refunded.push({ _id: payment._id, refund: { amount: remaining, status: PAYMENT_REFUND_STATUS.REQUIRES_MANUAL_ACTION } });
+                continue;
+            }
             const result = await refundPayment(
                 payment,
                 {
-                    amount: payment.amount,
+                    amount: remaining,
                     reason,
                     notes,
                     forceManual:
@@ -3157,6 +3142,7 @@ const reconcilePendingRefunds = async () => {
 };
 
 export {
+    refundPayment,
     createPayment,
     createPaymongoCheckout,
     verifyPayment,

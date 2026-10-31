@@ -6,6 +6,7 @@ import { getUpfrontFees } from "../utils/bookingFees.js";
 
 import Rental from "../models/Rental.js";
 import Booking from "../models/Booking.js";
+import { withBookingCreationTransaction } from "./bookingCreationTransaction.js";
 import Vehicle from "../models/Vehicle.js";
 import Driver from "../models/Driver.js";
 import { nextSequence } from "../models/Sequence.js";
@@ -74,6 +75,7 @@ import {
 import {
     closePendingDriverChangeRequests,
     ensurePickupPaymentVerified,
+    ensureCustomerLicenseForDateChange,
 } from "./bookingService.js";
 
 import {
@@ -676,6 +678,14 @@ const getBookingFeesPaid = async (
             .map((refund) => String(refund.gatewayPayment))
     );
 
+    // Separate owed refunds are additional to the payment's single refund
+    // slot. Reserve owed money too, just as pending payment refunds are netted.
+    const manualRefunds = await ManualRefund.find({
+        booking: bookingId,
+        status: { $in: [MANUAL_REFUND_STATUS.OWED, MANUAL_REFUND_STATUS.PAID] },
+    }).select("amount").lean();
+    const manualTotal = manualRefunds.reduce((sum, refund) => sum + Number(refund.amount || 0), 0);
+
     return bookingPayments.reduce((total, payment) => {
         const untrackedRefund =
             payment.refund &&
@@ -690,7 +700,7 @@ const getBookingFeesPaid = async (
             Number(payment.amount) -
             untrackedRefund
         );
-    }, 0);
+    }, 0) - manualTotal;
 };
 
 export const calculateFinancials = async (
@@ -1144,6 +1154,7 @@ const findNextCommitmentStart = async (
     const starts = [
         nextVehicleBooking?.startDate,
         nextDriverBooking?.startDate,
+        getMaintenanceWindow(vehicle)?.start,
         ...(vehicle.availability?.blockedDates || []).map(
             (blocked) => blocked.startDate
         ),
@@ -1268,6 +1279,9 @@ const ensureEarlyReleaseIsClear = async (booking, vehicle, pickupAt) => {
     if (blocked) {
         throw refuse("dates blocked on this vehicle");
     }
+    if (overlapsMaintenance(vehicle, pickupAt, clearUntil)) {
+        throw refuse("scheduled maintenance");
+    }
 };
 
 /*
@@ -1312,10 +1326,18 @@ export const createRental = async (
     // while Settings → Bookings → Early Pickup allows it).
     { releaseEarly = false } = {}
 ) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
+    // Read the resource ids before starting, then recheck them under the
+    // guards. An assignment change must not let pickup use an unlocked driver.
+    const expected = await Booking.findById(bookingId).select("vehicle driver customer").lean();
+    if (!expected) throw createError("Booking not found.", 404);
+    const { rentalDoc, actualPeriod, isEarlyRelease, bookedPickupAt } = await withBookingCreationTransaction(
+        [
+            `booking:${bookingId}`,
+            `customer:${expected.customer}`,
+            `vehicle:${expected.vehicle}`,
+            ...(expected.driver ? [`driver:${expected.driver}`] : []),
+        ],
+        async (session) => {
         const booking = await Booking.findById(
             bookingId
         ).session(session);
@@ -1325,6 +1347,12 @@ export const createRental = async (
                 "Booking not found.",
                 404
             );
+        }
+
+        if (String(booking.vehicle) !== String(expected.vehicle) ||
+            String(booking.driver ?? "") !== String(expected.driver ?? "") ||
+            String(booking.customer) !== String(expected.customer)) {
+            throw createError("This booking's vehicle or driver changed. Refresh and try pickup again.", 409);
         }
 
         ensureBookingEligibleForPickup(
@@ -1469,11 +1497,6 @@ export const createRental = async (
             lockedVehicle
         );
 
-        await ensureDriverEligibleForPickup(
-            booking.driver,
-            booking.endDate
-        );
-
         if (isEarlyRelease) {
             await ensureEarlyReleaseIsClear(
                 booking,
@@ -1517,6 +1540,12 @@ export const createRental = async (
                 pickupDate,
                 session
             );
+
+        await ensureDriverEligibleForPickup(booking.driver, actualPeriod.end);
+
+        // Approval may precede a profile change or a late handover. Check the
+        // customer's license against the actual return time before release.
+        await ensureCustomerLicenseForDateChange(booking, actualPeriod.end, null, session);
 
         applyActualRentalPeriod(
             booking,
@@ -1792,49 +1821,45 @@ export const createRental = async (
             );
         }
 
-        await session.commitTransaction();
-
-        // Picked up with the assigned driver: nothing left to change.
-        await closePendingDriverChangeRequests(
-            { _id: rentalDoc.booking },
-            currentUserId,
-            "The vehicle was picked up with the assigned driver."
-        );
-
-        // The transaction is already committed; notification failures here must
-        // never trigger the abort path below.
-        try {
-            await notifyRentalVehicleOperator(rentalDoc, {
-                type: "Rental Started",
-                title: "Your Vehicle Is Now on Rental",
-                message: `Rental ${rentalDoc.rentalCode} has started. Your vehicle is out with the customer until ${formatManilaDateTime(actualPeriod.end)}.`,
-                variant: "info",
-            });
-
-            await notifyRentalCustomer(rentalDoc, {
-                type: "Rental Confirmed",
-                title: "Rental Confirmed",
-                message: `Your rental ${rentalDoc.rentalCode} is confirmed. Your rental period started at pickup (${formatManilaDateTime(actualPeriod.start)}), so return is due by ${formatManilaDateTime(actualPeriod.end)}.${
-                    actualPeriod.capped
-                        ? " This is shorter than your full booked duration because the vehicle or driver is needed right after your rental."
-                        : ""
-                }`,
-                variant: "success",
-            });
-        } catch (notificationError) {
-            console.error(
-                "Failed to send rental creation notifications:",
-                notificationError
-            );
+        return { rentalDoc, actualPeriod, isEarlyRelease, bookedPickupAt };
         }
+    );
 
-        return rentalDoc;
-    } catch (error) {
-        await session.abortTransaction();
-        throw error;
-    } finally {
-        session.endSession();
+    // Picked up with the assigned driver: nothing left to change.
+    await closePendingDriverChangeRequests(
+        { _id: rentalDoc.booking },
+        currentUserId,
+        "The vehicle was picked up with the assigned driver."
+    );
+
+    // Notifications run only after commit, never during a transaction retry.
+    try {
+        await notifyRentalVehicleOperator(rentalDoc, {
+            type: "Rental Started",
+            title: "Your Vehicle Is Now on Rental",
+            message: `Rental ${rentalDoc.rentalCode} has started. Your vehicle is out with the customer until ${formatManilaDateTime(actualPeriod.end)}.`,
+            variant: "info",
+        });
+
+        await notifyRentalCustomer(rentalDoc, {
+            type: "Rental Confirmed",
+            title: "Rental Confirmed",
+            message: `Your rental ${rentalDoc.rentalCode} is confirmed. Your rental period started at pickup (${formatManilaDateTime(actualPeriod.start)}), so return is due by ${formatManilaDateTime(actualPeriod.end)}.${
+                actualPeriod.capped
+                    ? " This is shorter than your full booked duration because the vehicle or driver is needed right after your rental."
+                    : ""
+            }`,
+            variant: "success",
+        });
+    } catch (notificationError) {
+        console.error(
+            "Failed to send rental creation notifications:",
+            notificationError
+        );
     }
+
+    return rentalDoc;
+
 };
 
 export const processPickup = async (

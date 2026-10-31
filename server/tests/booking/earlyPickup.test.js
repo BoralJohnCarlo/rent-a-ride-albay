@@ -1,4 +1,4 @@
-import { after, before, beforeEach, describe, it } from "node:test";
+import { after, afterEach, before, beforeEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 
 import cookieParser from "cookie-parser";
@@ -14,14 +14,18 @@ import Rental from "../../models/Rental.js";
 import Settings from "../../models/Settings.js";
 import User from "../../models/User.js";
 import Vehicle from "../../models/Vehicle.js";
+import Driver from "../../models/Driver.js";
+import Payment from "../../models/Payment.js";
 
 import {
     BOOKING_DRIVER_OPTIONS,
     BOOKING_STATUS,
 } from "../../constants/bookingConstants.js";
-import { VEHICLE_STATUS } from "../../constants/vehicleConstants.js";
+import { VEHICLE_STATUS, VEHICLE_MAINTENANCE_MODE } from "../../constants/vehicleConstants.js";
 
 import { createRental } from "../../services/rentalService.js";
+import { createBooking } from "../../services/bookingService.js";
+import { DRIVER_STATUS, DRIVER_AVAILABILITY } from "../../constants/driverConstants.js";
 import { getBookingSettings } from "../../services/settingsService.js";
 
 import { connectTestDb, disconnectTestDb } from "../helpers/testDb.js";
@@ -101,10 +105,11 @@ before(async () => {
 });
 
 after(disconnectTestDb);
+afterEach(() => mock.restoreAll());
 
 beforeEach(async () => {
     await Promise.all(
-        [Booking, Notification, Rental, Settings, User, Vehicle].map(
+        [Booking, Notification, Rental, Settings, User, Vehicle, Driver, Payment].map(
             (model) => model.deleteMany({})
         )
     );
@@ -132,6 +137,212 @@ beforeEach(async () => {
         model: "Car",
         availability: { bookingEnabled: true, blockedDates: [] },
     });
+});
+
+describe("customer license at pickup", () => {
+    const dueBooking = async () => {
+        const start = new Date(Date.now() - HOUR);
+        return insertBooking(start, new Date(start.getTime() + 2 * DAY));
+    };
+
+    const assertNotReleased = async (booking) => {
+        assert.equal(await vehicleStatus(), VEHICLE_STATUS.RESERVED);
+        assert.equal(await Rental.countDocuments(), 0);
+        assert.equal((await Booking.findById(booking)).status, BOOKING_STATUS.APPROVED);
+    };
+
+    it("refuses a self-drive customer whose license expired after approval", async () => {
+        const booking = await dueBooking();
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: new Date(Date.now() - DAY) } });
+        await assert.rejects(createRental(booking, adminId), /license has expired/);
+        await assertNotReleased(booking);
+    });
+
+    it("refuses a license that does not cover the full rental", async () => {
+        const booking = await dueBooking();
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: new Date(Date.now() + DAY) } });
+        await assert.rejects(createRental(booking, adminId), /before this rental ends/);
+        await assertNotReleased(booking);
+    });
+
+    it("uses the actual return date when a late pickup shifts the rental", async () => {
+        const start = new Date(Date.now() - 3 * HOUR);
+        const bookedEnd = new Date(start.getTime() + 2 * DAY);
+        const booking = await insertBooking(start, bookedEnd);
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: new Date(bookedEnd.getTime() + HOUR) } });
+        await assert.rejects(createRental(booking, adminId), /before this rental ends/);
+        await assertNotReleased(booking);
+    });
+
+    it("releases the vehicle after the customer renews their license", async () => {
+        const booking = await dueBooking();
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: new Date(Date.now() - DAY) } });
+        await assert.rejects(createRental(booking, adminId), /license has expired/);
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: new Date(Date.now() + 3 * DAY) } });
+        const rental = await createRental(booking, adminId);
+        assert.equal(String(rental.booking), String(booking));
+        assert.equal((await Booking.findById(booking)).status, BOOKING_STATUS.ONGOING);
+        assert.equal(await vehicleStatus(), VEHICLE_STATUS.RENTED);
+    });
+
+    it("respects the setting that disables customer license restrictions", async () => {
+        const booking = await dueBooking();
+        await Settings.collection.updateOne({}, { $set: { "customerBookingSettings.licenseRestrictionEnabled": false } }, { upsert: true });
+        await User.updateOne({ _id: customerId }, { $set: { licenseExpirationDate: new Date(Date.now() - DAY) } });
+        await createRental(booking, adminId);
+        assert.equal(await Rental.countDocuments(), 1);
+    });
+});
+
+describe("maintenance during the actual pickup period", () => {
+    it("caps a late pickup before maintenance with the turnaround buffer intact", async () => {
+        const start = new Date(Date.now() - 3 * HOUR);
+        const bookedEnd = new Date(start.getTime() + 2 * DAY);
+        const maintenanceStart = new Date(bookedEnd.getTime() + HOUR);
+        const booking = await insertBooking(start, bookedEnd);
+        await Vehicle.updateOne({ _id: vehicleId }, { $set: { maintenance: {
+            mode: VEHICLE_MAINTENANCE_MODE.EXTENDED,
+            startedAt: maintenanceStart,
+            until: new Date(maintenanceStart.getTime() + DAY),
+        } } });
+        const rental = await createRental(booking, adminId);
+        assert.equal(rental.bookingPeriod.returnCapped, true);
+        assert.equal(new Date(rental.actualEndDate).getTime(), maintenanceStart.getTime() - 2 * HOUR);
+    });
+
+    it("refuses early release into maintenance instead of shortening the rental", async () => {
+        await setEarlyPickup(true);
+        const booking = await futureBooking();
+        await Vehicle.updateOne({ _id: vehicleId }, { $set: { maintenance: {
+            mode: VEHICLE_MAINTENANCE_MODE.EXTENDED,
+            startedAt: new Date(Date.now() + DAY), until: new Date(Date.now() + 2 * DAY),
+        } } });
+        await assert.rejects(createRental(booking, adminId, { releaseEarly: true }), /maintenance/);
+        assert.equal(await Rental.countDocuments(), 0);
+        assert.equal(await vehicleStatus(), VEHICLE_STATUS.RESERVED);
+    });
+});
+
+describe("driver coverage of the actual pickup period", () => {
+    it("refuses release when a late pickup moves the return past the assigned driver's license expiry", async () => {
+        const start = new Date(Date.now() - 3 * HOUR);
+        const bookedEnd = new Date(start.getTime() + 2 * DAY);
+        const driver = newId();
+        await Driver.collection.insertOne({
+            _id: driver, driverCode: `DRV-${driver}`, email: `driver-${driver}@test.local`,
+            status: DRIVER_STATUS.ACTIVE, availability: DRIVER_AVAILABILITY.AVAILABLE,
+            license: { licenseNumber: `LIC-${driver}`, expiryDate: new Date(bookedEnd.getTime() + HOUR) },
+        });
+        const booking = await insertBooking(start, bookedEnd, { driver, driverOption: BOOKING_DRIVER_OPTIONS.WITH_DRIVER });
+        await assert.rejects(createRental(booking, adminId), /driver's license expires before this rental ends/);
+        assert.equal(await vehicleStatus(), VEHICLE_STATUS.RESERVED);
+        assert.equal((await Booking.findById(booking)).status, BOOKING_STATUS.APPROVED);
+        assert.equal(await Rental.countDocuments(), 0);
+
+        await Driver.updateOne({ _id: driver }, { $set: { "license.expiryDate": new Date(Date.now() + 3 * DAY) } });
+        const rental = await createRental(booking, adminId);
+        assert.equal(String(rental.driver), String(driver));
+    });
+});
+
+describe("pickup sharing resource guards with new bookings", () => {
+    const scenario = async (resource) => {
+        const driver = resource === "driver" ? newId() : null;
+        if (driver) {
+            await Driver.collection.insertOne({
+                _id: driver, driverCode: `DRV-${driver}`, email: `driver-${driver}@test.local`,
+                firstName: "Test", lastName: "Driver", phoneNumber: "09170000000",
+                status: DRIVER_STATUS.ACTIVE, availability: DRIVER_AVAILABILITY.AVAILABLE,
+                archive: { isArchived: false },
+                license: { licenseNumber: `LIC-${driver}`, licenseType: "Professional", restrictionCodes: ["B"], expiryDate: new Date(Date.now() + 365 * DAY) },
+            });
+        }
+        await Settings.create({
+            bookingSettings: { turnaroundBufferMinutes: 120 },
+            driverAssignmentSettings: { requireAdminDriverAssignment: !driver },
+        });
+        await Vehicle.updateOne({ _id: vehicleId }, { $set: { pricing: { dailyRate: 1000, reservationFee: 0 } } });
+        const rivalStart = new Date(Date.now() + 2 * DAY);
+        rivalStart.setUTCHours(2, 0, 0, 0); // 10 AM Manila, inside pickup hours.
+        const booking = await insertBooking(new Date(Date.now() - 12 * HOUR), new Date(rivalStart.getTime() - 4 * HOUR), {
+            driver, driverOption: driver ? BOOKING_DRIVER_OPTIONS.WITH_DRIVER : BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER,
+        });
+        const rivalCustomer = newId();
+        await User.collection.insertOne({ _id: rivalCustomer, role: "customer", isVerified: true, email: `rival-${rivalCustomer}@test.local` });
+        const rivalVehicle = resource === "vehicle" ? vehicleId : newId();
+        if (resource === "driver") {
+            await Vehicle.collection.insertOne({
+                _id: rivalVehicle, vehicleCode: `TEST-${rivalVehicle}`, plateNumber: `TEST-${rivalVehicle}`,
+                brand: "Test", model: "Car", vehicleType: "Car", status: VEHICLE_STATUS.AVAILABLE,
+                pricing: { dailyRate: 1000, reservationFee: 0 }, availability: { bookingEnabled: true, blockedDates: [] },
+            });
+        }
+        const location = { type: "Custom", address: "Legazpi City", latitude: 13.1391, longitude: 123.7438 };
+        const rival = () => createBooking({
+            vehicle: rivalVehicle, driverOption: BOOKING_DRIVER_OPTIONS.WITH_DRIVER, driver,
+            startDate: rivalStart.toISOString(), endDate: new Date(rivalStart.getTime() + 2 * DAY).toISOString(),
+            pickupLocation: location, returnLocation: location,
+        }, rivalCustomer);
+        return { booking, rival, rivalStart, key: `${resource}:${resource === "vehicle" ? vehicleId : driver}` };
+    };
+
+    for (const resource of ["vehicle", "driver"]) {
+        it(`rejects a new booking of the same ${resource} when pickup wins the shifted window`, async () => {
+            const { booking, rival, key } = await scenario(resource);
+            const Guard = mongoose.model("BookingCreationGuard");
+            const update = Guard.updateOne;
+            let started = false;
+            let rivalResult;
+            let reachedGuard;
+            const rivalReady = new Promise((resolve) => { reachedGuard = resolve; });
+            mock.method(Guard, "updateOne", function (...args) {
+                if (started && args[0]._id === key) reachedGuard();
+                return update.apply(this, args);
+            });
+            const find = Booking.findOne;
+            mock.method(Booking, "findOne", function (...args) {
+                const query = find.apply(this, args);
+                const exec = query.exec.bind(query);
+                query.exec = async () => {
+                    const result = await exec();
+                    if (!started && query.getOptions().session && query.getFilter().startDate?.$gt) {
+                        started = true;
+                        rivalResult = rival().then((value) => ({ value }), (error) => ({ error }));
+                        // Both requests have passed their calendar checks; the
+                        // new booking must now wait on pickup's shared guard.
+                        await rivalReady;
+                    }
+                    return result;
+                };
+                return query;
+            });
+            await createRental(booking, adminId);
+            assert.ok(started);
+            const result = await rivalResult;
+            assert.match(result.error?.message || "", /already booked/);
+            assert.equal(await Rental.countDocuments(), 1);
+            assert.equal(await Booking.countDocuments(), 1);
+        });
+
+        it(`caps pickup safely when a new booking of the same ${resource} wins first`, async () => {
+            const { booking, rival, rivalStart, key } = await scenario(resource);
+            const Guard = mongoose.model("BookingCreationGuard");
+            const update = Guard.updateOne;
+            let inserted = false;
+            mock.method(Guard, "updateOne", async function (...args) {
+                if (!inserted && args[0]._id === key) {
+                    inserted = true;
+                    await rival();
+                }
+                return update.apply(this, args);
+            });
+            const rental = await createRental(booking, adminId);
+            assert.ok(inserted);
+            assert.equal(rental.bookingPeriod.returnCapped, true);
+            assert.equal(new Date(rental.actualEndDate).getTime(), rivalStart.getTime() - 2 * HOUR);
+            assert.equal(await Booking.countDocuments(), 2);
+        });
+    }
 });
 
 describe("early pickup override", () => {

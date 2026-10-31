@@ -1,4 +1,5 @@
 import createError from "../utils/createError.js";
+import { getAllocatedPriceChangeRefund } from "../utils/bookingRefundAllocations.js";
 
 import mongoose from "mongoose";
 
@@ -32,7 +33,6 @@ import {
 import {
     getBookingLocationPolicy,
     getOffRoadVehicleSettings,
-    getPickupHours,
     getTurnaroundBufferMs,
     resolveRefundSettings,
 } from "./settingsService.js";
@@ -174,6 +174,7 @@ import {
 import {
     verifyPaymentByCheckoutSession,
     processBookingRefund,
+    refundPayment,
     refundBookingExtensionFees,
     cancelPendingBookingPayments,
     closeCheckoutSession,
@@ -687,25 +688,7 @@ const getApprovedReschedules = (booking) =>
  * promised to, when handed to an admin). A Payment carries only one refund,
  * so later refunds on the booking must count this first.
  */
-const getRescheduleRefundedAmount = (booking) => {
-    const vehicleChangeRefund = (booking?.vehicleChanges || []).reduce(
-        (total, change) =>
-            change.settlement?.kind === BOOKING_RESCHEDULE_SETTLEMENT.REFUND
-                ? total + Number(change.settlement.amount || 0)
-                : total,
-        0
-    );
-
-    return getApprovedReschedules(booking).reduce(
-        (total, reschedule) =>
-            reschedule.settlement?.kind ===
-            BOOKING_RESCHEDULE_SETTLEMENT.REFUND
-                ? total + Number(reschedule.settlement.amount || 0)
-                : total,
-        vehicleChangeRefund
-    );
-};
-
+const getRescheduleRefundedAmount = (booking) => getAllocatedPriceChangeRefund(booking);
 /*
  * Cancellation fees follow the EARLIER of the original and current pickup
  * dates, so a customer can't reschedule far out just to cancel later for a
@@ -755,7 +738,7 @@ const getVerifiedPrePickupPaymentAmount = async (
         paymentType: PAYMENT_TYPE.RESERVATION_FEE,
         status: PAYMENT_STATUS.VERIFIED,
     })
-        .select("amount")
+        .select("_id amount refund")
         .lean();
 
     const amount = Number(payment?.amount || 0);
@@ -773,9 +756,60 @@ const getVerifiedPrePickupPaymentAmount = async (
     return Math.max(
         0,
         Math.round(
-            (amount - getRescheduleRefundedAmount(booking)) * 100
+            (amount - getAllocatedPriceChangeRefund(booking, payment._id)) * 100
         ) / 100
     );
+};
+
+// Price changes must count reservation payments AND paid reschedule top-ups.
+// Count promised refunds too, so a held/manual refund isn't promised twice.
+const getPrePickupTotalPaid = async (bookingId) => {
+    const payments = await Payment.find({
+        booking: bookingId,
+        paymentType: { $in: [PAYMENT_TYPE.RESERVATION_FEE, PAYMENT_TYPE.EXTENSION_FEE] },
+        status: { $in: [PAYMENT_STATUS.VERIFIED, PAYMENT_STATUS.REFUNDED] },
+    }).select("amount refund").lean();
+    const booking = await Booking.findById(bookingId).select("reschedules vehicleChanges").lean();
+    const gross = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const refunded = payments.reduce((sum, p) => sum + (p.refund?.status !== PAYMENT_REFUND_STATUS.FAILED ? Number(p.refund?.amount || 0) : 0), 0);
+    return Math.max(0, roundMoney(gross - Math.max(refunded, getRescheduleRefundedAmount(booking))));
+};
+
+const allocatePriceChangeRefund = async (booking, amount, options, initiatedBy, settlement) => {
+    const payments = await Payment.find({
+        booking: booking._id,
+        paymentType: { $in: [PAYMENT_TYPE.RESERVATION_FEE, PAYMENT_TYPE.EXTENSION_FEE] },
+        status: PAYMENT_STATUS.VERIFIED,
+    }).sort({ paymentType: -1, createdAt: 1, _id: 1 });
+    const allocations = [];
+    // Preserve each successful share even if a later payment fails.
+    settlement.allocations = allocations;
+    let remaining = amount;
+    let manual = false;
+    for (const payment of payments) {
+        if (remaining <= 0) break;
+        const reserved = getAllocatedPriceChangeRefund(booking, payment._id, payment.paymentType === PAYMENT_TYPE.RESERVATION_FEE);
+        const available = roundMoney(Number(payment.amount) - Math.max(reserved, Number(payment.refund?.amount || 0)));
+        const part = Math.min(remaining, Math.max(0, available));
+        if (!part) continue;
+        if (payment.refund) {
+            const record = await createManualRefund({ booking, amount: part, payment: payment._id,
+                reason: options.notes + " This payment already carries a refund; settle the remaining share manually.", createdBy: initiatedBy });
+            if (!record) throw createError("The owed refund could not be recorded. Admin review is required.", 409);
+            manual = true;
+        } else {
+            const result = await refundPayment(payment, { ...options, amount: part }, initiatedBy);
+            if (!result?.refund || Number(result.refund.amount) !== part) throw createError("The refund payment changed. Admin review is required.", 409);
+            manual ||= result.refund.status === PAYMENT_REFUND_STATUS.REQUIRES_MANUAL_ACTION;
+        }
+        allocations.push({ payment: payment._id, amount: part });
+        settlement.amount = roundMoney((settlement.amount || 0) + part);
+        settlement.payment ||= payment._id;
+        settlement.manual = manual;
+        remaining = roundMoney(remaining - part);
+    }
+    if (remaining > 0) throw createError("The remaining refund could not be allocated to a paid payment. Admin review is required.", 409);
+    return { allocations, manual, payment: allocations[0]?.payment ?? null };
 };
 
 /*
@@ -1425,12 +1459,13 @@ const validatePickupSchedule = (
  */
 const ensureCustomerLicenseNotExpired = async (
     customerId,
-    { validThrough = null } = {}
+    { validThrough = null, session = null } = {}
 ) => {
     const customer = await User.findById(
         customerId
     )
         .select("licenseExpirationDate")
+        .session(session)
         .lean();
 
     if (!customer?.licenseExpirationDate) {
@@ -1460,6 +1495,14 @@ const ensureCustomerLicenseNotExpired = async (
             )}, before this rental ends. Renew it and update your profile, choose dates that end before it expires, or book with a driver.`,
             400
         );
+    }
+};
+
+const ensureCustomerLicenseForDateChange = async (booking, end, settings = null, session = null) => {
+    const policy = settings ?? await getBookingLocationPolicy();
+    if (booking.driverOption === BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER &&
+        policy.customerBookingSettings?.licenseRestrictionEnabled !== false) {
+        await ensureCustomerLicenseNotExpired(booking.customer, { validThrough: end, session });
     }
 };
 
@@ -2165,6 +2208,9 @@ const withBookingChangeTransaction = async (booking, changes, persist) => {
             }
             await ensureNoBookingConflict(vehicle, start, end, booking._id, { session });
             await ensureNoDriverBookingConflict(driver, start, end, booking._id, { session });
+            if (changes.start || changes.end) {
+                await ensureCustomerLicenseForDateChange(booking, end, null, session);
+            }
             if (changes.checkLimit) {
                 const settings = await Settings.findOne().session(session).lean();
                 await ensureCustomerBookingLimitNotExceeded(
@@ -3617,8 +3663,9 @@ const syncReservationPaymentAmount = async (
         return;
     }
 
+    const hasCheckout = Boolean(payment.paymongo?.checkoutSessionId);
     const hasOpenCheckout =
-        payment.paymongo?.checkoutSessionId &&
+        hasCheckout &&
         !payment.paymongo?.checkoutExpiredAt;
 
     if (hasOpenCheckout) {
@@ -3660,14 +3707,14 @@ const syncReservationPaymentAmount = async (
                 amount: nextAmount,
                 ...(nextAmount <= 0 ? { status: PAYMENT_STATUS.CANCELLED } : {}),
                 "audit.updatedBy": updatedBy || null,
-                ...(hasOpenCheckout
+                ...(hasCheckout
                     ? { "paymongo.checkoutExpiredAt": null }
                     : {}),
             },
             // The closed checkout was for the old amount; a new one is
             // created when the customer pays. Unset, not "": the session-id
             // index is unique.
-            ...(hasOpenCheckout
+            ...(hasCheckout
                 ? {
                       $unset: {
                           "paymongo.checkoutSessionId": "",
@@ -6684,6 +6731,8 @@ const requestBookingExtension = async (
             booking.endDate
         );
 
+    await ensureCustomerLicenseForDateChange(booking, requestedEndDate);
+
     const additionalHours =
         calculateExtensionHours(
             booking.endDate,
@@ -6925,6 +6974,8 @@ const approveBookingExtension = async (
             extension.requestedEndDate,
             booking.endDate
         );
+
+    await ensureCustomerLicenseForDateChange(booking, requestedEndDate);
 
     await validateVehicleDateAvailability(
         vehicle,
@@ -7497,10 +7548,15 @@ const quoteReschedule = async (booking, startDate, endDate) => {
         );
     }
 
+    const settings = await getBookingLocationPolicy();
+    const bookingHours = settings.bookingSettings?.bookingHours ?? null;
     validatePickupSchedule(start, end, {
         requireFuture: true,
-        pickupHours: await getPickupHours(),
+        bookingHours,
+        pickupHours: settings.bookingSettings?.pickupHours ?? null,
+        earliestPickupMs: getEarliestPickupMs(Date.now(), bookingHours),
     });
+    await ensureCustomerLicenseForDateChange(booking, end, settings);
 
     const vehicle = await Vehicle.findById(booking.vehicle);
 
@@ -7548,8 +7604,6 @@ const quoteReschedule = async (booking, startDate, endDate) => {
             );
         }
     }
-
-    const settings = await getBookingLocationPolicy();
 
     await ensureCustomerBookingLimitNotExceeded(
         booking.customer,
@@ -7603,6 +7657,9 @@ const quoteReschedule = async (booking, startDate, endDate) => {
  * pickup).
  */
 const previewRescheduleSettlement = async (booking, summary) => {
+    if (await isReservationUnpaid(booking._id)) {
+        return { kind: BOOKING_RESCHEDULE_SETTLEMENT.NONE, amount: 0 };
+    }
     if (summary.difference > 0) {
         return {
             kind: BOOKING_RESCHEDULE_SETTLEMENT.CHARGE,
@@ -7611,7 +7668,7 @@ const previewRescheduleSettlement = async (booking, summary) => {
     }
 
     if (summary.difference < 0) {
-        const paid = await getVerifiedPrePickupPaymentAmount(booking._id);
+        const paid = await getPrePickupTotalPaid(booking._id);
         const refundable = roundMoney(paid - summary.totalAmount);
 
         if (refundable > 0) {
@@ -8237,58 +8294,21 @@ const settlePriceChange = async (
             settlement.amount = roundMoney(difference);
             settlement.payment = payment._id;
         } else if (difference < 0) {
-            const paid = await getVerifiedPrePickupPaymentAmount(
+            const paid = await getPrePickupTotalPaid(
                 booking._id
             );
             const refundable = roundMoney(paid - newTotal);
 
             if (refundable > 0) {
                 settlement.kind = BOOKING_RESCHEDULE_SETTLEMENT.REFUND;
-                settlement.amount = refundable;
-
-                const result = await processBookingRefund(
-                    booking._id,
-                    {
-                        amount: refundable,
-                        reason: isVehicleChange
-                            ? PAYMENT_REFUND_REASON.OTHERS
-                            : PAYMENT_REFUND_REASON.REQUESTED_BY_CUSTOMER,
-                        notes: `Refund of the price difference after ${action} ${booking.bookingCode}.`,
-                        forceManual:
-                            refundThreshold > 0 &&
-                            refundable > refundThreshold,
-                    },
-                    approvedBy
-                );
-
-                settlement.payment = result?._id ?? null;
-
-                const refundAmount = Number(result?.refund?.amount);
-
-                // No new refund was made: the payment already carried one.
-                if (
-                    !result?.refund ||
-                    roundMoney(refundAmount) !== refundable
-                ) {
-                    settlement.manual = true;
-
-                    await createManualRefund({
-                        booking,
-                        amount: refundable,
-                        payment: result?._id ?? null,
-                        reason: `The booking was ${
-                            isVehicleChange
-                                ? "moved to a cheaper vehicle"
-                                : "rescheduled to a lower price"
-                        }, and its payment already carried a refund, so the difference couldn't be sent automatically.`,
-                        createdBy: approvedBy || null,
-                    });
-                } else if (
-                    result.refund.status ===
-                    PAYMENT_REFUND_STATUS.REQUIRES_MANUAL_ACTION
-                ) {
-                    settlement.manual = true;
-                }
+                const result = await allocatePriceChangeRefund(booking, refundable, {
+                    reason: isVehicleChange ? PAYMENT_REFUND_REASON.OTHERS : PAYMENT_REFUND_REASON.REQUESTED_BY_CUSTOMER,
+                    notes: `Refund of the price difference after ${action} ${booking.bookingCode}.`,
+                    forceManual: refundThreshold > 0 && refundable > refundThreshold,
+                }, approvedBy, settlement);
+                settlement.payment = result.payment;
+                settlement.allocations = result.allocations;
+                settlement.manual = result.manual;
             }
         }
     } catch (settleError) {
@@ -8331,15 +8351,18 @@ const settleApprovedReschedule = async (
     booking,
     reschedule,
     approvedBy,
-    refundThreshold
+    refundThreshold,
+    reservationUnpaid = false
 ) => {
-    const settlement = await settlePriceChange(
-        booking,
-        reschedule,
-        approvedBy,
-        refundThreshold,
-        "reschedule"
-    );
+    const settlement = reservationUnpaid
+        ? { kind: BOOKING_RESCHEDULE_SETTLEMENT.NONE, amount: 0, payment: null, manual: false }
+        : await settlePriceChange(
+              booking,
+              reschedule,
+              approvedBy,
+              refundThreshold,
+              "reschedule"
+          );
 
     await Booking.updateOne(
         { _id: booking._id, "reschedules._id": reschedule._id },
@@ -8465,40 +8488,64 @@ const approveBookingReschedule = async (
           }
         : {};
 
+    const reservationUnpaid = await isReservationUnpaid(booking._id);
+    const repricedBooking = {
+        ...booking.toObject(),
+        voucher: booking.voucher ? {
+            ...booking.voucher.toObject(),
+            discountAmount: voucherUpdate["voucher.discountAmount"] ?? booking.voucher.discountAmount,
+        } : null,
+    };
+    const paymentUpdate = {
+        previousTotalAmount: roundMoney(booking.pricing?.totalAmount),
+        previousUpfrontAmount: getUpfrontFees(booking).total,
+        pricing: quote.pricing,
+        updatedBy: approvedBy,
+    };
+    if (reservationUnpaid) {
+        // External checkout expiry runs once, before the retryable transaction.
+        await syncReservationPaymentAmount(repricedBooking, { ...paymentUpdate, prepareOnly: true });
+    }
+
     // Atomic: two admins approving at once (or a pickup racing this) can't
     // both apply it. Booking has no versionKey, so save() wouldn't catch it.
     const updated = await withBookingChangeTransaction(
         booking, { start: quote.start, end: quote.end, checkLimit: true },
-        (session) => Booking.findOneAndUpdate(
-            {
-                _id: booking._id,
-                status: { $in: RESCHEDULABLE_STATUSES },
-                startDate: previousStart,
-                reschedules: {
-                    $elemMatch: {
-                        _id: reschedule._id,
-                        status: BOOKING_RESCHEDULE_STATUS.PENDING,
+        async (session) => {
+            if (reservationUnpaid) {
+                await syncReservationPaymentAmount(repricedBooking, { ...paymentUpdate, session });
+            }
+            return Booking.findOneAndUpdate(
+                {
+                    _id: booking._id,
+                    status: { $in: RESCHEDULABLE_STATUSES },
+                    startDate: previousStart,
+                    reschedules: {
+                        $elemMatch: {
+                            _id: reschedule._id,
+                            status: BOOKING_RESCHEDULE_STATUS.PENDING,
+                        },
                     },
                 },
-            },
-            {
-                $set: {
-                    startDate: quote.start,
-                    endDate: quote.end,
-                    pricing: quote.pricing,
-                    ...voucherUpdate,
-                    "audit.updatedBy": approvedBy,
-                    "reschedules.$.status":
-                        BOOKING_RESCHEDULE_STATUS.APPROVED,
-                    "reschedules.$.approvedAt": new Date(),
-                    "reschedules.$.approvedBy": approvedBy,
-                    "reschedules.$.previousStartDate": previousStart,
-                    "reschedules.$.previousEndDate": previousEnd,
-                    "reschedules.$.pricing": quote.summary,
+                {
+                    $set: {
+                        startDate: quote.start,
+                        endDate: quote.end,
+                        pricing: quote.pricing,
+                        ...voucherUpdate,
+                        "audit.updatedBy": approvedBy,
+                        "reschedules.$.status":
+                            BOOKING_RESCHEDULE_STATUS.APPROVED,
+                        "reschedules.$.approvedAt": new Date(),
+                        "reschedules.$.approvedBy": approvedBy,
+                        "reschedules.$.previousStartDate": previousStart,
+                        "reschedules.$.previousEndDate": previousEnd,
+                        "reschedules.$.pricing": quote.summary,
+                    },
                 },
-            },
-            { new: true, session }
-        )
+                { new: true, session }
+            );
+        }
     );
 
     if (!updated) {
@@ -8519,7 +8566,8 @@ const approveBookingReschedule = async (
         approvedBy,
         Number(
             refundSettings?.refundSettings?.autoApproveRefundThreshold ?? 0
-        )
+        ),
+        reservationUnpaid
     );
 
     await refreshVehicleReservationStatus(updated.vehicle);
@@ -8874,6 +8922,17 @@ const getVehicleChangeBlocker = (booking) => {
         : null;
 };
 
+const assertNoPendingVehicleChangePayment = async (bookingId, session = null) => {
+    const pending = await Payment.exists({
+        booking: bookingId,
+        paymentType: PAYMENT_TYPE.EXTENSION_FEE,
+        status: PAYMENT_STATUS.PENDING,
+    }).session(session);
+    if (pending) {
+        throw createError("Pay or cancel the outstanding top-up before choosing another vehicle, so its payment matches the booking price.", 409);
+    }
+};
+
 /*
  * Pricing on another vehicle for the same dates (see buildReschedulePricing).
  * The move is forced by maintenance, so the booking's own discount comes
@@ -9197,18 +9256,9 @@ const getMaintenanceConflictOptions = async (bookingId, userId, role) => {
     await assertOpenMaintenanceConflict(booking, role);
 
     const [paid, reservationUnpaid] = await Promise.all([
-        getVerifiedPrePickupPaymentAmount(booking._id),
+        getPrePickupTotalPaid(booking._id),
         isReservationUnpaid(booking._id),
     ]);
-
-    const extensionFees = await Payment.find({
-        booking: booking._id,
-        paymentType: PAYMENT_TYPE.EXTENSION_FEE,
-        status: PAYMENT_STATUS.VERIFIED,
-        refund: null,
-    })
-        .select("amount")
-        .lean();
 
     const blocker = getVehicleChangeBlocker(booking);
     const conflict = booking.maintenanceConflict;
@@ -9249,13 +9299,7 @@ const getMaintenanceConflictOptions = async (bookingId, userId, role) => {
         vehicleChangeAvailable: !blocker,
         vehicleChangeBlockedReason: blocker,
         alternatives,
-        refundAmount: roundMoney(
-            paid +
-                extensionFees.reduce(
-                    (sum, payment) => sum + Number(payment.amount || 0),
-                    0
-                )
-        ),
+        refundAmount: roundMoney(paid),
     };
 };
 
@@ -9277,6 +9321,8 @@ const changeVehicleForMaintenanceConflict = async (
     if (blocker) {
         throw createError(blocker, 400);
     }
+
+    await assertNoPendingVehicleChangePayment(booking._id);
 
     if (String(vehicleId) === String(booking.vehicle)) {
         throw createError("Choose a different vehicle.", 400);
@@ -9386,6 +9432,7 @@ const changeVehicleForMaintenanceConflict = async (
     // Atomic: a cancel, pickup or second choice racing this can't also win.
     const updated = await withBookingChangeTransaction(
         booking, { vehicle: newVehicle._id }, async (session) => {
+            await assertNoPendingVehicleChangePayment(booking._id, session);
             if (reservationUnpaid && !coveredAmount) {
                 await syncReservationPaymentAmount(booking, {
                     previousTotalAmount: roundMoney(booking.pricing?.totalAmount),
@@ -9512,6 +9559,7 @@ const changeVehicleForMaintenanceConflict = async (
                     "vehicleChanges.$[change].settlement": {
                         kind: settlement.kind,
                         amount: settlement.amount,
+                        allocations: settlement.allocations,
                     },
                 },
             },
@@ -10051,6 +10099,7 @@ export const processMaintenanceConflicts = async () => {
 };
 
 export {
+    ensureCustomerLicenseForDateChange,
     sendMaintenanceConflictOptions,
     getMaintenanceConflictOptions,
     changeVehicleForMaintenanceConflict,

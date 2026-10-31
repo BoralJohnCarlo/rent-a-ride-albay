@@ -603,6 +603,7 @@ const rescheduleSchema = new mongoose.Schema(
             },
             // A refund that couldn't go through automatically and was handed
             // to an admin instead.
+            allocations: { type: [{ payment: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" }, amount: { type: Number, min: 0 } }], default: undefined },
             manual: { type: Boolean, default: false },
         },
     },
@@ -738,6 +739,7 @@ const maintenanceConflictSchema = new mongoose.Schema(
                     ref: "Payment",
                     default: null,
                 },
+                allocations: { type: [{ payment: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" }, amount: { type: Number, min: 0 } }], default: undefined },
                 manual: { type: Boolean, default: false },
             },
         },
@@ -849,6 +851,7 @@ const vehicleChangeHistorySchema = new mongoose.Schema(
                 default: BOOKING_RESCHEDULE_SETTLEMENT.NONE,
             },
             amount: { type: Number, default: 0, min: 0 },
+            allocations: { type: [{ payment: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" }, amount: { type: Number, min: 0 } }], default: undefined },
         },
     },
     {

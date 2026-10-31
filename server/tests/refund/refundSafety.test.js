@@ -42,6 +42,7 @@ import {
     processBookingRefund,
 } from "../../services/paymentService.js";
 import {
+    calculateFinancials,
     computeRefundableAmount,
     recordRefund,
     settleRefundManually,
@@ -103,6 +104,37 @@ const createRental = (overrides = {}) =>
         financial: { baseRentalCharge: 4800, reservationFee: 500 },
         ...overrides,
     });
+
+describe("separate price-change refunds in rental balances", () => {
+    it("refreshes a saved rental when an owed refund is marked Not Paid", async () => {
+        const bookingId = newId(), customerId = newId();
+        await Booking.collection.insertOne({ _id: bookingId, customer: customerId,
+            bookingCode: `BK-${bookingId}`, pricing: { totalAmount: 5300 } });
+        await createPayment({ booking: bookingId, customer: customerId, amount: 5300 });
+        const owed = await ManualRefund.create({ booking: bookingId, customer: customerId,
+            amount: 1000, reason: "Price reduction" });
+        const rental = await createRental({ booking: bookingId, customer: customerId });
+        await calculateFinancials(rental);
+        await rental.save();
+        assert.equal(rental.financial.amountPaid, 4300);
+        await settleManualRefund(owed._id, { succeeded: false }, adminId);
+        assert.equal((await Rental.findById(rental._id)).financial.amountPaid, 5300);
+    });
+
+    for (const status of Object.values(MANUAL_REFUND_STATUS)) {
+        it(`accounts for an additional manual refund marked ${status}`, async () => {
+            const bookingId = newId();
+            const customerId = newId();
+            await createPayment({ booking: bookingId, customer: customerId, amount: 5300,
+                refund: { amount: 500, reason: "others", method: "manual", status: PAYMENT_REFUND_STATUS.SUCCEEDED } });
+            await ManualRefund.create({ booking: bookingId, customer: customerId, amount: 1000,
+                reason: "Additional price reduction", status });
+            const rental = await createRental({ booking: bookingId, customer: customerId });
+            await calculateFinancials(rental);
+            assert.equal(rental.financial.amountPaid, status === MANUAL_REFUND_STATUS.NOT_PAID ? 4800 : 3800);
+        });
+    }
+});
 
 before(async () => {
     await connectTestDb();

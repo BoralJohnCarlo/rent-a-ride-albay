@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 import ManualRefund from "../models/ManualRefund.js";
 import Booking from "../models/Booking.js";
+import Rental from "../models/Rental.js";
 
 import createError from "../utils/createError.js";
 
@@ -187,6 +188,17 @@ export const settleManualRefund = async (
     }
 
     await recomputeBookingRefundAmount(settled.booking);
+
+    // A pre-pickup price reduction can have a separate owed refund. If it
+    // is later marked Not Paid, restore that credit on any existing rental.
+    const rentals = await Rental.find({ booking: settled.booking });
+    if (rentals.length) {
+        const { calculateFinancials } = await import("./rentalService.js");
+        for (const rental of rentals) {
+            await calculateFinancials(rental);
+            await rental.save();
+        }
+    }
 
     const booking = await Booking.findById(settled.booking)
         .select("bookingCode startDate vehicle")
