@@ -385,11 +385,24 @@ const BookingForm = ({
     const [distanceFeeError, setDistanceFeeError] =
         useState(null);
 
-    const [availabilityCheck, setAvailabilityCheck] =
+    const [availabilityResult, setAvailabilityResult] =
         useState(null);
 
-    const [availabilityLoading, setAvailabilityLoading] =
-        useState(false);
+    // Key results to every input so even the render before an effect runs
+    // cannot apply the previous dates' or driver's availability.
+    const availabilityRequestKey = JSON.stringify([
+        vehicle?._id ?? vehicle?.id,
+        formData.startDate, formData.endDate, formData.pickupTime,
+        formData.driverOption, formData.driver,
+    ]);
+    const availabilityCheck = availabilityResult?.key === availabilityRequestKey
+        ? availabilityResult.value
+        : null;
+    const availabilityLoading = Boolean(
+        (vehicle?._id ?? vehicle?.id) && formData.startDate &&
+        formData.endDate > formData.startDate &&
+        availabilityResult?.key !== availabilityRequestKey
+    );
 
     /*
      * Which pickup times work for the chosen dates ({ "14:30": true, ... }),
@@ -599,6 +612,7 @@ const BookingForm = ({
         formData.returnLocation.serviceLocationId, formData.returnLocation.latitude, formData.returnLocation.longitude,
     ]);
     const [confirmedDistanceFeeKey, setConfirmedDistanceFeeKey] = useState(null);
+    const [distanceFeeRetry, setDistanceFeeRetry] = useState(0);
     const feesPending = enableDistanceFeeCalculation && formData.driverOption !== "With Driver" &&
         (confirmedDistanceFeeKey !== distanceFeeRequestKey || distanceFeeLoading || Boolean(distanceFeeError) || !distanceFeePreview);
 
@@ -688,6 +702,7 @@ const BookingForm = ({
         };
     }, [
         distanceFeeRequestKey,
+        distanceFeeRetry,
         formData.driverOption,
         formData.pickupLocation.serviceLocationId,
         formData.returnLocation.serviceLocationId,
@@ -839,13 +854,13 @@ const BookingForm = ({
      */
     useEffect(() => {
         const vehicleId = vehicle?._id ?? vehicle?.id;
+        setAvailabilityResult(null);
 
         if (
             !vehicleId ||
             !formData.startDate ||
             !formData.endDate
         ) {
-            setAvailabilityCheck(null);
             return;
         }
 
@@ -858,7 +873,6 @@ const BookingForm = ({
         );
 
         if (end <= start) {
-            setAvailabilityCheck(null);
             return;
         }
 
@@ -872,8 +886,6 @@ const BookingForm = ({
         let isCancelled = false;
 
         const runCheck = async () => {
-            setAvailabilityLoading(true);
-
             try {
                 const { data } =
                     await checkVehicleAvailability(
@@ -890,17 +902,12 @@ const BookingForm = ({
                     );
 
                 if (!isCancelled) {
-                    setAvailabilityCheck(
-                        data || null
-                    );
+                    setAvailabilityResult({ key: availabilityRequestKey, value: data || null });
                 }
             } catch {
                 if (!isCancelled) {
-                    setAvailabilityCheck(null);
-                }
-            } finally {
-                if (!isCancelled) {
-                    setAvailabilityLoading(false);
+                    // The server remains authoritative if the preview fails.
+                    setAvailabilityResult({ key: availabilityRequestKey, value: null });
                 }
             }
         };
@@ -911,6 +918,7 @@ const BookingForm = ({
             isCancelled = true;
         };
     }, [
+        availabilityRequestKey,
         vehicle,
         formData.startDate,
         formData.endDate,
@@ -1343,30 +1351,30 @@ const BookingForm = ({
 
     /*
      * What's paid at booking: the reservation and pickup distance fees, less
-     * a voucher on either of them (the server's getUpfrontFees). Other
-     * voucher types lower only what's left to pay.
+     * a voucher on either of them (the server's getUpfrontFees). Cap both
+     * shares at the final total so a total voucher cannot cause overpayment.
      */
     const upfrontFees = useMemo(() => {
         const discount =
             appliedVoucher?.pricing?.voucher?.discount || {};
 
-        const reservationFee = Math.max(
+        const reservationFee = Math.min(finalTotal, Math.max(
             0,
             basePricing.reservationFee -
                 (Number(discount.reservationFeeDiscount) || 0)
-        );
+        ));
 
-        const pickupDistanceFee = Math.max(
+        const pickupDistanceFee = Math.min(Math.max(0, finalTotal - reservationFee), Math.max(
             0,
             basePricing.pickupDistanceFee -
                 (Number(discount.pickupFeeDiscount) || 0)
-        );
+        ));
 
         return {
             reservationFee,
-            total: reservationFee + pickupDistanceFee,
+            total: Math.round((reservationFee + pickupDistanceFee) * 100) / 100,
         };
-    }, [appliedVoucher, basePricing]);
+    }, [appliedVoucher, basePricing, finalTotal]);
 
     /*
      * What the Pay button charges, as the server sizes the payment: the full
@@ -1624,10 +1632,13 @@ const BookingForm = ({
         }
     };
 
-    const validateStep = () => {
+    const validateStep = (step = currentStep) => {
         const nextErrors = {};
 
-        if (currentStep === 0) {
+        if (step === 0) {
+            if (availabilityLoading) {
+                nextErrors.endDate = "Please wait while we check availability for your selected dates and driver.";
+            }
             if (
                 !formData.startDate
             ) {
@@ -1734,10 +1745,9 @@ const BookingForm = ({
             }
 
             if (
-                formData.pickupLocation
-                    .latitude == null ||
-                formData.pickupLocation
-                    .longitude == null
+                !formData.pickupLocation.serviceLocationId &&
+                (formData.pickupLocation.latitude == null ||
+                    formData.pickupLocation.longitude == null)
             ) {
                 nextErrors[
                     "pickupLocation.serviceLocationId"
@@ -1768,10 +1778,9 @@ const BookingForm = ({
             }
 
             if (
-                formData.returnLocation
-                    .latitude == null ||
-                formData.returnLocation
-                    .longitude == null
+                !formData.returnLocation.serviceLocationId &&
+                (formData.returnLocation.latitude == null ||
+                    formData.returnLocation.longitude == null)
             ) {
                 nextErrors[
                     "returnLocation.serviceLocationId"
@@ -1802,7 +1811,7 @@ const BookingForm = ({
             }
         }
 
-        if (currentStep === 1) {
+        if (step === 1) {
             if (!termsAccepted) {
                 nextErrors.terms =
                     "You must accept the terms and agreements to proceed.";
@@ -2047,10 +2056,17 @@ const BookingForm = ({
             return;
         }
 
-        if (
-            !validateStep()
-        ) {
+        if (loading) {
             return;
+        }
+
+        // Recheck earlier steps: lead time and availability can change while
+        // the customer reads the terms or reviews their booking.
+        for (const step of [0, 1]) {
+            if (!validateStep(step)) {
+                setCurrentStep(step);
+                return;
+            }
         }
 
         if (feesPending || voucherPending || geocodingSection) {
@@ -2246,6 +2262,13 @@ const BookingForm = ({
             [section]: {
                 ...previous[section],
                 serviceLocationId: "",
+                type: "",
+                address: "",
+                name: "",
+                region: "",
+                province: "",
+                city: "",
+                barangay: "",
                 latitude: coordinates.latitude,
                 longitude: coordinates.longitude,
                 fee: 0,
@@ -2258,23 +2281,32 @@ const BookingForm = ({
                 coordinates.longitude
             );
 
-            setFormData((previous) => ({
-                ...previous,
-                [section]: {
-                    ...previous[section],
-                    ...parsed,
-                    name: "",
-                    serviceLocationId: "",
-                    type:
-                        parsed.address ||
-                        previous[section].type ||
-                        "Office",
-                    fee: 0,
-                },
-            }));
+            if (!parsed.address?.trim()) {
+                throw new Error("No address found for this map point.");
+            }
+
+            setFormData((previous) => {
+                // A saved location selected during the lookup takes precedence.
+                if (previous[section].serviceLocationId ||
+                    previous[section].latitude !== coordinates.latitude ||
+                    previous[section].longitude !== coordinates.longitude) {
+                    return previous;
+                }
+                return {
+                    ...previous,
+                    [section]: {
+                        ...previous[section],
+                        ...parsed,
+                        name: "",
+                        serviceLocationId: "",
+                        type: parsed.address,
+                        fee: 0,
+                    },
+                };
+            });
         } catch {
             setGeocodeError(
-                "Unable to load address details. Please try again or enter the address manually."
+                "Unable to load the address. Please pick the location on the map again or select a saved location."
             );
         } finally {
             geocodingInProgressRef.current = false;
@@ -4147,11 +4179,31 @@ const BookingForm = ({
             </AnimatePresence>
 
             {(feesPending || voucherPending) && (
-                <p role="status" className="mt-4 text-sm text-amber-700 dark:text-amber-300">
-                    {distanceFeeError || (feesPending
-                        ? "Location fees must be confirmed before you can pay."
-                        : "Updating your voucher for the current booking?")}
-                </p>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <p role="status" className="min-w-0 flex-1 break-words text-sm text-amber-700 dark:text-amber-300">
+                        {distanceFeeError || (feesPending
+                            ? "Location fees must be confirmed before you can pay."
+                            : "Updating your voucher for the current booking?")}
+                    </p>
+                    {distanceFeeError && feesPending && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="self-start sm:self-auto"
+                            disabled={loading || distanceFeeLoading}
+                            onClick={() => {
+                                setDistanceFeeLoading(true);
+                                setDistanceFeeError(null);
+                                setDistanceFeePreview(null);
+                                setConfirmedDistanceFeeKey(null);
+                                setDistanceFeeRetry((previous) => previous + 1);
+                            }}
+                        >
+                            Retry fee calculation
+                        </Button>
+                    )}
+                </div>
             )}
             <div className="sticky bottom-0 z-20 -mx-1 flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white/90 px-4 py-3 shadow-[0_-8px_24px_-16px_rgba(0,0,0,0.25)] backdrop-blur dark:border-gray-800 dark:bg-gray-900/90">
                 <div>
@@ -4207,7 +4259,7 @@ const BookingForm = ({
                         <Button
                             key="submit-booking"
                             type="submit"
-                            disabled={feesPending || voucherPending || Boolean(geocodingSection)}
+                            disabled={availabilityLoading || feesPending || voucherPending || Boolean(geocodingSection)}
                             loading={
                                 loading
                             }
@@ -4233,7 +4285,7 @@ const BookingForm = ({
                                 handleNext
                             }
                             disabled={
-                                loading
+                                loading || (currentStep === 0 && availabilityLoading)
                             }
                             rightIcon={<ChevronRight size={16} />}
                         >

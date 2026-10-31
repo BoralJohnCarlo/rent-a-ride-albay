@@ -10,7 +10,8 @@ const round2 = (value) => Math.round(value * 100) / 100;
  * `pricing.pickupDistanceFee` stay the gross figures (rentals, payouts and
  * receipts read them that way); a reservation-fee or pickup-fee voucher's
  * discount is only kept as `voucher.discountAmount`, so it's applied here.
- * Other voucher types discount the rental itself, not what's paid up front.
+ * Other voucher types discount the rental itself. Upfront fees are capped
+ * at the discounted total, keeping the reservation share before pickup.
  *
  * Everything sized or judged by the upfront payment reads this: the
  * reservation payment, its validation and deadline, and the share of a
@@ -27,6 +28,16 @@ export const getUpfrontFees = (booking) => {
     } else if (booking?.voucher?.type === VOUCHER_TYPE.PICKUP_FEE) {
         pickupDistanceFee = round2(
             Math.max(0, pickupDistanceFee - discount)
+        );
+    }
+
+    const totalAmount = booking?.pricing?.totalAmount;
+    if (totalAmount != null && Number.isFinite(Number(totalAmount))) {
+        const payableTotal = round2(toAmount(totalAmount));
+        reservationFee = Math.min(reservationFee, payableTotal);
+        pickupDistanceFee = Math.min(
+            pickupDistanceFee,
+            round2(Math.max(0, payableTotal - reservationFee))
         );
     }
 

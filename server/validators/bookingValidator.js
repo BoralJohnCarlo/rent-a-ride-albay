@@ -224,14 +224,14 @@ export const createBookingValidator = [
         .trim(),
 
     body("pickupLocation.latitude")
-        .optional()
+        .optional({ nullable: true })
         .isFloat()
         .withMessage(
             "Pickup location latitude must be a number."
         ),
 
     body("pickupLocation.longitude")
-        .optional()
+        .optional({ nullable: true })
         .isFloat()
         .withMessage(
             "Pickup location longitude must be a number."
@@ -308,14 +308,14 @@ export const createBookingValidator = [
         .trim(),
 
     body("returnLocation.latitude")
-        .optional()
+        .optional({ nullable: true })
         .isFloat()
         .withMessage(
             "Return location latitude must be a number."
         ),
 
     body("returnLocation.longitude")
-        .optional()
+        .optional({ nullable: true })
         .isFloat()
         .withMessage(
             "Return location longitude must be a number."

@@ -298,6 +298,32 @@ describe("computeNoShowRefund", () => {
 describe("getUpfrontFees", () => {
     const pricing = { reservationFee: 500, pickupDistanceFee: 200 };
 
+    it("caps upfront payment at a total-voucher discounted total", () => {
+        assert.deepEqual(getUpfrontFees({
+            pricing: { ...pricing, totalAmount: 250 },
+            voucher: { type: VOUCHER_TYPE.TOTAL, discountAmount: 2250 },
+        }), { reservationFee: 250, pickupDistanceFee: 0, total: 250 });
+    });
+
+    it("requires no upfront payment when a total voucher covers everything", () => {
+        assert.deepEqual(getUpfrontFees({
+            pricing: { ...pricing, totalAmount: 0 },
+            voucher: { type: VOUCHER_TYPE.TOTAL, discountAmount: 2500 },
+        }), { reservationFee: 0, pickupDistanceFee: 0, total: 0 });
+    });
+
+    it("caps pickup fees after preserving the reservation share", () => {
+        assert.deepEqual(getUpfrontFees({ pricing: { ...pricing, totalAmount: 600 } }),
+            { reservationFee: 500, pickupDistanceFee: 100, total: 600 });
+    });
+
+    it("preserves upfront fees when the discounted total still covers them", () => {
+        assert.deepEqual(getUpfrontFees({
+            pricing: { ...pricing, totalAmount: 1000 },
+            voucher: { type: VOUCHER_TYPE.TOTAL, discountAmount: 1500 },
+        }), { reservationFee: 500, pickupDistanceFee: 200, total: 700 });
+    });
+
     it("is the gross fees without a voucher", () => {
         assert.deepEqual(getUpfrontFees({ pricing }), {
             reservationFee: 500,

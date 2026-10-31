@@ -29,7 +29,6 @@ const Checkout = () => {
     const navigate = useNavigate();
 
     const {
-        selectedPayment,
         loading,
         error,
         fetchPaymentById,
@@ -42,6 +41,13 @@ const Checkout = () => {
         setIsRedirecting,
     ] = useState(false);
 
+    const [paymentRequest, setPaymentRequest] = useState(null);
+    const [paymentReload, setPaymentReload] = useState(0);
+    const selectedPayment = paymentRequest?.id === paymentId
+        ? paymentRequest?.payment
+        : null;
+    const paymentLoading = paymentRequest?.id !== paymentId || Boolean(paymentRequest?.loading);
+
     useEffect(() => {
         if (!paymentId) {
             navigate("/customer/bookings");
@@ -49,9 +55,24 @@ const Checkout = () => {
             return;
         }
 
-        fetchPaymentById(paymentId);
+        let cancelled = false;
+        setIsRedirecting(false);
+        setPaymentRequest({ id: paymentId, payment: null, loading: true });
+        fetchPaymentById(paymentId).then((result) => {
+            if (cancelled) return;
+            const payment = result.meta?.requestStatus === "fulfilled"
+                ? result.payload?.data
+                : null;
+            setPaymentRequest({
+                id: paymentId,
+                payment: payment?._id === paymentId ? payment : null,
+                loading: false,
+            });
+        });
+        return () => { cancelled = true; };
     }, [
         paymentId,
+        paymentReload,
         fetchPaymentById,
         navigate,
     ]);
@@ -62,7 +83,7 @@ const Checkout = () => {
             "VERIFIED"
         ) {
             navigate(
-                "/customer/payment/success",
+                `/customer/payment/success?paymentId=${paymentId}`,
                 {
                     replace: true,
                 }
@@ -70,12 +91,13 @@ const Checkout = () => {
         }
     }, [
         selectedPayment,
+        paymentId,
         navigate,
     ]);
 
     const handleCheckout = useCallback(
         async () => {
-            if (!paymentId) {
+            if (!selectedPayment || paymentLoading || loading || isRedirecting) {
                 return;
             }
 
@@ -103,12 +125,12 @@ const Checkout = () => {
                 setIsRedirecting(false);
             }
         },
-        [paymentId, initiateCheckout]
+        [paymentId, initiateCheckout, selectedPayment, paymentLoading, loading, isRedirecting]
     );
 
     const handleRetryCheckout =
         useCallback(async () => {
-            if (!paymentId) {
+            if (!selectedPayment || paymentLoading || loading || isRedirecting) {
                 return;
             }
 
@@ -142,6 +164,10 @@ const Checkout = () => {
             paymentId,
             initiateCheckout,
             clearError,
+            selectedPayment,
+            paymentLoading,
+            loading,
+            isRedirecting,
         ]);
 
     const isSessionExpiredError =
@@ -149,7 +175,7 @@ const Checkout = () => {
             SESSION_EXISTS_ERROR
         );
 
-    if (loading && !selectedPayment) {
+    if (paymentLoading) {
         return (
             <main className="min-h-[70vh] bg-gray-50 dark:bg-gray-950">
                 <div className="flex min-h-[70vh] items-center justify-center">
@@ -178,9 +204,7 @@ const Checkout = () => {
                             <Button
                                 type="button"
                                 onClick={() =>
-                                    fetchPaymentById(
-                                        paymentId
-                                    )
+                                    setPaymentReload((previous) => previous + 1)
                                 }
                                 leftIcon={
                                     <RefreshCw

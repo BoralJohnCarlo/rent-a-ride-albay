@@ -377,6 +377,16 @@ const getExistingReservationPayment =
         });
     };
 
+const ensureReservationPaymentWindowOpen = (booking, payment) => {
+    if (
+        payment.paymentType === PAYMENT_TYPE.RESERVATION_FEE &&
+        booking.status === BOOKING_STATUS.PENDING &&
+        Date.now() >= getReservationPaymentDeadline(booking).getTime()
+    ) {
+        throw createError("The payment window for this booking has closed.", 409);
+    }
+};
+
 /*
  * A customer who cancelled their own reservation payment attempt can pay
  * again — as long as the booking is still open and, while it is Pending,
@@ -422,18 +432,7 @@ const reviveCancelledReservationPayment = async (
 
     validateBookingForPayment(booking);
 
-    if (booking.status === BOOKING_STATUS.PENDING) {
-        // 24h after booking, or the pickup time if that's sooner.
-        const deadline =
-            getReservationPaymentDeadline(booking).getTime();
-
-        if (Date.now() >= deadline) {
-            throw createError(
-                "The payment window for this booking has closed.",
-                409
-            );
-        }
-    }
+    ensureReservationPaymentWindowOpen(booking, payment);
 
     let current = payment;
 
@@ -748,6 +747,8 @@ const createPaymongoCheckout = async (
         booking
     );
 
+    ensureReservationPaymentWindowOpen(booking, payment);
+
     if (
         !Number.isFinite(
             Number(payment.amount)
@@ -826,6 +827,9 @@ const createPaymongoCheckout = async (
 
         payment = refreshed;
     }
+
+    // Closing an earlier attempt may take time; check again before charging.
+    ensureReservationPaymentWindowOpen(booking, payment);
 
     const checkout =
         await createCheckoutSession({

@@ -255,6 +255,7 @@ const BookingDateRangeCalendar = ({
     const isSelectableAsEnd = (date) =>
         Boolean(startDateObj) &&
         date > startDateObj &&
+        date <= maxFetchedDate &&
         (!maxEndBoundary || date <= maxEndBoundary);
 
     const pickingEnd = Boolean(startDateObj) && !endDateObj;
