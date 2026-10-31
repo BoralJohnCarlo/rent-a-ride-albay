@@ -1,4 +1,4 @@
-import { after, before, beforeEach, describe, it } from "node:test";
+import { after, afterEach, before, beforeEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 
 import mongoose from "mongoose";
@@ -11,12 +11,14 @@ import Rental from "../../models/Rental.js";
 import Settings from "../../models/Settings.js";
 import User from "../../models/User.js";
 import Vehicle from "../../models/Vehicle.js";
+import Voucher from "../../models/Voucher.js";
 // Registered for populateBooking's vehicle.category populate.
 import "../../models/VehicleCategory.js";
 
 import {
     BOOKING_DRIVER_OPTIONS,
     BOOKING_STATUS,
+    BOOKING_MAINTENANCE_CONFLICT_STATUS,
 } from "../../constants/bookingConstants.js";
 import {
     DRIVER_AVAILABILITY,
@@ -28,7 +30,13 @@ import { VEHICLE_STATUS } from "../../constants/vehicleConstants.js";
 import {
     approveBooking,
     createBooking,
+    updateBooking,
     requestBookingExtension,
+    approveBookingExtension,
+    changeBookingDriver,
+    requestBookingReschedule,
+    approveBookingReschedule,
+    changeVehicleForMaintenanceConflict,
 } from "../../services/bookingService.js";
 import {
     archiveDriver,
@@ -37,6 +45,7 @@ import {
 } from "../../services/driverService.js";
 import { reassignDriver } from "../../services/rentalService.js";
 import { areDriversOfferedForVehicle } from "../../services/driverPricingService.js";
+import { createPaymongoCheckout } from "../../services/paymentService.js";
 
 import { connectTestDb, disconnectTestDb } from "../helpers/testDb.js";
 
@@ -189,6 +198,7 @@ before(async () => {
 });
 
 after(disconnectTestDb);
+afterEach(() => mock.restoreAll());
 
 beforeEach(async () => {
     await Promise.all(
@@ -201,6 +211,7 @@ beforeEach(async () => {
             Settings,
             User,
             Vehicle,
+            Voucher,
         ].map((model) => model.deleteMany({}))
     );
 
@@ -222,6 +233,358 @@ beforeEach(async () => {
             isVerified: true,
         },
     ]);
+});
+
+describe("booking creation transactions", () => {
+    let otherCustomerId;
+    const book = (vehicle, customer = customerId, extra = {}) => {
+        const start = manilaMorning(5);
+        const location = {
+            type: "Custom", address: "Legazpi City",
+            latitude: 13.1391, longitude: 123.7438,
+        };
+        return createBooking({
+            vehicle,
+            driverOption: BOOKING_DRIVER_OPTIONS.WITH_DRIVER,
+            startDate: start.toISOString(),
+            endDate: new Date(start.getTime() + 2 * DAY).toISOString(),
+            pickupLocation: location, returnLocation: location,
+            paymentMethod: "GCASH",
+            ...extra,
+        }, customer);
+    };
+
+    // Force both requests past the preflight limit check before either can
+    // save. Only checks using the transaction's session may decide the winner.
+    const synchronizePreflight = (method = "countDocuments", predicate = () => true) => {
+        const original = Booking[method];
+        let arrivals = 0;
+        let release;
+        const ready = new Promise((resolve) => { release = resolve; });
+        mock.method(Booking, method, function (...args) {
+            const query = original.apply(this, args);
+            const exec = query.exec.bind(query);
+            query.exec = async () => {
+                const count = await exec();
+                if (!query.getOptions().session && predicate(query)) {
+                    if (++arrivals === 2) release();
+                    await ready;
+                }
+                return count;
+            };
+            return query;
+        });
+    };
+
+    const assertOneWinner = (results, pattern) => {
+        assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+        const rejected = results.find((r) => r.status === "rejected");
+        assert.match(rejected.reason.message, pattern);
+    };
+
+    beforeEach(async () => {
+        otherCustomerId = newId();
+        await User.collection.insertOne({
+            _id: otherCustomerId, role: "customer", isVerified: true,
+            email: `other-${otherCustomerId}@test.local`,
+        });
+        await Settings.create({
+            driverAssignmentSettings: { requireAdminDriverAssignment: true },
+            customerBookingSettings: { maxConcurrentBookings: 10 },
+        });
+    });
+
+    it("keeps one simultaneous booking and payment for the same vehicle", async () => {
+        const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        synchronizePreflight();
+        const results = await Promise.allSettled([
+            book(vehicle), book(vehicle, otherCustomerId),
+        ]);
+        assertOneWinner(results, /already booked/);
+        assert.equal(await Booking.countDocuments({}), 1);
+        assert.equal(await Payment.countDocuments({}), 1);
+    });
+
+    it("keeps one booking when different vehicles request the same driver", async () => {
+        await setAdminAssignment(false);
+        const driver = await insertDriver();
+        const first = await insertVehicle();
+        const second = await insertVehicle();
+        synchronizePreflight();
+        const results = await Promise.allSettled([
+            book(first, customerId, { driver }),
+            book(second, otherCustomerId, { driver }),
+        ]);
+        assertOneWinner(results, /driver.*already booked/i);
+        assert.equal(await Booking.countDocuments({}), 1);
+    });
+
+    it("enforces the customer limit across simultaneous bookings of different vehicles", async () => {
+        await Settings.updateOne({}, { $set: { "customerBookingSettings.maxConcurrentBookings": 1 } });
+        const first = await insertVehicle();
+        const second = await insertVehicle();
+        synchronizePreflight();
+        const results = await Promise.allSettled([book(first), book(second)]);
+        assertOneWinner(results, /maximum allowed/);
+        assert.equal(await Booking.countDocuments({ customer: customerId }), 1);
+    });
+
+    it("rolls back booking and voucher usage if saving the payment fails, then allows retry", async () => {
+        const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        const voucher = await Voucher.create({
+            code: `ROLLBACK${newId()}`, name: "Rollback test",
+            type: "reservation_fee", discountMethod: "fixed", discountValue: 100,
+            startDate: new Date(Date.now() - DAY), endDate: new Date(Date.now() + 30 * DAY),
+        });
+        const failure = mock.method(Payment, "create", async () => {
+            throw new Error("Payment storage unavailable");
+        });
+        await assert.rejects(book(vehicle, customerId, { voucherCode: voucher.code }), /Payment storage unavailable/);
+        assert.equal(await Booking.countDocuments({}), 0);
+        assert.equal(await Payment.countDocuments({}), 0);
+        const unused = await Voucher.findById(voucher._id).lean();
+        assert.equal(unused.usageCount, 0);
+        assert.equal(unused.usedBy.length, 0);
+
+        failure.mock.restore();
+        const saved = await book(vehicle, customerId, { voucherCode: voucher.code, payInFull: true });
+        const payment = await Payment.findOne({ booking: saved._id }).lean();
+        assert.equal(payment.amount, saved.pricing.totalAmount);
+        assert.equal((await Voucher.findById(voucher._id)).usageCount, 1);
+    });
+
+    it("creates a booking without a payment when no upfront fees are due", async () => {
+        const vehicle = await insertVehicle();
+        const saved = await book(vehicle);
+        assert.ok(saved._id);
+        assert.equal(await Payment.countDocuments({ booking: saved._id }), 0);
+    });
+
+    it("allows independent customers to book different vehicles concurrently", async () => {
+        const first = await insertVehicle();
+        const second = await insertVehicle();
+        synchronizePreflight();
+        const results = await Promise.all([
+            book(first), book(second, otherCustomerId),
+        ]);
+        assert.equal(results.length, 2);
+        assert.equal(await Booking.countDocuments({}), 2);
+    });
+
+    const laterDates = () => {
+        const start = manilaMorning(10);
+        return {
+            startDate: start.toISOString(),
+            endDate: new Date(start.getTime() + 2 * DAY).toISOString(),
+        };
+    };
+
+    it("prevents two edits from moving onto the same vehicle and dates", async () => {
+        const first = await book(await insertVehicle());
+        const second = await book(await insertVehicle(), otherCustomerId);
+        const target = await insertVehicle();
+        const changes = { vehicle: target, ...laterDates() };
+        synchronizePreflight();
+        const results = await Promise.allSettled([
+            updateBooking(first._id, changes, customerId),
+            updateBooking(second._id, changes, otherCustomerId),
+        ]);
+        assertOneWinner(results, /already booked/);
+        assert.equal(await Booking.countDocuments({ vehicle: target }), 1);
+    });
+
+    it("prevents a booking edit racing a new booking onto the same slot", async () => {
+        const existing = await book(await insertVehicle());
+        const target = await insertVehicle();
+        const dates = laterDates();
+        synchronizePreflight();
+        const results = await Promise.allSettled([
+            updateBooking(existing._id, { vehicle: target, ...dates }, customerId),
+            book(target, otherCustomerId, dates),
+        ]);
+        assertOneWinner(results, /already booked/);
+        assert.equal(await Booking.countDocuments({ vehicle: target }), 1);
+    });
+
+    it("prevents two approvals from assigning one driver to overlapping bookings", async () => {
+        const first = await book(await insertVehicle());
+        const second = await book(await insertVehicle(), otherCustomerId);
+        const driver = await insertDriver();
+        synchronizePreflight("findById");
+        const results = await Promise.allSettled([
+            approveBooking(first._id, adminId, driver),
+            approveBooking(second._id, adminId, driver),
+        ]);
+        assertOneWinner(results, /driver.*already booked/i);
+        assert.equal(await Booking.countDocuments({ driver, status: BOOKING_STATUS.APPROVED }), 1);
+    });
+
+    it("closes the old checkout and cancels its payment when an edit removes the upfront fee", async (t) => {
+        const oldVehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        const booking = await book(oldVehicle);
+        await Payment.updateOne({ booking: booking._id }, { $set: {
+            "paymongo.checkoutSessionId": "cs_zero_fee_test",
+        } });
+        const previousKey = process.env.PAYMONGO_SECRET_KEY;
+        process.env.PAYMONGO_SECRET_KEY = "sk_test_stubbed";
+        t.after(() => {
+            if (previousKey === undefined) delete process.env.PAYMONGO_SECRET_KEY;
+            else process.env.PAYMONGO_SECRET_KEY = previousKey;
+        });
+        const request = mock.method(globalThis, "fetch", async (url) => {
+            assert.match(String(url), /checkout_sessions\/cs_zero_fee_test\/expire$/);
+            return { ok: true, json: async () => ({ data: { id: "cs_zero_fee_test", attributes: { status: "expired" } } }) };
+        });
+        const saved = await updateBooking(booking._id, { vehicle: await insertVehicle() }, customerId);
+        const payment = await Payment.findOne({ booking: booking._id }).lean();
+        assert.equal(request.mock.callCount(), 1);
+        assert.equal(payment.amount, 0);
+        assert.equal(payment.status, "CANCELLED");
+        assert.equal(saved.paymentAmount, 0);
+        assert.equal(saved.pricing.reservationFee, 0);
+    });
+
+    it("rolls back payment repricing when saving a booking edit fails", async () => {
+        const originalVehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        const booking = await book(originalVehicle);
+        const target = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 700 } });
+        mock.method(Booking, "findOneAndUpdate", async () => { throw new Error("Booking storage unavailable"); });
+        await assert.rejects(updateBooking(booking._id, { vehicle: target }, customerId), /Booking storage unavailable/);
+        assert.equal((await Payment.findOne({ booking: booking._id })).amount, 500);
+        assert.equal(String((await Booking.findById(booking._id)).vehicle), String(originalVehicle));
+    });
+
+    it("refuses a stale checkout that finishes opening after an edit removes the fee", async (t) => {
+        const booking = await book(await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } }));
+        const payment = await Payment.findOne({ booking: booking._id });
+        const target = await insertVehicle();
+        const previousKey = process.env.PAYMONGO_SECRET_KEY;
+        process.env.PAYMONGO_SECRET_KEY = "sk_test_stubbed";
+        t.after(() => {
+            if (previousKey === undefined) delete process.env.PAYMONGO_SECRET_KEY;
+            else process.env.PAYMONGO_SECRET_KEY = previousKey;
+        });
+        const request = mock.method(globalThis, "fetch", async (url) => {
+            if (String(url).endsWith("/checkout_sessions")) {
+                await updateBooking(booking._id, { vehicle: target }, customerId);
+                return { ok: true, json: async () => ({ data: {
+                    id: "cs_stale_edit", attributes: { checkout_url: "https://checkout.example.test/stale" },
+                } }) };
+            }
+            assert.match(String(url), /checkout_sessions\/cs_stale_edit\/expire$/);
+            return { ok: true, json: async () => ({ data: { id: "cs_stale_edit", attributes: { status: "expired" } } }) };
+        });
+        await assert.rejects(createPaymongoCheckout(payment._id, customerId, "https://example.test"), /payment changed/);
+        assert.equal(request.mock.callCount(), 2);
+        const saved = await Payment.findById(payment._id);
+        assert.equal(saved.status, "CANCELLED");
+        assert.equal(saved.amount, 0);
+        assert.ok(!saved.paymongo?.checkoutSessionId);
+    });
+
+    it("applies booking-hours notice to edited pickup dates", async () => {
+        const booking = await book(await insertVehicle());
+        await Settings.updateOne({}, { $set: {
+            "bookingSettings.bookingHours": { enabled: true, openTime: "08:00", closeTime: "20:00" },
+        } });
+        mock.method(Date, "now", () => Date.parse("2030-11-01T23:00:00+08:00"));
+        await assert.rejects(updateBooking(booking._id, {
+            startDate: "2030-11-02T08:00:00+08:00", endDate: "2030-11-03T08:00:00+08:00",
+        }, customerId), /earliest pickup/);
+        const saved = await updateBooking(booking._id, {
+            startDate: "2030-11-02T10:00:00+08:00", endDate: "2030-11-03T10:00:00+08:00",
+        }, customerId);
+        assert.equal(new Date(saved.startDate).toISOString(), "2030-11-02T02:00:00.000Z");
+    });
+
+    it("creates a payable reservation when an edit adds the first upfront fee", async () => {
+        const booking = await book(await insertVehicle());
+        assert.equal(await Payment.countDocuments({ booking: booking._id }), 0);
+        const target = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        const saved = await updateBooking(booking._id, { vehicle: target }, customerId);
+        const payment = await Payment.findOne({ booking: booking._id }).lean();
+        assert.equal(payment.amount, 500);
+        assert.equal(payment.status, "PENDING");
+        assert.equal(payment.paymentMethod, "GCASH");
+        assert.equal(String(saved.paymentId), String(payment._id));
+        assert.equal(saved.paymentAmount, 500);
+    });
+
+    it("rolls back the edit if creating its first payment fails", async () => {
+        const originalVehicle = await insertVehicle();
+        const booking = await book(originalVehicle);
+        const target = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        mock.method(Payment, "create", async () => { throw new Error("Payment storage unavailable"); });
+        await assert.rejects(updateBooking(booking._id, { vehicle: target }, customerId), /Payment storage unavailable/);
+        assert.equal(String((await Booking.findById(booking._id)).vehicle), String(originalVehicle));
+        assert.equal(await Payment.countDocuments({ booking: booking._id }), 0);
+    });
+
+    it("prevents simultaneous driver replacements from claiming the same driver", async () => {
+        const first = await book(await insertVehicle());
+        const second = await book(await insertVehicle(), otherCustomerId);
+        const driver = await insertDriver();
+        synchronizePreflight("findById");
+        const results = await Promise.allSettled([
+            changeBookingDriver(first._id, { driverId: driver, reason: "Assign driver" }, adminId),
+            changeBookingDriver(second._id, { driverId: driver, reason: "Assign driver" }, adminId),
+        ]);
+        assertOneWinner(results, /driver.*already booked/i);
+        assert.equal(await Booking.countDocuments({ driver }), 1);
+    });
+
+    it("prevents reschedule approvals from moving two bookings onto the same dates", async () => {
+        const vehicle = await insertVehicle();
+        const first = await book(vehicle);
+        const second = await book(vehicle, otherCustomerId, laterDates());
+        const start = manilaMorning(15);
+        const dates = { startDate: start.toISOString(), endDate: new Date(start.getTime() + 2 * DAY).toISOString() };
+        const firstRequest = await requestBookingReschedule(first._id, dates, customerId, "customer");
+        const secondRequest = await requestBookingReschedule(second._id, dates, otherCustomerId, "customer");
+        synchronizePreflight("findById");
+        const results = await Promise.allSettled([
+            approveBookingReschedule(first._id, firstRequest.reschedules[0]._id, adminId),
+            approveBookingReschedule(second._id, secondRequest.reschedules[0]._id, adminId),
+        ]);
+        assertOneWinner(results, /already booked/);
+        assert.equal(await Booking.countDocuments({ vehicle, startDate: start }), 1);
+    });
+
+    it("protects an extension approval racing a new booking for the extra days", async () => {
+        const vehicle = await insertVehicle();
+        const booking = await book(vehicle);
+        await approveBooking(booking._id, adminId, await insertDriver());
+        const requestedEndDate = new Date(manilaMorning(10).getTime() + 2 * DAY);
+        const requested = await requestBookingExtension(booking._id, { requestedEndDate }, customerId);
+        synchronizePreflight("findOne", (query) => Boolean(query.getFilter().vehicle && query.getFilter().startDate?.$lt));
+        const results = await Promise.allSettled([
+            approveBookingExtension(booking._id, requested.extensions[0]._id, adminId),
+            book(vehicle, otherCustomerId, laterDates()),
+        ]);
+        assertOneWinner(results, /already booked/);
+        const saved = await Booking.findById(booking._id).lean();
+        const extensionWon = saved.endDate.getTime() === requestedEndDate.getTime();
+        assert.equal(await Payment.countDocuments({ booking: booking._id, paymentType: "EXTENSION_FEE" }), extensionWon ? 1 : 0);
+        assert.equal(await Booking.countDocuments({ vehicle }), extensionWon ? 1 : 2);
+    });
+
+    it("lets only one conflict resolution claim a replacement vehicle without creating an unnecessary payment", async () => {
+        const first = await book(await insertVehicle());
+        const second = await book(await insertVehicle(), otherCustomerId);
+        await Booking.updateMany({ _id: { $in: [first._id, second._id] } }, { $set: {
+            maintenanceConflict: { status: BOOKING_MAINTENANCE_CONFLICT_STATUS.AWAITING_CUSTOMER },
+        } });
+        const target = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        synchronizePreflight("findById");
+        const results = await Promise.allSettled([
+            changeVehicleForMaintenanceConflict(first._id, target, adminId, "admin"),
+            changeVehicleForMaintenanceConflict(second._id, target, adminId, "admin"),
+        ]);
+        assertOneWinner(results, /already booked/);
+        assert.equal(await Booking.countDocuments({ vehicle: target }), 1);
+        // A forced vehicle move retains the booking's original zero deposit.
+        assert.equal(await Payment.countDocuments({}), 0);
+    });
 });
 
 describe("admin driver assignment (Settings → Drivers)", () => {

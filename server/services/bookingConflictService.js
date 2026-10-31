@@ -56,7 +56,8 @@ const findStillOutConflict = async (
     field,
     id,
     windowStart,
-    excludeBookingId
+    excludeBookingId,
+    session = null
 ) => {
     if (windowStart.getTime() >= Date.now()) {
         return null;
@@ -71,6 +72,7 @@ const findStillOutConflict = async (
             : {}),
     })
         .select("booking")
+        .session(session)
         .lean();
 
     if (!rental) {
@@ -79,6 +81,7 @@ const findStillOutConflict = async (
 
     const booking = await Booking.findById(rental.booking)
         .select("bookingCode startDate endDate status")
+        .session(session)
         .lean();
 
     return booking ? { ...booking, stillOut: true } : null;
@@ -139,7 +142,7 @@ export const hasBookingConflict = async (
     startDate,
     endDate,
     excludeBookingId = null,
-    { bufferMs } = {}
+    { bufferMs, session = null } = {}
 ) => {
     const buffer = await resolveBufferMs(bufferMs);
     const { windowStart, windowEnd } = bufferedWindow(
@@ -174,6 +177,7 @@ export const hasBookingConflict = async (
         .select(
             "bookingCode startDate endDate status"
         )
+        .session(session)
         .lean();
 
     return (
@@ -182,7 +186,8 @@ export const hasBookingConflict = async (
             "vehicle",
             vehicleId,
             windowStart,
-            excludeBookingId
+            excludeBookingId,
+            session
         )
     );
 };
@@ -199,7 +204,8 @@ export const ensureNoBookingConflict = async (
     vehicleId,
     startDate,
     endDate,
-    excludeBookingId = null
+    excludeBookingId = null,
+    { session = null } = {}
 ) => {
     const bufferMs = await getTurnaroundBufferMs();
 
@@ -209,7 +215,7 @@ export const ensureNoBookingConflict = async (
             startDate,
             endDate,
             excludeBookingId,
-            { bufferMs }
+            { bufferMs, session }
         );
 
     if (conflictingBooking) {
@@ -301,7 +307,7 @@ export const hasDriverBookingConflict = async (
     startDate,
     endDate,
     excludeBookingId = null,
-    { bufferMs } = {}
+    { bufferMs, session = null } = {}
 ) => {
     if (!driverId) {
         return null;
@@ -345,6 +351,7 @@ export const hasDriverBookingConflict = async (
         .select(
             "bookingCode startDate endDate status"
         )
+        .session(session)
         .lean();
 
     return (
@@ -353,7 +360,8 @@ export const hasDriverBookingConflict = async (
             "driver",
             driverId,
             windowStart,
-            excludeBookingId
+            excludeBookingId,
+            session
         )
     );
 };
@@ -362,7 +370,8 @@ export const ensureNoDriverBookingConflict = async (
     driverId,
     startDate,
     endDate,
-    excludeBookingId = null
+    excludeBookingId = null,
+    { session = null } = {}
 ) => {
     if (!driverId) {
         return;
@@ -376,7 +385,7 @@ export const ensureNoDriverBookingConflict = async (
             startDate,
             endDate,
             excludeBookingId,
-            { bufferMs }
+            { bufferMs, session }
         );
 
     if (conflictingBooking) {

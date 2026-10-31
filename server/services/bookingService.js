@@ -3,6 +3,7 @@ import createError from "../utils/createError.js";
 import mongoose from "mongoose";
 
 import Booking from "../models/Booking.js";
+import { withBookingCreationTransaction } from "./bookingCreationTransaction.js";
 import Vehicle from "../models/Vehicle.js";
 import Driver from "../models/Driver.js";
 import ServiceLocation from "../models/ServiceLocation.js";
@@ -532,7 +533,8 @@ const releaseBookingVoucher = async (booking) => {
 const closePendingExtensions = async (
     booking,
     closedBy,
-    reason
+    reason,
+    session = null
 ) => {
     try {
         await Booking.updateOne(
@@ -554,6 +556,7 @@ const closePendingExtensions = async (
                 },
             },
             {
+                session,
                 arrayFilters: [
                     {
                         "pending.status":
@@ -563,13 +566,14 @@ const closePendingExtensions = async (
             }
         );
     } catch (extensionError) {
+        if (session) throw extensionError;
         console.error(
             `Failed to close pending extension requests on booking ${booking._id}:`,
             extensionError
         );
     }
 
-    await closePendingReschedules(booking, closedBy, reason);
+    await closePendingReschedules(booking, closedBy, reason, session);
 };
 
 /*
@@ -579,7 +583,8 @@ const closePendingExtensions = async (
 const closePendingReschedules = async (
     booking,
     closedBy,
-    reason
+    reason,
+    session = null
 ) => {
     try {
         await Booking.updateOne(
@@ -601,6 +606,7 @@ const closePendingReschedules = async (
                 },
             },
             {
+                session,
                 arrayFilters: [
                     {
                         "pending.status":
@@ -610,13 +616,14 @@ const closePendingReschedules = async (
             }
         );
     } catch (rescheduleError) {
+        if (session) throw rescheduleError;
         console.error(
             `Failed to close pending reschedule requests on booking ${booking._id}:`,
             rescheduleError
         );
     }
 
-    await closePendingDriverChangeRequests(booking, closedBy, reason);
+    await closePendingDriverChangeRequests(booking, closedBy, reason, session);
 };
 
 /*
@@ -626,7 +633,8 @@ const closePendingReschedules = async (
 export const closePendingDriverChangeRequests = async (
     booking,
     closedBy,
-    reason
+    reason,
+    session = null
 ) => {
     try {
         await Booking.updateOne(
@@ -648,6 +656,7 @@ export const closePendingDriverChangeRequests = async (
                 },
             },
             {
+                session,
                 arrayFilters: [
                     {
                         "pending.status":
@@ -657,6 +666,7 @@ export const closePendingDriverChangeRequests = async (
             }
         );
     } catch (driverRequestError) {
+        if (session) throw driverRequestError;
         console.error(
             `Failed to close pending driver change requests on booking ${booking._id}:`,
             driverRequestError
@@ -1941,7 +1951,8 @@ const ensureCustomerBookingLimitNotExceeded = async (
     startDate,
     endDate,
     maxConcurrentBookings,
-    excludeBookingId = null
+    excludeBookingId = null,
+    { session = null } = {}
 ) => {
     if (
         !maxConcurrentBookings ||
@@ -1971,7 +1982,7 @@ const ensureCustomerBookingLimitNotExceeded = async (
             ...(excludeBookingId
                 ? { _id: { $ne: excludeBookingId } }
                 : {}),
-        });
+        }).session(session);
 
     if (overlappingCount >= maxConcurrentBookings) {
         throw createError(
@@ -2128,6 +2139,49 @@ const findBookingById = async (
     return booking;
 };
 
+// Every operation that claims a new slot must use the same resource guards
+// as booking creation. Recheck on the transaction's snapshot after acquiring
+// them; a conditional write on this booking alone cannot protect other ones.
+const withBookingChangeTransaction = async (booking, changes, persist) => {
+    const vehicle = changes.vehicle ?? booking.vehicle;
+    const driver = changes.driver === undefined ? booking.driver : changes.driver;
+    const start = changes.start ?? booking.startDate;
+    const end = changes.end ?? booking.endDate;
+    return withBookingCreationTransaction(
+        [
+            `booking:${booking._id}`, `customer:${booking.customer}`,
+            ...[booking.vehicle, vehicle].map((id) => `vehicle:${id}`),
+            ...[booking.driver, driver].filter(Boolean).map((id) => `driver:${id}`),
+        ],
+        async (session) => {
+            const fresh = await Booking.findById(booking._id).session(session);
+            if (!fresh || fresh.status !== booking.status ||
+                fresh.updatedAt?.getTime() !== booking.updatedAt?.getTime() ||
+                String(fresh.vehicle) !== String(booking.vehicle) ||
+                String(fresh.driver ?? "") !== String(booking.driver ?? "") ||
+                new Date(fresh.startDate).getTime() !== new Date(booking.startDate).getTime() ||
+                new Date(fresh.endDate).getTime() !== new Date(booking.endDate).getTime()) {
+                throw createError("This booking changed while you were working on it. Refresh and try again.", 409);
+            }
+            await ensureNoBookingConflict(vehicle, start, end, booking._id, { session });
+            await ensureNoDriverBookingConflict(driver, start, end, booking._id, { session });
+            if (changes.checkLimit) {
+                const settings = await Settings.findOne().session(session).lean();
+                await ensureCustomerBookingLimitNotExceeded(
+                    booking.customer, start, end,
+                    settings?.customerBookingSettings?.maxConcurrentBookings,
+                    booking._id, { session }
+                );
+            }
+            const updated = await persist(session, fresh);
+            if (!updated) {
+                throw createError("This booking changed while you were working on it. Refresh and try again.", 409);
+            }
+            return updated;
+        }
+    );
+};
+
 /*
  * `prefetched` lets a caller that already looked up the reservation-fee
  * Payment / Rental for a batch of bookings (see `getBookings`) hand them in
@@ -2255,7 +2309,7 @@ const populateBooking = async (
                   booking: booking._id,
                   paymentType: "RESERVATION_FEE",
               }).select(
-                  "_id status paymentMethod refund paymongo.checkoutSessionId"
+                  "_id status amount paymentMethod refund paymongo.checkoutSessionId"
               ),
 
               Rental.findOne({
@@ -2317,6 +2371,7 @@ const populateBooking = async (
     if (payment) {
         bookingObj.paymentId = payment._id;
         bookingObj.paymentStatus = payment.status;
+        bookingObj.paymentAmount = payment.amount;
         bookingObj.paymentMethod = payment.paymentMethod;
         /*
          * A PayMongo checkout was opened for it: if it's still PENDING, the
@@ -2506,38 +2561,6 @@ const calculateExtensionHours = (
     }
 
     return hours;
-};
-
-/*
- * The conflict checks in createBooking run before the insert, so two
- * customers submitting the same vehicle (or driver) and time at the same
- * moment can both pass them. Checked again right after the insert: of two
- * overlapping live bookings the older one (lower _id) keeps the slot, and the
- * newer one is withdrawn. Both requests see the same pair, so exactly one
- * wins. Returns true when `booking` lost.
- */
-const lostConcurrentBookingRace = async (booking) => {
-    const bufferMs = await getTurnaroundBufferMs();
-
-    const overlap = {
-        _id: { $lt: booking._id },
-        status: { $nin: BOOKING_ENDED_WITHOUT_TRIP_STATUSES },
-        startDate: {
-            $lt: new Date(new Date(booking.endDate).getTime() + bufferMs),
-        },
-        endDate: {
-            $gt: new Date(new Date(booking.startDate).getTime() - bufferMs),
-        },
-    };
-
-    const [vehicleRival, driverRival] = await Promise.all([
-        Booking.exists({ ...overlap, vehicle: booking.vehicle }),
-        booking.driver
-            ? Booking.exists({ ...overlap, driver: booking.driver })
-            : null,
-    ]);
-
-    return Boolean(vehicleRival || driverRival);
 };
 
 const createBooking = async (
@@ -2854,168 +2877,154 @@ const createBooking = async (
         bookingCode
     );
 
-    /*
-     * The voucher use is claimed before the booking exists (under the id the
-     * booking will get), so two bookings submitted together can't both spend
-     * a single-use voucher. It's given back below if the booking isn't kept.
-     */
     const bookingId = new mongoose.Types.ObjectId();
-
-    const voucherClaimed = Boolean(
-        voucherDiscount?.voucher &&
-            (await claimVoucherUsage(
-                voucherDiscount.voucher,
-                currentUserId,
-                bookingId
-            ))
-    );
-
-    if (voucherDiscount?.voucher && !voucherClaimed) {
-        throw createError(
-            "You have already used this voucher.",
-            400
-        );
-    }
-
-    let bookingKept = false;
+    let booking;
 
     try {
-        const booking =
-            await Booking.create({
-                _id: bookingId,
-
-                bookingCode,
-
-                customer:
-                    currentUserId,
-
-                vehicle:
-                    vehicle._id,
-
-                driverOption,
-
-                driver:
-                    driverOption ===
-                    BOOKING_DRIVER_OPTIONS.WITH_DRIVER
-                        ? driverId
-                        : null,
-
-                startDate:
-                    start,
-
-                endDate:
-                    end,
-
-                pickupLocation:
-                    buildBookingLocation(
-                        pickupServiceLocation,
-                        bookingData.pickupLocation,
-                        distanceFees.pickupDistanceFee
-                    ),
-
-                returnLocation:
-                    buildBookingLocation(
-                        returnServiceLocation,
-                        bookingData.returnLocation,
-                        distanceFees.returnDistanceFee
-                    ),
-
-                pricing,
-
-                voucher: voucherDiscount,
-
-                status:
-                    BOOKING_STATUS.PENDING,
-
-                customerNotes:
-                    bookingData.customerNotes ||
-                    "",
-
-                internalNotes: "",
-
-                termsAcceptance,
-
-                audit: {
-                    createdBy:
-                        currentUserId ||
-                        null,
-
-                    updatedBy:
-                        currentUserId ||
-                        null,
-                },
-            });
-
-        // No payment or notices are attached yet, so losing the race only
-        // needs the booking removed (the voucher is given back below).
-        if (await lostConcurrentBookingRace(booking)) {
-            await Booking.deleteOne({ _id: booking._id });
-
-            throw createError(
-                "Someone else just booked this vehicle or driver for part of that time. Please choose different dates or times.",
-                409
-            );
-        }
-
-        bookingKept = true;
-
-        /*
-         * payInFull is GCash-only (see createBookingValidator) - a customer
-         * who chose to pay the whole rental total now instead of just the
-         * reservation fee. The Payment record itself stays typed as
-         * RESERVATION_FEE either way (only the amount differs): everything
-         * downstream - webhook verification, calculateFinancials in
-         * rentalService.js, cancellation refunds - keys off that type plus
-         * VERIFIED status, not its magnitude, so a bigger amount here is
-         * enough to correctly zero out the balance due at pickup.
-         */
-        const initialPaymentAmount =
-            payInFull &&
-            paymentMethod ===
-                PAYMENT_METHOD.GCASH
-                ? pricing.totalAmount
-                : upfrontAmount;
-
-        if (
-            initialPaymentAmount > 0 &&
-            paymentMethod
-        ) {
-            try {
-                await Payment.create({
-                    booking: booking._id,
-                    rental: null,
-                    customer:
-                        currentUserId,
-                    paymentType:
-                        PAYMENT_TYPE.RESERVATION_FEE,
-                    paymentMethod,
-                    amount:
-                        initialPaymentAmount,
-                    status:
-                        PAYMENT_STATUS.PENDING,
-                    verification: {
-                        verifiedBy: null,
-                        verifiedAt: null,
-                        rejectionReason: "",
-                    },
-                    processedBy: null,
-                    processedAt: null,
-                    notes: "",
-                    audit: {
-                        createdBy:
-                            currentUserId,
-                        updatedBy:
-                            currentUserId,
-                    },
-                });
-            } catch (paymentError) {
-                console.error(
-                    "Failed to create payment record for booking:",
-                    booking._id,
-                    paymentError.message
+        booking = await withBookingCreationTransaction(
+            [
+                `customer:${currentUserId}`,
+                `vehicle:${vehicle._id}`,
+                ...(driverOption === BOOKING_DRIVER_OPTIONS.WITH_DRIVER && driverId
+                    ? [`driver:${driverId}`]
+                    : []),
+            ],
+            async (session) => {
+                // Preflight checks above provide quick feedback; these checks
+                // under the resource guards decide whether the slot is saved.
+                await ensureNoBookingConflict(vehicle._id, start, end, null, { session });
+                if (driverOption === BOOKING_DRIVER_OPTIONS.WITH_DRIVER) {
+                    await ensureNoDriverBookingConflict(driverId, start, end, null, { session });
+                }
+                await ensureCustomerBookingLimitNotExceeded(
+                    currentUserId, start, end,
+                    settings.customerBookingSettings?.maxConcurrentBookings,
+                    null, { session }
                 );
+                if (voucherDiscount?.voucher && !(await claimVoucherUsage(
+                    voucherDiscount.voucher, currentUserId, bookingId, session
+                ))) {
+                    throw createError("You have already used this voucher.", 400);
+                }
+
+                const [createdBooking] =
+                    await Booking.create([{
+                        _id: bookingId,
+
+                        bookingCode,
+
+                        customer:
+                            currentUserId,
+
+                        vehicle:
+                            vehicle._id,
+
+                        driverOption,
+
+                        driver:
+                            driverOption ===
+                            BOOKING_DRIVER_OPTIONS.WITH_DRIVER
+                                ? driverId
+                                : null,
+
+                        startDate:
+                            start,
+
+                        endDate:
+                            end,
+
+                        pickupLocation:
+                            buildBookingLocation(
+                                pickupServiceLocation,
+                                bookingData.pickupLocation,
+                                distanceFees.pickupDistanceFee
+                            ),
+
+                        returnLocation:
+                            buildBookingLocation(
+                                returnServiceLocation,
+                                bookingData.returnLocation,
+                                distanceFees.returnDistanceFee
+                            ),
+
+                        pricing,
+
+                        voucher: voucherDiscount,
+
+                        status:
+                            BOOKING_STATUS.PENDING,
+
+                        customerNotes:
+                            bookingData.customerNotes ||
+                            "",
+
+                        internalNotes: "",
+
+                        termsAcceptance,
+
+                        audit: {
+                            createdBy:
+                                currentUserId ||
+                                null,
+
+                            updatedBy:
+                                currentUserId ||
+                                null,
+                        },
+                    }], { session });
+
+                /*
+                 * payInFull is GCash-only (see createBookingValidator) - a customer
+                 * who chose to pay the whole rental total now instead of just the
+                 * reservation fee. The Payment record itself stays typed as
+                 * RESERVATION_FEE either way (only the amount differs): everything
+                 * downstream - webhook verification, calculateFinancials in
+                 * rentalService.js, cancellation refunds - keys off that type plus
+                 * VERIFIED status, not its magnitude, so a bigger amount here is
+                 * enough to correctly zero out the balance due at pickup.
+                 */
+                const initialPaymentAmount =
+                    payInFull &&
+                    paymentMethod ===
+                        PAYMENT_METHOD.GCASH
+                        ? pricing.totalAmount
+                        : upfrontAmount;
+
+                if (
+                    initialPaymentAmount > 0 &&
+                    paymentMethod
+                ) {
+                    await Payment.create([{
+                        booking: createdBooking._id,
+                        rental: null,
+                        customer:
+                            currentUserId,
+                        paymentType:
+                            PAYMENT_TYPE.RESERVATION_FEE,
+                        paymentMethod,
+                        amount:
+                            initialPaymentAmount,
+                        status:
+                            PAYMENT_STATUS.PENDING,
+                        verification: {
+                            verifiedBy: null,
+                            verifiedAt: null,
+                            rejectionReason: "",
+                        },
+                        processedBy: null,
+                        processedAt: null,
+                        notes: "",
+                        audit: {
+                            createdBy:
+                                currentUserId,
+                            updatedBy:
+                                currentUserId,
+                        },
+                    }], { session });
+                }
+                return createdBooking;
             }
-        }
+        );
 
         try {
             await notifyAdmins({
@@ -3055,20 +3064,6 @@ const createBooking = async (
             booking._id
         );
     } catch (error) {
-        // The booking was never created (or was withdrawn): give the
-        // claimed voucher use back.
-        if (voucherClaimed && !bookingKept) {
-            await releaseVoucherUsage(
-                voucherDiscount.voucher,
-                bookingId
-            ).catch((releaseError) =>
-                console.error(
-                    `Failed to give back the voucher claimed for booking ${bookingId}:`,
-                    releaseError
-                )
-            );
-        }
-
         if (error?.code === 11000) {
             throw createError(
                 "Booking code already exists. Please try again.",
@@ -3341,7 +3336,7 @@ const getBookings = async (
             booking: { $in: bookingIds },
             paymentType: "RESERVATION_FEE",
         }).select(
-            "_id status booking paymentMethod refund paymongo.checkoutSessionId"
+            "_id status amount booking paymentMethod refund paymongo.checkoutSessionId"
         ),
 
         Rental.find({
@@ -3564,14 +3559,26 @@ const syncReservationPaymentAmount = async (
         previousUpfrontAmount,
         pricing,
         updatedBy,
+        session = null,
+        prepareOnly = false,
     }
 ) => {
     let payment = await Payment.findOne({
         booking: booking._id,
         paymentType: PAYMENT_TYPE.RESERVATION_FEE,
-    });
+    }).session(session);
 
     if (!payment) {
+        const amount = roundMoney(getUpfrontFees({ pricing, voucher: booking.voucher }).total);
+        if (!prepareOnly && amount > 0) {
+            await Payment.create([{
+                booking: booking._id, rental: null, customer: booking.customer,
+                paymentType: PAYMENT_TYPE.RESERVATION_FEE,
+                paymentMethod: PAYMENT_METHOD.GCASH,
+                amount, status: PAYMENT_STATUS.PENDING,
+                audit: { createdBy: updatedBy || null, updatedBy: updatedBy || null },
+            }], { session });
+        }
         return;
     }
 
@@ -3606,7 +3613,7 @@ const syncReservationPaymentAmount = async (
             : getUpfrontFees({ pricing, voucher: booking.voucher }).total
     );
 
-    if (nextAmount <= 0 || nextAmount === currentAmount) {
+    if (nextAmount === currentAmount) {
         return;
     }
 
@@ -3615,6 +3622,9 @@ const syncReservationPaymentAmount = async (
         !payment.paymongo?.checkoutExpiredAt;
 
     if (hasOpenCheckout) {
+        if (session) {
+            throw createError("A payment attempt was opened during this edit. Please try again.", 409);
+        }
         await closeCheckoutSession(payment);
 
         payment = await Payment.findById(payment._id);
@@ -3631,6 +3641,10 @@ const syncReservationPaymentAmount = async (
         }
     }
 
+    // Closing an external checkout must happen before the retryable database
+    // transaction. Resize the payment only when the booking can also be saved.
+    if (prepareOnly) return;
+
     const resized = await Payment.findOneAndUpdate(
         {
             _id: payment._id,
@@ -3644,6 +3658,7 @@ const syncReservationPaymentAmount = async (
         {
             $set: {
                 amount: nextAmount,
+                ...(nextAmount <= 0 ? { status: PAYMENT_STATUS.CANCELLED } : {}),
                 "audit.updatedBy": updatedBy || null,
                 ...(hasOpenCheckout
                     ? { "paymongo.checkoutExpiredAt": null }
@@ -3660,7 +3675,7 @@ const syncReservationPaymentAmount = async (
                   }
                 : {}),
         },
-        { new: true }
+        { new: true, session }
     );
 
     if (!resized) {
@@ -3677,6 +3692,10 @@ const updateBooking = async (
         await findBookingById(
             bookingId
         );
+
+    const originalUpdatedAt = booking.updatedAt;
+    const originalVehicleId = booking.vehicle;
+    const originalDriverId = booking.driver;
 
     if (
         booking.customer.toString() !==
@@ -3778,12 +3797,6 @@ const updateBooking = async (
     // Only when the dates are being changed: an untouched booking may carry
     // an already-passed pickup time. New dates get the same rules as a new
     // booking, including the minimum lead time.
-    if (datesChanged) {
-        validatePickupSchedule(start, end, {
-            requireFuture: true,
-            pickupHours: await getPickupHours(),
-        });
-    }
 
     /*
      * The same customer rules as createBooking — otherwise a booking made
@@ -3792,6 +3805,16 @@ const updateBooking = async (
      */
     const settings =
         await getBookingLocationPolicy();
+
+    if (datesChanged) {
+        const bookingHours = settings.bookingSettings?.bookingHours ?? null;
+        validatePickupSchedule(start, end, {
+            requireFuture: true,
+            bookingHours,
+            pickupHours: settings.bookingSettings?.pickupHours ?? null,
+            earliestPickupMs: getEarliestPickupMs(Date.now(), bookingHours),
+        });
+    }
 
     const asksForDriverAnew =
         nextDriverOption ===
@@ -4099,12 +4122,52 @@ const updateBooking = async (
         previousUpfrontAmount,
         pricing,
         updatedBy: currentUserId,
+        prepareOnly: true,
     });
 
-    await booking.save();
+    const saved = await withBookingCreationTransaction(
+        [
+            `booking:${booking._id}`,
+            `customer:${currentUserId}`,
+            `vehicle:${originalVehicleId}`,
+            `vehicle:${vehicle._id}`,
+            ...[originalDriverId, booking.driver].filter(Boolean).map((id) => `driver:${id}`),
+        ],
+        async (session) => {
+            const fresh = await Booking.findById(booking._id).session(session);
+            if (!fresh || fresh.status !== BOOKING_STATUS.PENDING ||
+                fresh.updatedAt?.getTime() !== originalUpdatedAt?.getTime()) {
+                throw createError("This booking was updated by another request. Please reload and try again.", 409);
+            }
+            await ensureNoBookingConflict(vehicle._id, start, end, booking._id, { session });
+            await ensureNoDriverBookingConflict(booking.driver, start, end, booking._id, { session });
+            await ensureCustomerBookingLimitNotExceeded(
+                currentUserId, start, end,
+                settings.customerBookingSettings?.maxConcurrentBookings,
+                booking._id, { session }
+            );
+            await syncReservationPaymentAmount(booking, {
+                previousTotalAmount, previousUpfrontAmount, pricing,
+                updatedBy: currentUserId, session,
+            });
+            const fields = booking.toObject();
+            delete fields._id;
+            delete fields.createdAt;
+            delete fields.updatedAt;
+            const updated = await Booking.findOneAndUpdate(
+                { _id: booking._id, status: BOOKING_STATUS.PENDING, updatedAt: originalUpdatedAt },
+                { $set: fields },
+                { new: true, session, runValidators: true }
+            );
+            if (!updated) {
+                throw createError("This booking was updated by another request. Please reload and try again.", 409);
+            }
+            return updated;
+        }
+    );
 
     return populateBooking(
-        booking
+        saved
     );
 };
 
@@ -4118,7 +4181,8 @@ const updateBooking = async (
  */
 const getBookingReservationPayment = async (
     booking,
-    context
+    context,
+    { session = null } = {}
 ) => {
     const reservationFee = Number(
         booking.pricing?.reservationFee || 0
@@ -4165,6 +4229,7 @@ const getBookingReservationPayment = async (
             .select(
                 "paymentMethod amount status"
             )
+            .session(session)
             .lean();
 
     if (!payment) {
@@ -4225,12 +4290,14 @@ const getBookingReservationPayment = async (
  * gate that keeps the vehicle from being released before that's settled.
  */
 const validateBookingReservationPayment = async (
-    booking
+    booking,
+    options = {}
 ) => {
     const payment =
         await getBookingReservationPayment(
             booking,
-            "approved"
+            "approved",
+            options
         );
 
     if (!payment) {
@@ -4409,35 +4476,55 @@ const approveBooking = async (
      * payment-window release that landed after the booking was read — putting
      * an already-refunded booking back to Approved.
      */
-    const approved =
-        await Booking.findOneAndUpdate(
-            {
-                _id: booking._id,
-                status: {
-                    $in: [
-                        BOOKING_STATUS.PENDING,
-                        BOOKING_STATUS.PAYMENT_RECEIVED,
-                    ],
-                },
-            },
-            {
-                $set: {
-                    status: BOOKING_STATUS.APPROVED,
-                    driver: booking.driver ?? null,
-                    "audit.updatedBy": approvedBy,
-                },
-                $push: {
-                    statusHistory: {
-                        status: BOOKING_STATUS.APPROVED,
-                        changedBy: approvedBy,
-                        reason: "Booking approved by admin",
+    const approved = await withBookingCreationTransaction(
+        [
+            `booking:${booking._id}`,
+            `customer:${booking.customer}`,
+            `vehicle:${booking.vehicle}`,
+            ...(booking.driver ? [`driver:${booking.driver}`] : []),
+        ],
+        async (session) => {
+            const fresh = await Booking.findById(booking._id).session(session);
+            if (!fresh || ![BOOKING_STATUS.PENDING, BOOKING_STATUS.PAYMENT_RECEIVED].includes(fresh.status) ||
+                fresh.updatedAt?.getTime() !== booking.updatedAt?.getTime()) {
+                throw createError("This booking was updated by another request. Please reload and try again.", 409);
+            }
+            await ensureNoBookingConflict(booking.vehicle, booking.startDate, booking.endDate, booking._id, { session });
+            await ensureNoDriverBookingConflict(booking.driver, booking.startDate, booking.endDate, booking._id, { session });
+            await validateBookingReservationPayment(booking, { session });
+            return Booking.findOneAndUpdate(
+                {
+                    _id: booking._id,
+                    updatedAt: booking.updatedAt,
+                    status: {
+                        $in: [
+                            BOOKING_STATUS.PENDING,
+                            BOOKING_STATUS.PAYMENT_RECEIVED,
+                        ],
                     },
                 },
-            },
-            {
-                new: true,
-            }
-        );
+                {
+                    $set: {
+                        status: BOOKING_STATUS.APPROVED,
+                        driver: booking.driver ?? null,
+                        "audit.updatedBy": approvedBy,
+                    },
+                    $push: {
+                        statusHistory: {
+                            status: BOOKING_STATUS.APPROVED,
+                            changedBy: approvedBy,
+                            reason: "Booking approved by admin",
+                        },
+                    },
+                },
+                {
+                    new: true,
+                    session,
+                }
+            );
+
+        }
+    );
 
     if (!approved) {
         throw createError(
@@ -6772,6 +6859,8 @@ const approveBookingExtension = async (
             bookingId
         );
 
+    const originalBooking = booking.toObject();
+
     const extension =
         findExtensionById(
             booking,
@@ -6940,10 +7029,12 @@ const approveBookingExtension = async (
         existingExtensionPayment?.paymentMethod ||
         PAYMENT_METHOD.GCASH;
 
-    const session = await mongoose.startSession();
-
-    try {
-        await session.withTransaction(async () => {
+    await withBookingChangeTransaction(
+        originalBooking, { end: requestedEndDate, checkLimit: true },
+        async (session) => {
+            if (await Rental.exists({ booking: booking._id, "return.date": { $ne: null } }).session(session)) {
+                throw createError("The vehicle has already been returned, so this extension can't be approved.", 409);
+            }
             /*
              * Claim the request first: two admins approving at once, or the
              * customer cancelling it (or the booking ending) meanwhile, must
@@ -6969,8 +7060,7 @@ const approveBookingExtension = async (
                 },
                 {
                     $set: {
-                        "extensions.$.status":
-                            BOOKING_EXTENSION_STATUS.APPROVED,
+                        "extensions.$": extension.toObject(),
                     },
                 },
                 { session }
@@ -6983,7 +7073,11 @@ const approveBookingExtension = async (
                 );
             }
 
-            await booking.save({ session });
+            await Booking.updateOne({ _id: booking._id }, { $set: {
+                endDate: booking.endDate,
+                "pricing.totalAmount": booking.pricing.totalAmount,
+                "audit.updatedBy": approvedBy,
+            } }, { session });
 
             if (extension.pricing.amount > 0) {
                 await Payment.create(
@@ -7023,10 +7117,9 @@ const approveBookingExtension = async (
                 approvedBy,
                 session
             );
-        });
-    } finally {
-        await session.endSession();
-    }
+            return booking;
+        }
+    );
 
     await notifyBookingCustomer(booking, {
         type: "booking",
@@ -7663,9 +7756,9 @@ const applyDriverChange = async (
         });
     }
 
-    const updated = await Booking.findOneAndUpdate(filter, update, {
-        new: true,
-    });
+    const updated = await withBookingChangeTransaction(booking, { driver: newDriverId },
+        (session) => Booking.findOneAndUpdate(filter, update, { new: true, session })
+    );
 
     if (!updated) {
         throw createError(
@@ -8374,35 +8467,38 @@ const approveBookingReschedule = async (
 
     // Atomic: two admins approving at once (or a pickup racing this) can't
     // both apply it. Booking has no versionKey, so save() wouldn't catch it.
-    const updated = await Booking.findOneAndUpdate(
-        {
-            _id: booking._id,
-            status: { $in: RESCHEDULABLE_STATUSES },
-            startDate: previousStart,
-            reschedules: {
-                $elemMatch: {
-                    _id: reschedule._id,
-                    status: BOOKING_RESCHEDULE_STATUS.PENDING,
+    const updated = await withBookingChangeTransaction(
+        booking, { start: quote.start, end: quote.end, checkLimit: true },
+        (session) => Booking.findOneAndUpdate(
+            {
+                _id: booking._id,
+                status: { $in: RESCHEDULABLE_STATUSES },
+                startDate: previousStart,
+                reschedules: {
+                    $elemMatch: {
+                        _id: reschedule._id,
+                        status: BOOKING_RESCHEDULE_STATUS.PENDING,
+                    },
                 },
             },
-        },
-        {
-            $set: {
-                startDate: quote.start,
-                endDate: quote.end,
-                pricing: quote.pricing,
-                ...voucherUpdate,
-                "audit.updatedBy": approvedBy,
-                "reschedules.$.status":
-                    BOOKING_RESCHEDULE_STATUS.APPROVED,
-                "reschedules.$.approvedAt": new Date(),
-                "reschedules.$.approvedBy": approvedBy,
-                "reschedules.$.previousStartDate": previousStart,
-                "reschedules.$.previousEndDate": previousEnd,
-                "reschedules.$.pricing": quote.summary,
+            {
+                $set: {
+                    startDate: quote.start,
+                    endDate: quote.end,
+                    pricing: quote.pricing,
+                    ...voucherUpdate,
+                    "audit.updatedBy": approvedBy,
+                    "reschedules.$.status":
+                        BOOKING_RESCHEDULE_STATUS.APPROVED,
+                    "reschedules.$.approvedAt": new Date(),
+                    "reschedules.$.approvedBy": approvedBy,
+                    "reschedules.$.previousStartDate": previousStart,
+                    "reschedules.$.previousEndDate": previousEnd,
+                    "reschedules.$.pricing": quote.summary,
+                },
             },
-        },
-        { new: true }
+            { new: true, session }
+        )
     );
 
     if (!updated) {
@@ -8859,16 +8955,14 @@ const previewVehicleChangeSettlement = (
     };
 };
 
-const isReservationUnpaid = async (bookingId) =>
-    Boolean(
-        await Payment.exists({
-            booking: bookingId,
-            paymentType: PAYMENT_TYPE.RESERVATION_FEE,
-            status: {
-                $in: [PAYMENT_STATUS.PENDING, PAYMENT_STATUS.CANCELLED],
-            },
-        })
-    );
+const isReservationUnpaid = async (bookingId) => {
+    const payment = await Payment.findOne({
+        booking: bookingId,
+        paymentType: PAYMENT_TYPE.RESERVATION_FEE,
+    }).select("status").lean();
+    // A booking created with no upfront fee legitimately has no payment yet.
+    return !payment || [PAYMENT_STATUS.PENDING, PAYMENT_STATUS.CANCELLED].includes(payment.status);
+};
 
 /*
  * Vehicles free for this booking's exact dates and times that the customer
@@ -9263,15 +9357,11 @@ const changeVehicleForMaintenanceConflict = async (
             previousUpfrontAmount: roundMoney(getUpfrontFees(booking).total),
             pricing,
             updatedBy: userId,
+            prepareOnly: true,
         });
     }
 
-    // A pending date change or extension was for the old vehicle.
-    await closePendingExtensions(
-        booking,
-        userId,
-        "The booking moved to another vehicle."
-    );
+
 
     // A percentage voucher's discount follows the new rate (a covered
     // upgrade keeps the old price, voucher included).
@@ -9294,78 +9384,92 @@ const changeVehicleForMaintenanceConflict = async (
     const oldName = vehicleDisplayName(previousVehicle);
 
     // Atomic: a cancel, pickup or second choice racing this can't also win.
-    const updated = await Booking.findOneAndUpdate(
-        {
-            _id: booking._id,
-            status: booking.status,
-            vehicle: booking.vehicle,
-            "maintenanceConflict.status": booking.maintenanceConflict.status,
-        },
-        {
-            $set: {
-                vehicle: newVehicle._id,
-                pricing,
-                ...voucherUpdate,
-                "audit.updatedBy": userId,
-                "maintenanceConflict.status":
-                    BOOKING_MAINTENANCE_CONFLICT_STATUS.VEHICLE_CHANGED,
-                "maintenanceConflict.resolvedAt": new Date(),
-                "maintenanceConflict.resolvedBy": userId,
-                "maintenanceConflict.resolvedByRole": actorRole,
-                "maintenanceConflict.resolutionNote": `Moved from the ${oldName} to the ${newName}.${
-                    coveredAmount
-                        ? ` Free upgrade: the platform covers the ${formatAmount(
-                              coveredAmount
-                          )} difference.`
-                        : ""
-                }`,
-                "maintenanceConflict.vehicleChange": {
-                    changeId,
-                    previousVehicle: booking.vehicle,
-                    newVehicle: newVehicle._id,
-                    pricing: { ...summary, coveredAmount },
-                    settlement: {
-                        kind: BOOKING_RESCHEDULE_SETTLEMENT.NONE,
-                        amount: 0,
-                        payment: null,
-                        manual: false,
+    const updated = await withBookingChangeTransaction(
+        booking, { vehicle: newVehicle._id }, async (session) => {
+            if (reservationUnpaid && !coveredAmount) {
+                await syncReservationPaymentAmount(booking, {
+                    previousTotalAmount: roundMoney(booking.pricing?.totalAmount),
+                    previousUpfrontAmount: roundMoney(getUpfrontFees(booking).total),
+                    pricing,
+                    updatedBy: userId,
+                    session,
+                });
+            }
+            await closePendingExtensions(booking, userId, "The booking moved to another vehicle.", session);
+            return Booking.findOneAndUpdate(
+                {
+                    _id: booking._id,
+                    status: booking.status,
+                    vehicle: booking.vehicle,
+                    "maintenanceConflict.status": booking.maintenanceConflict.status,
+                },
+                {
+                    $set: {
+                        vehicle: newVehicle._id,
+                        pricing,
+                        ...voucherUpdate,
+                        "audit.updatedBy": userId,
+                        "maintenanceConflict.status":
+                            BOOKING_MAINTENANCE_CONFLICT_STATUS.VEHICLE_CHANGED,
+                        "maintenanceConflict.resolvedAt": new Date(),
+                        "maintenanceConflict.resolvedBy": userId,
+                        "maintenanceConflict.resolvedByRole": actorRole,
+                        "maintenanceConflict.resolutionNote": `Moved from the ${oldName} to the ${newName}.${
+                            coveredAmount
+                                ? ` Free upgrade: the platform covers the ${formatAmount(
+                                      coveredAmount
+                                  )} difference.`
+                                : ""
+                        }`,
+                        "maintenanceConflict.vehicleChange": {
+                            changeId,
+                            previousVehicle: booking.vehicle,
+                            newVehicle: newVehicle._id,
+                            pricing: { ...summary, coveredAmount },
+                            settlement: {
+                                kind: BOOKING_RESCHEDULE_SETTLEMENT.NONE,
+                                amount: 0,
+                                payment: null,
+                                manual: false,
+                            },
+                        },
+                    },
+                    $push: {
+                        vehicleChanges: {
+                            changeId,
+                            previousVehicle: booking.vehicle,
+                            newVehicle: newVehicle._id,
+                            changedAt: new Date(),
+                            changedBy: userId,
+                            previousTotalAmount: summary.previousTotalAmount,
+                            // What the customer's booking now totals.
+                            totalAmount: coveredAmount
+                                ? summary.previousTotalAmount
+                                : summary.totalAmount,
+                        },
+                        statusHistory: {
+                            status: booking.status,
+                            changedBy: userId,
+                            reason: "Moved to another vehicle",
+                            notes: `Moved from the ${oldName} to the ${newName} by the ${actorRole} after ${
+                                lateReturn ? "a late return" : "a maintenance conflict"
+                            } (${
+                                coveredAmount
+                                    ? `free upgrade — ${formatAmount(
+                                          coveredAmount
+                                      )} covered by the platform`
+                                    : summary.difference === 0
+                                      ? "same price"
+                                      : `${summary.difference > 0 ? "+" : "-"}${formatAmount(
+                                            Math.abs(summary.difference)
+                                        )}`
+                            }).`,
+                        },
                     },
                 },
-            },
-            $push: {
-                vehicleChanges: {
-                    changeId,
-                    previousVehicle: booking.vehicle,
-                    newVehicle: newVehicle._id,
-                    changedAt: new Date(),
-                    changedBy: userId,
-                    previousTotalAmount: summary.previousTotalAmount,
-                    // What the customer's booking now totals.
-                    totalAmount: coveredAmount
-                        ? summary.previousTotalAmount
-                        : summary.totalAmount,
-                },
-                statusHistory: {
-                    status: booking.status,
-                    changedBy: userId,
-                    reason: "Moved to another vehicle",
-                    notes: `Moved from the ${oldName} to the ${newName} by the ${actorRole} after ${
-                        lateReturn ? "a late return" : "a maintenance conflict"
-                    } (${
-                        coveredAmount
-                            ? `free upgrade — ${formatAmount(
-                                  coveredAmount
-                              )} covered by the platform`
-                            : summary.difference === 0
-                              ? "same price"
-                              : `${summary.difference > 0 ? "+" : "-"}${formatAmount(
-                                    Math.abs(summary.difference)
-                                )}`
-                    }).`,
-                },
-            },
-        },
-        { new: true }
+                { new: true, session }
+            );
+        }
     );
 
     if (!updated) {

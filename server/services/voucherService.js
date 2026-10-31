@@ -1169,7 +1169,8 @@ const claimVoucherUsage =
     async (
         voucherId,
         userId,
-        bookingId
+        bookingId,
+        session = null
     ) => {
         const userObjectId =
             new mongoose.Types.ObjectId(
@@ -1225,6 +1226,7 @@ const claimVoucherUsage =
                 },
                 {
                     new: true,
+                    session,
                 }
             );
 

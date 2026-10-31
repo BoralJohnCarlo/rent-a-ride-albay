@@ -284,6 +284,7 @@ const getVehicleImage = (vehicle) => {
  */
 const canPayNow = (booking) =>
     Boolean(booking?.paymentId) &&
+    (booking.paymentAmount == null || Number(booking.paymentAmount) > 0) &&
     !TERMINAL_STATUSES.includes(booking?.status) &&
     (booking?.paymentStatus === "PENDING" ||
         (booking?.paymentStatus === "CANCELLED" &&

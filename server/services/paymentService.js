@@ -393,6 +393,9 @@ const reviveCancelledReservationPayment = async (
     payment,
     customerId
 ) => {
+    if (Number(payment.amount) <= 0) {
+        throw createError("This booking does not require an initial payment.", 400);
+    }
     if (
         payment.paymentType !==
         PAYMENT_TYPE.RESERVATION_FEE
@@ -856,19 +859,32 @@ const createPaymongoCheckout = async (
             },
         });
 
-    payment.paymongo = {
-        checkoutSessionId:
-            checkout.id,
-
-        paymentId:
-            payment.paymongo?.paymentId ||
-            "",
-    };
-
-    payment.audit.updatedBy =
-        customerId;
-
-    await payment.save();
+    // The provider request can outlast an edit that reprices or cancels this
+    // payment. Never attach or return a checkout created for the stale amount.
+    const attached = await Payment.findOneAndUpdate(
+        {
+            _id: payment._id,
+            status: PAYMENT_STATUS.PENDING,
+            amount: payment.amount,
+            updatedAt: payment.updatedAt,
+        },
+        {
+            $set: {
+                paymongo: {
+                    checkoutSessionId: checkout.id,
+                    paymentId: payment.paymongo?.paymentId || "",
+                },
+                "audit.updatedBy": customerId,
+            },
+        },
+        { new: true }
+    );
+    if (!attached) {
+        await expireCheckoutSession(checkout.id).catch((error) => {
+            console.error("Failed to close superseded checkout:", checkout.id, error.message);
+        });
+        throw createError("This payment changed while checkout was opening. Please reload and try again.", 409);
+    }
 
     return {
         payment:

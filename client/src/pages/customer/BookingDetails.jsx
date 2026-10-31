@@ -117,6 +117,7 @@ const canCancel = (status) =>
  */
 const canPayNow = (booking) =>
     booking?.paymentId &&
+    (booking.paymentAmount == null || Number(booking.paymentAmount) > 0) &&
     (booking?.paymentStatus === "PENDING" ||
         (booking?.paymentStatus === "CANCELLED" &&
             booking?.status === "Pending")) &&
