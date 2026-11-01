@@ -9,6 +9,7 @@ const ServiceLocationDialogs = ({
     isOpen = false,
     loading = false,
     errors = null,
+    coordinatesRequired = false,
     onClose,
     onSubmit,
 }) => {
@@ -42,6 +43,7 @@ const ServiceLocationDialogs = ({
                     location={location}
                     loading={loading}
                     errors={errors}
+                    coordinatesRequired={coordinatesRequired}
                     onSubmit={onSubmit}
                     onCancel={onClose}
                 />

@@ -46,8 +46,6 @@ const PenaltySettings = () => {
     const toast = useToast();
 
     const {
-        settings,
-        loading: settingsLoading,
         error: settingsError,
         getSettings,
         updateSettings,
@@ -55,7 +53,6 @@ const PenaltySettings = () => {
     } = useSettings();
 
     const {
-        rentals = [],
         fetchRentals,
     } = useRental();
 
@@ -63,19 +60,44 @@ const PenaltySettings = () => {
     const [localSettings, setLocalSettings] =
         useState({});
 
-    useEffect(() => {
-        void getSettings();
-        void fetchRentals(true);
-    }, [getSettings, fetchRentals]);
+    const [loadState, setLoadState] = useState("loading");
+    const [loadAttempt, setLoadAttempt] = useState(0);
+
+    const [historyLoadState, setHistoryLoadState] = useState("loading");
+    const [historyLoadAttempt, setHistoryLoadAttempt] = useState(0);
+    const [historyRentals, setHistoryRentals] = useState([]);
 
     useEffect(() => {
-        if (
-            settings &&
-            Object.keys(settings).length > 0
-        ) {
-            setLocalSettings(settings);
-        }
-    }, [settings]);
+        let active = true;
+        setLoadState("loading");
+        getSettings().unwrap().then(
+            (response) => {
+                if (!active) return;
+                setLocalSettings(response.data);
+                setLoadState("ready");
+            },
+            () => { if (active) setLoadState("error"); }
+        );
+        return () => { active = false; };
+    }, [getSettings, loadAttempt]);
+
+    useEffect(() => {
+        let historyActive = true;
+        setHistoryLoadState("loading");
+        fetchRentals(true).unwrap().then(
+            (response) => {
+                if (!historyActive) return;
+                if (!Array.isArray(response?.data)) {
+                    setHistoryLoadState("error");
+                    return;
+                }
+                setHistoryRentals(response.data);
+                setHistoryLoadState("ready");
+            },
+            () => { if (historyActive) setHistoryLoadState("error"); }
+        );
+        return () => { historyActive = false; };
+    }, [fetchRentals, historyLoadAttempt]);
 
     useEffect(() => {
         if (settingsError) {
@@ -102,7 +124,7 @@ const PenaltySettings = () => {
     const penaltyHistory = useMemo(() => {
         const history = [];
 
-        rentals.forEach((rental) => {
+        historyRentals.forEach((rental) => {
             if (
                 rental.penaltyHistory &&
                 rental.penaltyHistory.length > 0
@@ -135,9 +157,10 @@ const PenaltySettings = () => {
                 ) -
                 new Date(a.performedAt)
         );
-    }, [rentals]);
+    }, [historyRentals]);
 
     const handleChange = (field, value) => {
+        if (loadState !== "ready" || saving) return;
         setLocalSettings((prev) => ({
             ...prev,
             penaltySettings: {
@@ -148,6 +171,7 @@ const PenaltySettings = () => {
     };
 
     const handleSave = async () => {
+        if (loadState !== "ready" || saving) return;
         setSaving(true);
 
         try {
@@ -251,7 +275,16 @@ const PenaltySettings = () => {
             .join(" ");
     };
 
-    if (settingsLoading && !localSettings.penaltySettings) {
+    if (loadState === "error") {
+        return (
+            <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-gray-200 p-6 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-red-600 dark:text-red-400">Unable to load penalty settings. Retry before making changes.</p>
+                <Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry</Button>
+            </div>
+        );
+    }
+
+    if (loadState !== "ready") {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600 dark:border-gray-700 dark:border-t-blue-400" />
@@ -285,7 +318,7 @@ const PenaltySettings = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <fieldset disabled={saving} className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2">
                     <Input
                         id="grace-period"
                         name="gracePeriodMinutes"
@@ -415,7 +448,7 @@ const PenaltySettings = () => {
                                         event
                                             .target
                                             .value
-                                    ) || 1
+                                    )
                                 )
                             }
                             helperText={
@@ -473,7 +506,7 @@ const PenaltySettings = () => {
                             )
                         }
                     />
-                </div>
+                </fieldset>
 
                 <div className="mt-6 flex justify-end">
                     <Button
@@ -481,7 +514,7 @@ const PenaltySettings = () => {
                         onClick={handleSave}
                         loading={saving}
                         disabled={
-                            settingsLoading
+                            loadState !== "ready"
                         }
                         leftIcon={
                             <Settings2
@@ -513,7 +546,18 @@ const PenaltySettings = () => {
                     </div>
                 </div>
 
-                {penaltyHistory.length === 0 ? (
+                {historyLoadState === "loading" ? (
+                    <p role="status" className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                        Loading penalty history…
+                    </p>
+                ) : historyLoadState === "error" ? (
+                    <div role="alert" className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-red-600 dark:text-red-400">Unable to load penalty history. Retry to view the latest records.</p>
+                        <Button type="button" variant="outline" onClick={() => setHistoryLoadAttempt((attempt) => attempt + 1)}>
+                            Retry
+                        </Button>
+                    </div>
+                ) : penaltyHistory.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="rounded-full bg-gray-100 p-4 dark:bg-gray-800">
                             <Inbox

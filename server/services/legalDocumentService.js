@@ -700,7 +700,7 @@ export const buildBookingTermsAcceptance = async (
         ...snapshot.latePenalty,
         rateType: settings?.penaltySettings?.rateType || "derived",
         customRate: Number(settings?.penaltySettings?.customRate) || 0,
-        rateMultiplier: Number(settings?.penaltySettings?.rateMultiplier) || 1,
+        rateMultiplier: Number(settings?.penaltySettings?.rateMultiplier ?? 1),
     };
 
     return {

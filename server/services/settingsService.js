@@ -1,6 +1,7 @@
 import createError from "../utils/createError.js";
 
 import Settings from "../models/Settings.js";
+import { validatePayoutSettingsPatch } from "../utils/payoutSettings.js";
 import ServiceLocation from "../models/ServiceLocation.js";
 import { withBookingCreationTransaction } from "./bookingCreationTransaction.js";
 import { assertDefaultLocationPolicy, SERVICE_LOCATION_POLICY_RESOURCE } from "../utils/defaultLocationPolicy.js";
@@ -420,6 +421,46 @@ export const getBookingLocationPolicy =
 
 export const updateBookingLocationPolicy =
     async (policyData) => {
+        // Atomic leaf updates preserve other sections during concurrent saves.
+        const updateData = { ...policyData };
+        if (Object.hasOwn(policyData, "commissionSettings")) {
+            delete updateData.commissionSettings;
+            for (const [key, value] of Object.entries(validatePayoutSettingsPatch(policyData.commissionSettings))) {
+                updateData[`commissionSettings.${key}`] = value;
+            }
+        }
+        for (const section of ["penaltySettings", "earlyReturnSettings", "driverPricingSettings", "driverAssignmentSettings", "validIdRenewalSettings", "validIdExpirationSettings"]) {
+            if (!policyData[section]) continue;
+            delete updateData[section];
+            for (const [key, value] of Object.entries(policyData[section])) {
+                updateData[`${section}.${key}`] = value;
+            }
+        }
+        if (policyData.refundSettings) {
+            delete updateData.refundSettings;
+            for (const [key, value] of Object.entries(policyData.refundSettings)) {
+                if (key === "cancellationPolicy") {
+                    for (const [field, fieldValue] of Object.entries(value)) {
+                        // Tiers are one ordered policy list, saved atomically.
+                        updateData[`refundSettings.cancellationPolicy.${field}`] = fieldValue;
+                    }
+                } else {
+                    updateData[`refundSettings.${key}`] = value;
+                }
+            }
+        }
+        if (policyData.bookingSettings) {
+            delete updateData.bookingSettings;
+            for (const [key, value] of Object.entries(policyData.bookingSettings)) {
+                if (key === "turnaroundBufferMinutes") {
+                    updateData[`bookingSettings.${key}`] = value;
+                } else {
+                    for (const [field, fieldValue] of Object.entries(value ?? {})) {
+                        updateData[`bookingSettings.${key}.${field}`] = fieldValue;
+                    }
+                }
+            }
+        }
         if (Object.hasOwn(policyData, "allowOnlyDefaultLocation") ||
             Object.hasOwn(policyData, "enableDistanceFeeCalculation")) {
             return withBookingCreationTransaction([SERVICE_LOCATION_POLICY_RESOURCE], async (session) => {
@@ -427,7 +468,7 @@ export const updateBookingLocationPolicy =
                 const next = { ...current, ...policyData };
                 const defaultLocation = await ServiceLocation.findOne({ enabled: true, isDefault: true }).session(session).lean();
                 assertDefaultLocationPolicy(next, defaultLocation);
-                return Settings.findOneAndUpdate({}, { ...policyData }, {
+                return Settings.findOneAndUpdate({}, { ...updateData }, {
                     new: true, upsert: true, runValidators: true, session,
                 }).lean();
             });
@@ -436,7 +477,7 @@ export const updateBookingLocationPolicy =
             await Settings.findOneAndUpdate(
                 {},
                 {
-                    ...policyData,
+                    ...updateData,
                 },
                 {
                     new: true,

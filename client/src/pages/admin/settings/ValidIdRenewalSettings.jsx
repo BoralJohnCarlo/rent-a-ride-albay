@@ -18,6 +18,7 @@ import Switch from "../../../components/common/Switch";
 
 import useSettings from "../../../hooks/settings/useSettings";
 import useToast from "../../../hooks/toast/useToast";
+import { normalizeValidIdSettings, buildValidIdSettingsPatch } from "../../../utils/validIdSettings";
 
 const RENEWAL_PERIOD_OPTIONS = [
     { value: 1, label: "1 Year" },
@@ -31,8 +32,6 @@ const ValidIdRenewalSettings = () => {
     const toast = useToast();
 
     const {
-        settings,
-        loading: settingsLoading,
         error: settingsError,
         getSettings,
         updateSettings,
@@ -42,15 +41,25 @@ const ValidIdRenewalSettings = () => {
     const [saving, setSaving] = useState(false);
     const [localSettings, setLocalSettings] = useState({});
 
-    useEffect(() => {
-        void getSettings();
-    }, [getSettings]);
+    const [savedSettings, setSavedSettings] = useState({});
+    const [loadState, setLoadState] = useState("loading");
+    const [loadAttempt, setLoadAttempt] = useState(0);
 
     useEffect(() => {
-        if (settings && Object.keys(settings).length > 0) {
-            setLocalSettings(settings);
-        }
-    }, [settings]);
+        let active = true;
+        setLoadState("loading");
+        getSettings().unwrap().then(
+            (response) => {
+                if (!active) return;
+                const loaded = normalizeValidIdSettings(response.data);
+                setLocalSettings(loaded);
+                setSavedSettings(loaded);
+                setLoadState("ready");
+            },
+            () => { if (active) setLoadState("error"); }
+        );
+        return () => { active = false; };
+    }, [getSettings, loadAttempt]);
 
     useEffect(() => {
         if (settingsError) {
@@ -83,6 +92,7 @@ const ValidIdRenewalSettings = () => {
     );
 
     const handleSwitchChange = (field, event) => {
+        if (loadState !== "ready" || saving) return;
         setLocalSettings((prev) => ({
             ...prev,
             validIdExpirationSettings: {
@@ -93,6 +103,7 @@ const ValidIdRenewalSettings = () => {
     };
 
     const handleExpirationNumberChange = (field, value) => {
+        if (loadState !== "ready" || saving) return;
         setLocalSettings((prev) => ({
             ...prev,
             validIdExpirationSettings: {
@@ -103,6 +114,7 @@ const ValidIdRenewalSettings = () => {
     };
 
     const handleChange = (field, value) => {
+        if (loadState !== "ready" || saving) return;
         setLocalSettings((prev) => ({
             ...prev,
             validIdRenewalSettings: {
@@ -113,13 +125,19 @@ const ValidIdRenewalSettings = () => {
     };
 
     const handleSave = async () => {
+        if (loadState !== "ready" || saving) return;
+        const patch = buildValidIdSettingsPatch(localSettings, savedSettings);
+        if (!Object.keys(patch).length) {
+            toast.success("No changes to save.");
+            return;
+        }
         setSaving(true);
 
         try {
-            await updateSettings({
-                validIdRenewalSettings: localSettings.validIdRenewalSettings,
-                validIdExpirationSettings: localSettings.validIdExpirationSettings,
-            }).unwrap();
+            const response = await updateSettings(patch).unwrap();
+            const refreshed = normalizeValidIdSettings(response.data);
+            setLocalSettings(refreshed);
+            setSavedSettings(refreshed);
             toast.success("Valid ID renewal settings saved successfully.");
         } catch (error) {
             toast.error(
@@ -130,7 +148,15 @@ const ValidIdRenewalSettings = () => {
         }
     };
 
-    if (settingsLoading && !localSettings.validIdRenewalSettings) {
+    if (loadState === "error") {
+        return (
+            <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-gray-200 p-6 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-red-600 dark:text-red-400">Unable to load valid ID settings. Retry before making changes.</p>
+                <Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry</Button>
+            </div>
+        );
+    }
+    if (loadState !== "ready") {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600 dark:border-gray-700 dark:border-t-blue-400" />
@@ -139,7 +165,7 @@ const ValidIdRenewalSettings = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <fieldset disabled={saving} className="min-w-0 space-y-6">
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                 <div className="mb-6 flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
@@ -307,7 +333,7 @@ const ValidIdRenewalSettings = () => {
                             type="button"
                             onClick={handleSave}
                             loading={saving}
-                            disabled={settingsLoading}
+                            disabled={loadState !== "ready"}
                             leftIcon={
                                 <Settings2 size={16} />
                             }
@@ -369,7 +395,7 @@ const ValidIdRenewalSettings = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </fieldset>
     );
 };
 

@@ -9,6 +9,7 @@ import {
 } from "../../services/settingsService";
 
 import { DEFAULT_CANCELLATION_POLICY } from "../../utils/cancellationPolicy";
+import { queueSettingsRequest } from "../../utils/settingsRequestQueue";
 
 const initialState = {
     settings: {
@@ -39,6 +40,7 @@ const initialState = {
         },
     },
     loading: false,
+    pendingRequests: 0,
     error: null,
 };
 
@@ -46,7 +48,7 @@ export const getSettings = createAsyncThunk(
     "settings/getSettings",
     async (_, { rejectWithValue }) => {
         try {
-            return await fetchSettings();
+            return await queueSettingsRequest(() => fetchSettings());
         } catch (error) {
             return rejectWithValue(
                 error.response?.data?.message ||
@@ -60,7 +62,7 @@ export const updateSettings = createAsyncThunk(
     "settings/updateSettings",
     async (settingsData, { rejectWithValue }) => {
         try {
-            return await updateSettingsAction(settingsData);
+            return await queueSettingsRequest(() => updateSettingsAction(settingsData));
         } catch (error) {
             return rejectWithValue(
                 error.response?.data?.errors?.[0]?.msg ||
@@ -82,29 +84,35 @@ const settingsSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(getSettings.pending, (state) => {
+                state.pendingRequests += 1;
                 state.loading = true;
                 state.error = null;
             })
             .addCase(getSettings.fulfilled, (state, action) => {
-                state.loading = false;
+                state.pendingRequests -= 1;
+                state.loading = state.pendingRequests > 0;
                 state.settings =
                     action.payload?.data || state.settings;
             })
             .addCase(getSettings.rejected, (state, action) => {
-                state.loading = false;
+                state.pendingRequests -= 1;
+                state.loading = state.pendingRequests > 0;
                 state.error = action.payload;
             })
             .addCase(updateSettings.pending, (state) => {
+                state.pendingRequests += 1;
                 state.loading = true;
                 state.error = null;
             })
             .addCase(updateSettings.fulfilled, (state, action) => {
-                state.loading = false;
+                state.pendingRequests -= 1;
+                state.loading = state.pendingRequests > 0;
                 state.settings =
                     action.payload?.data || state.settings;
             })
             .addCase(updateSettings.rejected, (state, action) => {
-                state.loading = false;
+                state.pendingRequests -= 1;
+                state.loading = state.pendingRequests > 0;
                 state.error = action.payload;
             });
     },

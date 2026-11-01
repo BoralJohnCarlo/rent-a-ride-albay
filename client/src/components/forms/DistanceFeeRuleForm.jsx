@@ -43,7 +43,7 @@ const DistanceFeeRuleForm = ({
     const isViewMode = mode === "view";
 
     const [formData, setFormData] = useState(
-        () => getInitialState(rule, isEditMode)
+        () => getInitialState(rule, isEditMode || isViewMode)
     );
 
     const validationErrors = useMemo(() => {

@@ -71,49 +71,6 @@ export const getPayoutSettings = async (req, res) => {
 
 export const updatePayoutSettingsHandler = async (req, res) => {
     try {
-        const {
-            platformCommissionRate,
-            payoutCurrency,
-            payoutHoldHours,
-        } = req.body;
-
-        if (
-            platformCommissionRate !== undefined &&
-            (typeof platformCommissionRate !== "number" ||
-                platformCommissionRate < 0 ||
-                platformCommissionRate > 100)
-        ) {
-            return errorResponse(
-                res,
-                "platformCommissionRate must be a number between 0 and 100.",
-                400
-            );
-        }
-
-        if (
-            payoutCurrency !== undefined &&
-            (typeof payoutCurrency !== "string" ||
-                payoutCurrency.trim().length !== 3)
-        ) {
-            return errorResponse(
-                res,
-                "payoutCurrency must be a 3-letter currency code.",
-                400
-            );
-        }
-
-        if (
-            payoutHoldHours !== undefined &&
-            (typeof payoutHoldHours !== "number" ||
-                payoutHoldHours < 0)
-        ) {
-            return errorResponse(
-                res,
-                "payoutHoldHours must be a non-negative number.",
-                400
-            );
-        }
-
         const settings = await updatePayoutSettings({ commissionSettings: req.body });
         return successResponse(
             res,

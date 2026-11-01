@@ -66,7 +66,7 @@ export const computeLatePenalty = ({
     } else if (rateType === "multiplier") {
         rate =
             perUnitDailyRate *
-            (Number(penaltySettings.rateMultiplier) || 1);
+            Number(penaltySettings.rateMultiplier ?? 1);
     } else {
         rate = perUnitDailyRate;
     }

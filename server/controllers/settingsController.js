@@ -417,9 +417,8 @@ export const updateSettings = async (req, res) => {
         }
 
         /*
-         * bookingSettings is written wholesale too: merge what was sent over
-         * the stored values, so saving the buffer keeps the booking hours and
-         * vice versa.
+         * Validate booking options against the stored values, then persist
+         * only requested leaves so overlapping section saves remain independent.
          */
         if (settingsData?.bookingSettings) {
             const current = (await getBookingLocationPolicy())
@@ -477,6 +476,7 @@ export const updateSettings = async (req, res) => {
                 );
             }
 
+            const requestedBookingSettings = settingsData.bookingSettings;
             settingsData.bookingSettings = {
                 turnaroundBufferMinutes:
                     settingsData.bookingSettings
@@ -499,6 +499,18 @@ export const updateSettings = async (req, res) => {
                     allowAnytime: earlyPickup.allowAnytime,
                 },
             };
+            // Merged values validate the section; only requested leaves are saved.
+            for (const key of Object.keys(settingsData.bookingSettings)) {
+                if (!Object.hasOwn(requestedBookingSettings, key)) {
+                    delete settingsData.bookingSettings[key];
+                } else if (key !== "turnaroundBufferMinutes") {
+                    for (const field of Object.keys(settingsData.bookingSettings[key])) {
+                        if (!Object.hasOwn(requestedBookingSettings[key] ?? {}, field)) {
+                            delete settingsData.bookingSettings[key][field];
+                        }
+                    }
+                }
+            }
         }
 
         /*
@@ -613,10 +625,8 @@ export const updateSettings = async (req, res) => {
         }
 
         /*
-         * Nested objects are written wholesale, so a page that sends only
-         * part of refundSettings would silently drop the rest (including the
-         * whole cancellation policy). Merge over the stored, fully-resolved
-         * values first, validate the result, and write the complete section.
+         * Validate partial refunds against the stored policy, but persist
+         * only requested fields so concurrent saves preserve unrelated values.
          */
         if (settingsData?.refundSettings) {
             const current = await getBookingLocationPolicy();
@@ -638,7 +648,6 @@ export const updateSettings = async (req, res) => {
                 return errorResponse(res, refundError, 400);
             }
 
-            settingsData.refundSettings = refundSettings;
         }
 
         const settings =

@@ -67,6 +67,7 @@ const ServiceLocationForm = ({
     location = null,
     loading = false,
     errors = null,
+    coordinatesRequired = false,
     onSubmit,
     onCancel,
 }) => {
@@ -74,7 +75,7 @@ const ServiceLocationForm = ({
     const isViewMode = mode === "view";
 
     const [formData, setFormData] = useState(
-        () => getInitialState(location, isEditMode)
+        () => getInitialState(location, isEditMode || isViewMode)
     );
 
     useEffect(() => {
@@ -91,6 +92,12 @@ const ServiceLocationForm = ({
     const [mapLoading, setMapLoading] = useState(false);
     const [mapError, setMapError] = useState(null);
     const mapLoadingRef = useRef(false);
+    // Keep the last visible pin separate from coordinates confirmed for saving.
+    const [selectedPin, setSelectedPin] = useState(() =>
+        location?.latitude != null && location?.longitude != null
+            ? { latitude: location.latitude, longitude: location.longitude }
+            : null
+    );
 
     const validationErrors = useMemo(() => {
         if (!errors) {
@@ -170,6 +177,10 @@ const ServiceLocationForm = ({
                 ...previous,
                 [field]: value,
             };
+            if (previous[field] !== value) {
+                next.latitude = "";
+                next.longitude = "";
+            }
 
             if (field === "region") {
                 next.province = "";
@@ -201,11 +212,23 @@ const ServiceLocationForm = ({
                     type === "switch"
                     ? checked
                     : value,
+            ...(name === "address" && previous.address !== value
+                ? { latitude: "", longitude: "" }
+                : {}),
         }));
     };
 
+    const confirmSelectedPin = () => {
+        if (!selectedPin || loading || isViewMode || mapLoadingRef.current) return;
+        setFormData((previous) => ({ ...previous, ...selectedPin }));
+    };
+
+    const missingRequiredCoordinates = coordinatesRequired && formData.enabled &&
+        (formData.latitude === "" || formData.longitude === "");
+
     const handleSubmit = (event) => {
         event.preventDefault();
+        if (missingRequiredCoordinates || mapLoadingRef.current) return;
 
         const payload = {
             name: formData.name.trim(),
@@ -407,6 +430,21 @@ const ServiceLocationForm = ({
 
                         Pick Location on Map
                     </Button>
+                    {!isViewMode && (formData.latitude === "" || formData.longitude === "") && (
+                        <div className="mt-2 flex flex-col items-start gap-2">
+                            <p role="status" className="text-sm text-amber-700 dark:text-amber-300">
+                                Review the pin on the map, then confirm it matches the completed address or choose a new pin.
+                                {missingRequiredCoordinates && " Required for enabled locations while distance pricing is on."}
+                            </p>
+                            {selectedPin && (
+                                <Button type="button" variant="outline" size="sm"
+                                    onClick={confirmSelectedPin} disabled={loading || mapLoading}
+                                    className="max-w-full whitespace-normal break-words">
+                                    Confirm pin ({Number(selectedPin.latitude).toFixed(5)}, {Number(selectedPin.longitude).toFixed(5)}) for this address
+                                </Button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <Input
@@ -470,12 +508,10 @@ const ServiceLocationForm = ({
 
                     <LocationPicker
                         latitude={
-                            formData.latitude ||
-                                null
+                            formData.latitude !== "" ? formData.latitude : selectedPin?.latitude ?? null
                         }
                         longitude={
-                            formData.longitude ||
-                                null
+                            formData.longitude !== "" ? formData.longitude : selectedPin?.longitude ?? null
                         }
                         onLocationChange={async (
                             coords
@@ -489,6 +525,18 @@ const ServiceLocationForm = ({
                             mapLoadingRef.current = true;
                             setMapLoading(true);
                             setMapError(null);
+                            setSelectedPin({ latitude: coords.latitude, longitude: coords.longitude });
+                            // A new pin invalidates the old address, including on lookup failure.
+                            setFormData((previous) => ({
+                                ...previous,
+                                latitude: coords.latitude,
+                                longitude: coords.longitude,
+                                region: "",
+                                province: "",
+                                city: "",
+                                barangay: "",
+                                address: "",
+                            }));
 
                             try {
                                 const address =
@@ -620,10 +668,7 @@ const ServiceLocationForm = ({
                                                 nextCity
                                                     ? nextBarangay
                                                     : previous.barangay,
-                                            address:
-                                                previous.address?.trim()
-                                                    ? previous.address
-                                                    : fallbackAddress,
+                                            address: fallbackAddress,
                                         };
                                     }
                                 );
@@ -712,6 +757,7 @@ const ServiceLocationForm = ({
                     <Button
                         type="submit"
                         loading={loading}
+                        disabled={missingRequiredCoordinates || mapLoading}
                     >
                         {isEditMode
                             ? "Update Location"

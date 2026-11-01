@@ -29,6 +29,7 @@ import {
     resolveCancellationPolicy,
 } from "../../../utils/cancellationPolicy";
 import { DEFAULT_NO_SHOW_GRACE_HOURS } from "../../../constants/bookingStatus";
+import { buildRefundSettingsPatch, normalizeRefundSettings } from "../../../utils/refundSettingsPatch";
 
 /* A cleared number input is "" (kept so the admin can retype), not 0. */
 const toNumberOrBlank = (value) =>
@@ -38,8 +39,6 @@ const RefundSettings = () => {
     const toast = useToast();
 
     const {
-        settings,
-        loading: settingsLoading,
         error: settingsError,
         getSettings,
         updateSettings,
@@ -49,56 +48,27 @@ const RefundSettings = () => {
     const [saving, setSaving] = useState(false);
     const [localSettings, setLocalSettings] =
         useState({});
+    const [savedSettings, setSavedSettings] = useState({});
+
+    const [loadState, setLoadState] = useState("loading");
+    const [loadAttempt, setLoadAttempt] = useState(0);
 
     useEffect(() => {
-        void getSettings();
-    }, [getSettings]);
-
-    useEffect(() => {
-        if (
-            settings &&
-            Object.keys(settings).length > 0
-        ) {
-            /*
-             * earlyReturnSettings doesn't exist yet on documents saved
-             * before this feature shipped. Filling in every field here
-             * (not just as a display fallback) guarantees
-             * handleEarlyReturnChange's spread always starts from a
-             * complete object — otherwise saving after touching only one
-             * of the three fields would persist just that one field,
-             * silently dropping the other two from the stored document.
-             */
-            setLocalSettings({
-                ...settings,
-                /*
-                 * Same reason as earlyReturnSettings below: a document saved
-                 * before the cancellation policy existed has no
-                 * cancellationPolicy, and refundSettings is written to the
-                 * server as a whole section.
-                 */
-                refundSettings: {
-                    autoApproveRefundThreshold: 500,
-                    requireCancellationReason: true,
-                    gracePeriodHours: 24,
-                    noShowGraceHours: DEFAULT_NO_SHOW_GRACE_HOURS,
-                    noShowRefundPercent: 0,
-                    noShowKeepsDistanceFee: true,
-                    noShowAutoMark: true,
-                    ...settings.refundSettings,
-                    cancellationPolicy: resolveCancellationPolicy(
-                        settings.refundSettings?.cancellationPolicy
-                    ),
-                },
-                earlyReturnSettings: {
-                    enabled: true,
-                    autoApprove: false,
-                    voucherValidityMonths: 12,
-                    minUnusedDaysToQualify: 1,
-                    ...settings.earlyReturnSettings,
-                },
-            });
-        }
-    }, [settings]);
+        let active = true;
+        setLoadState("loading");
+        getSettings().unwrap().then(
+            (response) => {
+                if (!active) return;
+                const settings = response.data;
+                const loadedSettings = normalizeRefundSettings(settings);
+                setLocalSettings(loadedSettings);
+                setSavedSettings(loadedSettings);
+                setLoadState("ready");
+            },
+            () => { if (active) setLoadState("error"); }
+        );
+        return () => { active = false; };
+    }, [getSettings, loadAttempt]);
 
     useEffect(() => {
         if (settingsError) {
@@ -172,6 +142,7 @@ const RefundSettings = () => {
     );
 
     const handleChange = (field, value) => {
+        if (loadState !== "ready" || saving) return;
         setLocalSettings((prev) => ({
             ...prev,
             refundSettings: {
@@ -182,6 +153,7 @@ const RefundSettings = () => {
     };
 
     const handleEarlyReturnChange = (field, value) => {
+        if (loadState !== "ready" || saving) return;
         setLocalSettings((prev) => ({
             ...prev,
             earlyReturnSettings: {
@@ -196,6 +168,7 @@ const RefundSettings = () => {
      * included) and returns just the fields to change.
      */
     const updatePolicy = (updater) => {
+        if (loadState !== "ready" || saving) return;
         setLocalSettings((prev) => {
             const currentPolicy =
                 prev.refundSettings?.cancellationPolicy ??
@@ -248,10 +221,10 @@ const RefundSettings = () => {
     const handleSave = async (
         successMessage = "Refund settings saved successfully."
     ) => {
+        if (loadState !== "ready" || saving) return;
         /*
-         * Every card on this page saves the whole local state, so the
-         * cancellation policy is checked whichever Save was pressed. Tiers go
-         * out largest cutoff first, the order the server stores them in.
+         * Every card saves the pending edits. Validate the complete policy
+         * before sending only changed fields; keep tiers in cutoff order.
          */
         const savedPolicy = {
             ...localSettings.refundSettings
@@ -270,22 +243,33 @@ const RefundSettings = () => {
             return;
         }
 
+        const submittedSettings = {
+            earlyReturnSettings: localSettings.earlyReturnSettings,
+            refundSettings: { ...localSettings.refundSettings, cancellationPolicy: savedPolicy },
+        };
+        const patch = buildRefundSettingsPatch(submittedSettings, savedSettings);
+        if (!Object.keys(patch).length) {
+            toast.success("No changes to save.");
+            return;
+        }
+
         setSaving(true);
 
         try {
-            const result = await updateSettings({
-                earlyReturnSettings: localSettings.earlyReturnSettings,
-                refundSettings: {
-                    ...localSettings.refundSettings,
-                    cancellationPolicy: savedPolicy,
-                },
-            });
+            const result = await updateSettings(patch);
 
             /*
              * A rejected save doesn't throw here — the error effect above
              * already shows it, so don't also claim success.
              */
             if (result?.meta?.requestStatus !== "rejected") {
+                const settings = result.payload?.data;
+                if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+                    throw new Error("Unable to refresh saved settings. Reload before making further changes.");
+                }
+                const refreshedSettings = normalizeRefundSettings(settings);
+                setSavedSettings(refreshedSettings);
+                setLocalSettings(refreshedSettings);
                 toast.success(successMessage);
             }
         } catch (error) {
@@ -298,7 +282,16 @@ const RefundSettings = () => {
         }
     };
 
-    if (settingsLoading && !localSettings.refundSettings) {
+    if (loadState === "error") {
+        return (
+            <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-gray-200 p-6 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-red-600 dark:text-red-400">Unable to load refund settings. Retry before making changes.</p>
+                <Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry</Button>
+            </div>
+        );
+    }
+
+    if (loadState !== "ready") {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600 dark:border-gray-700 dark:border-t-blue-400" />
@@ -307,7 +300,7 @@ const RefundSettings = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <fieldset disabled={saving} className="min-w-0 space-y-6">
             <LockedTermsNotice />
 
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -508,7 +501,7 @@ const RefundSettings = () => {
                         }
                         loading={saving}
                         disabled={
-                            settingsLoading
+                            loadState !== "ready"
                         }
                         leftIcon={
                             <Settings2
@@ -734,7 +727,7 @@ const RefundSettings = () => {
                         }
                         loading={saving}
                         disabled={
-                            settingsLoading
+                            loadState !== "ready"
                         }
                         leftIcon={
                             <Settings2
@@ -873,7 +866,7 @@ const RefundSettings = () => {
                         }
                         loading={saving}
                         disabled={
-                            settingsLoading
+                            loadState !== "ready"
                         }
                         leftIcon={
                             <Settings2
@@ -885,7 +878,7 @@ const RefundSettings = () => {
                     </Button>
                 </div>
             </div>
-        </div>
+        </fieldset>
     );
 };
 

@@ -90,12 +90,27 @@ const ServiceLocations = () => {
     const [ruleSubmitting, setRuleSubmitting] = useState(false);
     const [settingsSubmitting, setSettingsSubmitting] = useState(false);
     const [localSettings, setLocalSettings] = useState({});
+    const [settingsLoadState, setSettingsLoadState] = useState("loading");
+    const [settingsLoadAttempt, setSettingsLoadAttempt] = useState(0);
 
     useEffect(() => {
         void getServiceLocations();
         void getDistanceFeeRules();
-        void getSettings();
-    }, [getServiceLocations, getDistanceFeeRules, getSettings]);
+    }, [getServiceLocations, getDistanceFeeRules]);
+
+    useEffect(() => {
+        let active = true;
+        setSettingsLoadState("loading");
+        getSettings().unwrap().then(
+            (response) => {
+                if (!active) return;
+                setLocalSettings(response.data);
+                setSettingsLoadState("ready");
+            },
+            () => { if (active) setSettingsLoadState("error"); }
+        );
+        return () => { active = false; };
+    }, [getSettings, settingsLoadAttempt]);
 
     useEffect(() => {
         if (locationsError) {
@@ -117,12 +132,6 @@ const ServiceLocations = () => {
             clearSettingsError();
         }
     }, [settingsError, toast, clearSettingsError]);
-
-    useEffect(() => {
-        if (settings && Object.keys(settings).length > 0) {
-            setLocalSettings(settings);
-        }
-    }, [settings]);
 
     const handleLocationOpen = useCallback(
         (mode, location = null) => {
@@ -188,22 +197,22 @@ const ServiceLocations = () => {
 
         try {
             if (ruleDialog.mode === "create") {
-                await createDistanceFeeRule(payload);
+                await createDistanceFeeRule(payload).unwrap();
                 toast.success("Distance fee rule created successfully.");
             } else if (ruleDialog.mode === "edit") {
                 await updateDistanceFeeRule({
                     ruleId: ruleDialog.rule._id,
                     ruleData: payload,
-                });
+                }).unwrap();
                 toast.success("Distance fee rule updated successfully.");
             } else if (ruleDialog.mode === "disable") {
-                await disableDistanceFeeRule(ruleDialog.rule._id);
+                await disableDistanceFeeRule(ruleDialog.rule._id).unwrap();
                 toast.success("Distance fee rule disabled.");
             } else if (ruleDialog.mode === "enable") {
-                await enableDistanceFeeRule(ruleDialog.rule._id);
+                await enableDistanceFeeRule(ruleDialog.rule._id).unwrap();
                 toast.success("Distance fee rule enabled.");
             } else if (ruleDialog.mode === "delete") {
-                await deleteDistanceFeeRule(ruleDialog.rule._id);
+                await deleteDistanceFeeRule(ruleDialog.rule._id).unwrap();
                 toast.success("Distance fee rule deleted.");
             }
 
@@ -217,6 +226,7 @@ const ServiceLocations = () => {
     };
 
     const handleGeneralSave = async () => {
+        if (settingsLoadState !== "ready" || settingsSubmitting) return;
         setSettingsSubmitting(true);
 
         try {
@@ -233,6 +243,7 @@ const ServiceLocations = () => {
     };
 
     const handleToggle = (key) => {
+        if (settingsLoadState !== "ready" || settingsSubmitting) return;
         setLocalSettings((prev) => ({
             ...prev,
             [key]: !prev[key],
@@ -275,7 +286,7 @@ const ServiceLocations = () => {
                 key: "actions",
                 header: "Actions",
                 render: (row) => (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Button
                             type="button"
                             variant="outline"
@@ -363,7 +374,7 @@ const ServiceLocations = () => {
                 key: "actions",
                 header: "Actions",
                 render: (row) => (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Button
                             type="button"
                             variant="outline"
@@ -475,6 +486,7 @@ const ServiceLocations = () => {
                 />
 
                 <ServiceLocationDialogs
+                    coordinatesRequired={settings?.enableDistanceFeeCalculation === true}
                     mode={locationDialog.mode}
                     location={locationDialog.location}
                     isOpen={locationDialog.isOpen}
@@ -547,6 +559,15 @@ const ServiceLocations = () => {
                         </div>
                     </div>
 
+                    {settingsLoadState === "loading" && (
+                        <p role="status" className="mb-4 text-sm text-gray-500">Loading booking policies…</p>
+                    )}
+                    {settingsLoadState === "error" && (
+                        <div role="alert" className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-sm text-red-600 dark:text-red-400">Unable to load booking policies. Retry before making changes.</p>
+                            <Button onClick={() => setSettingsLoadAttempt((attempt) => attempt + 1)}>Retry</Button>
+                        </div>
+                    )}
                     <div className="space-y-3">
                         {settingItems.map((item) => {
                             const enabled = Boolean(
@@ -573,6 +594,7 @@ const ServiceLocations = () => {
                                     </div>
 
                                     <Switch
+                                        disabled={settingsLoadState !== "ready" || settingsSubmitting}
                                         checked={enabled}
                                         onChange={() =>
                                             handleToggle(item.key)
@@ -588,6 +610,7 @@ const ServiceLocations = () => {
                             type="button"
                             onClick={handleGeneralSave}
                             loading={settingsSubmitting}
+                            disabled={settingsLoadState !== "ready"}
                         >
                             Save Changes
                         </Button>

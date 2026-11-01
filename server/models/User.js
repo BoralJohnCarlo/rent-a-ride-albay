@@ -271,6 +271,10 @@ emailVerificationExpires: {
             type: Date,
             default: null,
         },
+        validIdRenewalPeriodStartedAt: {
+            type: Date,
+            default: null,
+        },
 
         validIdExpirationDate: {
             type: Date,

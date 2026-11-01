@@ -69,7 +69,6 @@ const BookingSettings = () => {
 
     const {
         settings,
-        loading: settingsLoading,
         error: settingsError,
         getSettings,
         updateSettings,
@@ -78,19 +77,18 @@ const BookingSettings = () => {
 
     const [bufferMinutes, setBufferMinutes] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [loadState, setLoadState] = useState("loading");
+    const [loadAttempt, setLoadAttempt] = useState(0);
 
     useEffect(() => {
-        void getSettings();
-    }, [getSettings]);
-
-    useEffect(() => {
-        const stored =
-            settings?.bookingSettings?.turnaroundBufferMinutes;
-
-        if (Number.isFinite(stored)) {
-            setBufferMinutes(stored);
-        }
-    }, [settings]);
+        let active = true;
+        setLoadState("loading");
+        getSettings().unwrap().then(
+            () => { if (active) setLoadState("ready"); },
+            () => { if (active) setLoadState("error"); }
+        );
+        return () => { active = false; };
+    }, [getSettings, loadAttempt]);
 
     useEffect(() => {
         if (settingsError) {
@@ -100,9 +98,11 @@ const BookingSettings = () => {
     }, [settingsError, toast, clearSettingsError]);
 
     const currentBuffer =
-        bufferMinutes ?? DEFAULT_TURNAROUND_BUFFER_MINUTES;
+        bufferMinutes ?? settings?.bookingSettings?.turnaroundBufferMinutes ??
+        DEFAULT_TURNAROUND_BUFFER_MINUTES;
 
     const handleSave = async () => {
+        if (loadState !== "ready" || saving) return;
         setSaving(true);
 
         try {
@@ -112,6 +112,7 @@ const BookingSettings = () => {
                     turnaroundBufferMinutes: currentBuffer,
                 },
             }).unwrap();
+            setBufferMinutes(null);
             toast.success("Booking settings saved successfully.");
         } catch {
             // The store keeps the server's message (e.g. an out-of-range
@@ -121,7 +122,20 @@ const BookingSettings = () => {
         }
     };
 
-    if (settingsLoading && bufferMinutes === null) {
+    if (loadState === "error") {
+        return (
+            <div role="alert" className="flex flex-col gap-4 rounded-2xl border border-gray-200 p-6 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                    Unable to load booking settings. Retry before making changes.
+                </p>
+                <Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>
+                    Retry
+                </Button>
+            </div>
+        );
+    }
+
+    if (loadState !== "ready") {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600 dark:border-gray-700 dark:border-t-blue-400" />
@@ -692,7 +706,7 @@ const BookingHoursCard = ({ stored, updateSettings }) => {
                     }
                     disabled={saving}
                 />
-                Close bookings outside booking hours
+                Count booking notice during staff hours only
             </label>
 
             <div className="mt-4 grid max-w-md gap-4 sm:grid-cols-2">
@@ -780,7 +794,7 @@ function formatClock(totalMinutes) {
 
     return `${hour % 12 || 12}:${String(minuteOfDay % 60).padStart(2, "0")} ${
         hour < 12 ? "AM" : "PM"
-    }${dayOffset > 0 ? " the next day" : ""}`;
+    }${dayOffset === 1 ? " the next day" : dayOffset > 1 ? ` in ${dayOffset} days` : ""}`;
 }
 
 export default BookingSettings;

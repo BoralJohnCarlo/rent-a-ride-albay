@@ -2,6 +2,8 @@
 import User from "../models/User.js";
 import Blacklist from "../models/Blacklist.js";
 import Settings from "../models/Settings.js";
+import { withBookingCreationTransaction } from "./bookingCreationTransaction.js";
+import { refreshValidIdRenewalPeriod } from "../utils/validIdRenewalPeriod.js";
 import Notification from "../models/Notification.js";
 import { VALID_ID_DOCUMENT_SOURCE } from "../models/ValidIdDocument.js";
 import formatUser, { isValidIdExpired } from "../utils/userFormatter.js";
@@ -61,7 +63,7 @@ export const checkValidIdExpirationNotifications = async (userId) => {
         });
 
     if (expirationDate <= now) {
-        const notifyOnExpired = expirationSettings?.notifyOnExpired ?? true;
+        const notifyOnExpired = expirationSettings?.notifyOnExpired ?? false;
         if (!notifyOnExpired) return;
 
         if (await sentSince("validIdExpired", expirationDate)) return;
@@ -908,75 +910,77 @@ export const uploadRenewedValidId = async (
     imageData,
     licenseUpgrade = {}
 ) => {
-    const user = await User.findById(userId);
+    const { user, previousValidId, verificationWasRevoked } = await withBookingCreationTransaction(
+        [`valid-id-renewal:${userId}`], async (session) => {
+            const user = await User.findById(userId).session(session);
 
-    if (!user) {
-        throw createError("User not found.", 404);
-    }
+            if (!user) {
+                throw createError("User not found.", 404);
+            }
 
-    const settings = await Settings.findOne();
-    const maxUploadsPerYear = settings?.validIdRenewalSettings?.maxUploadsPerYear ?? 1;
-    const renewalPeriodYears = settings?.validIdRenewalSettings?.renewalPeriodYears ?? 1;
+            const settings = await Settings.findOne().session(session);
+            const maxUploadsPerYear = settings?.validIdRenewalSettings?.maxUploadsPerYear ?? 1;
+            const renewalPeriodYears = settings?.validIdRenewalSettings?.renewalPeriodYears ?? 1;
 
-    // Reset renewal count if the renewal period has passed since the last renewal
-    const renewalPeriodMs = renewalPeriodYears * 365 * 24 * 60 * 60 * 1000;
-    if (user.lastValidIdRenewalAt && Date.now() - user.lastValidIdRenewalAt >= renewalPeriodMs) {
-        user.validIdRenewalCount = 0;
-    }
+            // Reset renewal count if the renewal period has passed since the last renewal
+            const renewalPeriodMs = renewalPeriodYears * 365 * 24 * 60 * 60 * 1000;
+            refreshValidIdRenewalPeriod(user, renewalPeriodMs);
 
-    if (user.validIdRenewalCount >= maxUploadsPerYear) {
-        throw createError(
-            `You have reached the maximum number of valid ID renewals (${maxUploadsPerYear}) per year. Contact support for assistance.`,
-            400
-        );
-    }
+            if (user.validIdRenewalCount >= maxUploadsPerYear) {
+                throw createError(
+                    `You have reached the maximum number of valid ID renewals (${maxUploadsPerYear}) per year. Contact support for assistance.`,
+                    400
+                );
+            }
 
-    const previousValidId = snapshotValidId(user);
+            const previousValidId = snapshotValidId(user);
 
-    user.validIdImage = imageData.url;
-    user.validIdBack = "";
-    user.validIdRenewalCount += 1;
-    user.lastValidIdRenewalAt = new Date();
-    // A default until an admin verifies it and records the date printed on
-    // the new ID (verifyValidId).
-    user.validIdExpirationDate = new Date(Date.now() + renewalPeriodMs);
+            user.validIdImage = imageData.url;
+            user.validIdBack = "";
+            user.validIdRenewalCount += 1;
+            user.lastValidIdRenewalAt = new Date();
+            // A default until an admin verifies it and records the date printed on
+            // the new ID (verifyValidId).
+            user.validIdExpirationDate = new Date(Date.now() + renewalPeriodMs);
 
-    /*
-     * Optional upgrade: a customer renewing can also switch their ID type
-     * (typically to "Driver's License") and supply the license fields in
-     * the same request.
-     */
-    if (
-        licenseUpgrade.validIdType &&
-        licenseUpgrade.validIdType !== user.validIdType
-    ) {
-        user.validIdType = licenseUpgrade.validIdType;
+            /*
+             * Optional upgrade: a customer renewing can also switch their ID type
+             * (typically to "Driver's License") and supply the license fields in
+             * the same request.
+             */
+            if (
+                licenseUpgrade.validIdType &&
+                licenseUpgrade.validIdType !== user.validIdType
+            ) {
+                user.validIdType = licenseUpgrade.validIdType;
 
-        if (licenseUpgrade.validIdType === "Driver's License") {
-            user.hasDriversLicense = true;
-        }
+                if (licenseUpgrade.validIdType === "Driver's License") {
+                    user.hasDriversLicense = true;
+                }
 
-        if (licenseUpgrade.licenseNumber !== undefined) {
-            user.licenseNumber = licenseUpgrade.licenseNumber;
-        }
+                if (licenseUpgrade.licenseNumber !== undefined) {
+                    user.licenseNumber = licenseUpgrade.licenseNumber;
+                }
 
-        if (licenseUpgrade.licenseExpirationDate !== undefined) {
-            user.licenseExpirationDate =
-                licenseUpgrade.licenseExpirationDate;
-        }
-    }
+                if (licenseUpgrade.licenseExpirationDate !== undefined) {
+                    user.licenseExpirationDate =
+                        licenseUpgrade.licenseExpirationDate;
+                }
+            }
 
-    /*
-     * The renewed ID is a new image nobody has looked at yet, so it goes
-     * back through admin review - exactly like a profile edit that changes
-     * the ID (updateUserProfile). Without this, renewing would silently
-     * lift an expired ID's "on hold" verification with an unchecked image.
-     */
-    const verificationWasRevoked = user.isVerified;
+            /*
+             * The renewed ID is a new image nobody has looked at yet, so it goes
+             * back through admin review - exactly like a profile edit that changes
+             * the ID (updateUserProfile). Without this, renewing would silently
+             * lift an expired ID's "on hold" verification with an unchecked image.
+             */
+            const verificationWasRevoked = user.isVerified;
 
-    user.isVerified = false;
+            user.isVerified = false;
 
-    await user.save();
+            await user.save({ session });
+            return { user, previousValidId, verificationWasRevoked };
+    });
 
     try {
         await recordValidIdUpload(user, {
@@ -1033,66 +1037,75 @@ export const grantExtraRenewalAttempt = async (userId, adminId, amount) => {
         throw createError("Renewal attempt amount must be a positive integer.", 400);
     }
 
-    const user = await User.findById(userId);
+    return withBookingCreationTransaction([`valid-id-renewal:${userId}`], async (session) => {
+        const user = await User.findById(userId).session(session);
 
-    if (!user) {
-        throw createError("User not found.", 404);
-    }
+        if (!user) {
+            throw createError("User not found.", 404);
+        }
 
-    user.validIdRenewalCount = Math.max(0, user.validIdRenewalCount - amount);
+        user.validIdRenewalCount = Math.max(0, user.validIdRenewalCount - amount);
 
-    await user.save();
+        await user.save({ session });
 
-    return formatUser(user);
+        return formatUser(user);
+    });
 };
 
 export const requestRenewalAttempt = async (userId) => {
-    const user = await User.findById(userId);
+    const user = await withBookingCreationTransaction([`valid-id-renewal:${userId}`], async (session) => {
+        const user = await User.findById(userId).session(session);
 
-    if (!user) {
-        throw createError("User not found.", 404);
+        if (!user) {
+            throw createError("User not found.", 404);
+        }
+
+        const settings = await Settings.findOne().session(session);
+        const maxAttempts = settings?.validIdRenewalSettings?.maxAttempts ?? 3;
+        const renewalPeriodYears = settings?.validIdRenewalSettings?.renewalPeriodYears ?? 1;
+
+        // Reset renewal count if the renewal period has passed since the last renewal
+        const renewalPeriodMs = renewalPeriodYears * 365 * 24 * 60 * 60 * 1000;
+        refreshValidIdRenewalPeriod(user, renewalPeriodMs);
+
+        // Check if user has exceeded their maximum renewal attempts
+        if (user.validIdRenewalCount >= maxAttempts) {
+            throw createError(
+                `You have reached the maximum number of valid ID renewal attempts (${maxAttempts}) per period.`,
+                400
+            );
+        }
+
+        // Increment the renewal request count (requesting an attempt consumes request quota)
+        user.validIdRenewalCount += 1;
+
+        await user.save({ session });
+        return user;
+    });
+
+    // Notify only after the quota update commits.
+    try {
+        // Notify all admins about the renewal request
+        const admins = await User.find({ role: "admin" }).select("_id");
+        for (const admin of admins) {
+            await Notification.create({
+                recipient: admin._id,
+                type: "renewal_request",
+                title: "Valid ID Renewal Request",
+                message: `${user.firstName} ${user.lastName} has requested a valid ID renewal attempt.`,
+                variant: "warning",
+                category: "Document",
+                metadata: {
+                    reference: "valid-id-renewal",
+                    relatedId: user._id,
+                    relatedModel: "User",
+                },
+            });
+        }
+
+    } catch (error) {
+        console.error("Failed to notify admins about renewal request:", error);
     }
-
-    const settings = await Settings.findOne();
-    const maxAttempts = settings?.validIdRenewalSettings?.maxAttempts ?? 3;
-    const renewalPeriodYears = settings?.validIdRenewalSettings?.renewalPeriodYears ?? 1;
-
-    // Reset renewal count if the renewal period has passed since the last renewal
-    const renewalPeriodMs = renewalPeriodYears * 365 * 24 * 60 * 60 * 1000;
-    if (user.lastValidIdRenewalAt && Date.now() - user.lastValidIdRenewalAt >= renewalPeriodMs) {
-        user.validIdRenewalCount = 0;
-    }
-
-    // Check if user has exceeded their maximum renewal attempts
-    if (user.validIdRenewalCount >= maxAttempts) {
-        throw createError(
-            `You have reached the maximum number of valid ID renewal attempts (${maxAttempts}) per period.`,
-            400
-        );
-    }
-
-    // Increment the renewal request count (requesting an attempt consumes request quota)
-    user.validIdRenewalCount += 1;
-
-    // Notify all admins about the renewal request
-    const admins = await User.find({ role: "admin" }).select("_id");
-    for (const admin of admins) {
-        await Notification.create({
-            recipient: admin._id,
-            type: "renewal_request",
-            title: "Valid ID Renewal Request",
-            message: `${user.firstName} ${user.lastName} has requested a valid ID renewal attempt.`,
-            variant: "warning",
-            category: "Document",
-            metadata: {
-                reference: "valid-id-renewal",
-                relatedId: user._id,
-                relatedModel: "User",
-            },
-        });
-    }
-
-    await user.save();
 
     return formatUser(user);
 };

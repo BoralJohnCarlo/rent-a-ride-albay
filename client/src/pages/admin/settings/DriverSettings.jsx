@@ -10,6 +10,7 @@ import Switch from "../../../components/common/Switch";
 
 import useSettings from "../../../hooks/settings/useSettings";
 import useToast from "../../../hooks/toast/useToast";
+import { normalizeDriverSettings, buildDriverSettingsPatch } from "../../../utils/driverSettings";
 
 const DRIVER_PRICING_MODE_OPTIONS = [
     { value: "global", label: "Global rate for all drivers" },
@@ -20,8 +21,6 @@ const DriverSettings = () => {
     const toast = useToast();
 
     const {
-        settings,
-        loading: settingsLoading,
         error: settingsError,
         getSettings,
         updateSettings,
@@ -29,12 +28,27 @@ const DriverSettings = () => {
     } = useSettings();
 
     const [localSettings, setLocalSettings] = useState({});
+    const [savedSettings, setSavedSettings] = useState({});
+    const [loadState, setLoadState] = useState("loading");
+    const [loadAttempt, setLoadAttempt] = useState(0);
 
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        void getSettings();
-    }, [getSettings]);
+        let active = true;
+        setLoadState("loading");
+        getSettings().unwrap().then(
+            (response) => {
+                if (!active) return;
+                const loaded = normalizeDriverSettings(response.data);
+                setLocalSettings(loaded);
+                setSavedSettings(loaded);
+                setLoadState("ready");
+            },
+            () => { if (active) setLoadState("error"); }
+        );
+        return () => { active = false; };
+    }, [getSettings, loadAttempt]);
 
     useEffect(() => {
         if (settingsError) {
@@ -43,13 +57,8 @@ const DriverSettings = () => {
         }
     }, [settingsError, toast, clearSettingsError]);
 
-    useEffect(() => {
-        if (settings && Object.keys(settings).length > 0) {
-            setLocalSettings(settings);
-        }
-    }, [settings]);
-
     const handleToggle = (key) => {
+        if (loadState !== "ready" || submitting) return;
         setLocalSettings((prev) => ({
             ...prev,
             driverAssignmentSettings: {
@@ -61,6 +70,7 @@ const DriverSettings = () => {
 
     // On unless explicitly turned off (older settings don't have it).
     const handleMotorcycleDriversToggle = () => {
+        if (loadState !== "ready" || submitting) return;
         setLocalSettings((prev) => ({
             ...prev,
             driverAssignmentSettings: {
@@ -73,6 +83,7 @@ const DriverSettings = () => {
     };
 
     const handlePricingChange = (key, value) => {
+        if (loadState !== "ready" || submitting) return;
         setLocalSettings((prev) => ({
             ...prev,
             driverPricingSettings: {
@@ -83,18 +94,28 @@ const DriverSettings = () => {
     };
 
     const handleSave = async () => {
+        if (loadState !== "ready" || submitting) return;
         const rate = Number(localSettings.driverPricingSettings?.globalDailyRate ?? 0);
         if (!Number.isFinite(rate) || rate < 0 || rate > 1000000) {
             toast.error("The global driver rate must be a number from 0 to 1,000,000.");
             return;
         }
+        const submitted = {
+            ...localSettings,
+            driverPricingSettings: { ...localSettings.driverPricingSettings, globalDailyRate: rate },
+        };
+        const patch = buildDriverSettingsPatch(submitted, savedSettings);
+        if (!Object.keys(patch).length) {
+            toast.success("No changes to save.");
+            return;
+        }
         setSubmitting(true);
 
         try {
-            await updateSettings({
-                driverAssignmentSettings: localSettings.driverAssignmentSettings,
-                driverPricingSettings: localSettings.driverPricingSettings,
-            }).unwrap();
+            const response = await updateSettings(patch).unwrap();
+            const refreshed = normalizeDriverSettings(response.data);
+            setLocalSettings(refreshed);
+            setSavedSettings(refreshed);
             toast.success("Driver settings saved successfully.");
         } catch (error) {
             toast.error((typeof error === "string" ? error : error?.message) || "Something went wrong.");
@@ -115,8 +136,20 @@ const DriverSettings = () => {
         globalDailyRate: 0,
     };
 
+    if (loadState === "error") {
+        return (
+            <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-gray-200 p-6 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-red-600 dark:text-red-400">Unable to load driver settings. Retry before making changes.</p>
+                <Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry</Button>
+            </div>
+        );
+    }
+    if (loadState !== "ready") {
+        return <p role="status" className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">Loading driver settings…</p>;
+    }
+
     return (
-        <div className="space-y-8">
+        <fieldset disabled={submitting} className="min-w-0 space-y-8">
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                 <div className="mb-6 flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
@@ -151,7 +184,7 @@ const DriverSettings = () => {
                     Individual mode uses each driver's daily rate; drivers without one use the global rate. Existing bookings keep their quoted rate.
                 </p>
                 <div className="mt-6 flex justify-end">
-                    <Button type="button" onClick={handleSave} loading={submitting || settingsLoading}>Save Changes</Button>
+                    <Button type="button" onClick={handleSave} loading={submitting}>Save Changes</Button>
                 </div>
             </div>
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -207,7 +240,7 @@ const DriverSettings = () => {
                         type="button"
                         onClick={handleSave}
                         loading={
-                            submitting || settingsLoading
+                            submitting
                         }
                     >
                         Save Changes
@@ -262,14 +295,14 @@ const DriverSettings = () => {
                         type="button"
                         onClick={handleSave}
                         loading={
-                            submitting || settingsLoading
+                            submitting
                         }
                     >
                         Save Changes
                     </Button>
                 </div>
             </div>
-        </div>
+        </fieldset>
     );
 };
 

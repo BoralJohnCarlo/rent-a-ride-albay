@@ -18,6 +18,7 @@ import {
 } from "./notificationService.js";
 import { creditWallet } from "./walletService.js";
 import { getBookingDriverCharges } from "./driverPricingService.js";
+import { validatePayoutSettingsPatch, resolvePayoutSettings } from "../utils/payoutSettings.js";
 
 /*
  * What a partner's payout is worked out from: the booking total minus what
@@ -63,22 +64,20 @@ export const getSettingsWithDefaults = async () => {
 
     return {
         ...settings,
-        commissionSettings: settings.commissionSettings ?? {
-            platformCommissionRate: 10,
-            payoutCurrency: "PHP",
-            payoutHoldHours: 24,
-        },
+        commissionSettings: resolvePayoutSettings(settings.commissionSettings),
     };
 };
 
 export const updatePayoutSettings = async (settingsData) => {
+    const patch = validatePayoutSettingsPatch(settingsData.commissionSettings);
+    const fields = Object.fromEntries(Object.entries(patch).map(([key, value]) => [`commissionSettings.${key}`, value]));
     const settings = await Settings.findOneAndUpdate(
         {},
-        { $set: { commissionSettings: settingsData.commissionSettings } },
-        { new: true, upsert: true }
+        { $set: fields },
+        { new: true, upsert: true, runValidators: true }
     ).lean();
 
-    return settings;
+    return { ...settings, commissionSettings: resolvePayoutSettings(settings.commissionSettings) };
 };
 
 /*
@@ -95,22 +94,24 @@ export const calculateBookingPayout = (
     vehicle,
     platformCommissionRate
 ) => {
+    const roundMoney = (amount) => Math.round((amount + Number.EPSILON) * 100) / 100;
+    bookingAmount = roundMoney(bookingAmount);
     const commission = vehicle?.commission;
 
     if (
         commission?.mode === "PERCENTAGE" &&
         Number.isFinite(commission.value)
     ) {
-        const payoutAmount = Math.round(
+        const payoutAmount = roundMoney(
             bookingAmount * (commission.value / 100)
         );
 
         return {
             payoutAmount,
-            platformCommission: Math.max(
+            platformCommission: roundMoney(Math.max(
                 0,
                 bookingAmount - payoutAmount
-            ),
+            )),
         };
     }
 
@@ -118,26 +119,26 @@ export const calculateBookingPayout = (
         commission?.mode === "FIXED" &&
         Number.isFinite(commission.value)
     ) {
-        const payoutAmount = Math.min(
+        const payoutAmount = roundMoney(Math.min(
             commission.value,
             bookingAmount
-        );
+        ));
 
         return {
             payoutAmount,
-            platformCommission: Math.max(
+            platformCommission: roundMoney(Math.max(
                 0,
                 bookingAmount - payoutAmount
-            ),
+            )),
         };
     }
 
-    const platformCommission = Math.round(
+    const platformCommission = roundMoney(
         bookingAmount * (platformCommissionRate / 100)
     );
 
     return {
-        payoutAmount: bookingAmount - platformCommission,
+        payoutAmount: roundMoney(bookingAmount - platformCommission),
         platformCommission,
     };
 };

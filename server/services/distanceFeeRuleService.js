@@ -1,9 +1,22 @@
 import createError from "../utils/createError.js";
 
 import DistanceFeeRule from "../models/DistanceFeeRule.js";
+import { withBookingCreationTransaction } from "./bookingCreationTransaction.js";
+
+const RULE_RESOURCE = "distance-fee-rules";
+
+const resolveDistanceRange = (data) => {
+    const minDistanceKm = Number(data.minDistanceKm);
+    const maxDistanceKm = Number(data.maxDistanceKm);
+    if (!Number.isFinite(minDistanceKm) || !Number.isFinite(maxDistanceKm) ||
+        minDistanceKm < 0 || maxDistanceKm <= minDistanceKm) {
+        throw createError("Maximum distance must be greater than minimum distance, and both must be finite non-negative numbers.", 400);
+    }
+    return { minDistanceKm, maxDistanceKm };
+};
 
 const findOverlappingEnabledRule =
-    async (minDistanceKm, maxDistanceKm, excludeId = null) => {
+    async (minDistanceKm, maxDistanceKm, excludeId = null, session = null) => {
         const query = {
             enabled: true,
             minDistanceKm: {
@@ -20,7 +33,7 @@ const findOverlappingEnabledRule =
 
         return DistanceFeeRule.findOne(
             query
-        ).lean();
+        ).session(session).lean();
     };
 
 export const getAllDistanceFeeRules =
@@ -60,158 +73,43 @@ export const getEnabledDistanceFeeRules =
             .lean();
     };
 
-export const createDistanceFeeRule =
-    async (ruleData) => {
-        const { minDistanceKm, maxDistanceKm } =
-            ruleData;
-
-        if (maxDistanceKm <= minDistanceKm) {
-            throw createError(
-                "Maximum distance must be greater than minimum distance.",
-                400
-            );
-        }
-
-        const overlappingRule =
-            await findOverlappingEnabledRule(
-                minDistanceKm,
-                maxDistanceKm
-            );
-
-        if (overlappingRule) {
-            throw createError(
-                `Distance range overlaps with existing rule (${overlappingRule.minDistanceKm}–${overlappingRule.maxDistanceKm} km).`,
-                409
-            );
-        }
-
-        const rule =
-            await DistanceFeeRule.create(
-                ruleData
-            );
-
-        return rule.toObject();
-    };
-
-export const updateDistanceFeeRule =
-    async (ruleId, ruleData) => {
-        const rule =
-            await DistanceFeeRule.findById(
-                ruleId
-            );
-
-        if (!rule) {
-            throw createError(
-                "Distance fee rule not found.",
-                404
-            );
-        }
-
-        const minDistanceKm =
-            ruleData.minDistanceKm ??
-            rule.minDistanceKm;
-
-        const maxDistanceKm =
-            ruleData.maxDistanceKm ??
-            rule.maxDistanceKm;
-
-        if (maxDistanceKm <= minDistanceKm) {
-            throw createError(
-                "Maximum distance must be greater than minimum distance.",
-                400
-            );
-        }
-
-        const overlappingRule =
-            await findOverlappingEnabledRule(
-                minDistanceKm,
-                maxDistanceKm,
-                ruleId
-            );
-
-        if (overlappingRule) {
-            throw createError(
-                `Distance range overlaps with existing rule (${overlappingRule.minDistanceKm}–${overlappingRule.maxDistanceKm} km).`,
-                409
-            );
-        }
-
-        Object.assign(rule, ruleData);
-
-        await rule.save();
-
-        return rule.toObject();
-    };
-
-export const disableDistanceFeeRule =
-    async (ruleId) => {
-        const rule =
-            await DistanceFeeRule.findById(
-                ruleId
-            );
-
-        if (!rule) {
-            throw createError(
-                "Distance fee rule not found.",
-                404
-            );
-        }
-
-        rule.enabled = false;
-
-        await rule.save();
-
-        return rule.toObject();
-    };
-
-export const enableDistanceFeeRule =
-    async (ruleId) => {
-        const rule =
-            await DistanceFeeRule.findById(
-                ruleId
-            );
-
-        if (!rule) {
-            throw createError(
-                "Distance fee rule not found.",
-                404
-            );
-        }
-
-        const overlappingRule = await findOverlappingEnabledRule(
-            rule.minDistanceKm, rule.maxDistanceKm, ruleId
-        );
-        if (overlappingRule) {
+export const createDistanceFeeRule = async (ruleData) =>
+    withBookingCreationTransaction([RULE_RESOURCE], async (session) => {
+        const range = resolveDistanceRange(ruleData);
+        if (ruleData.enabled !== false && await findOverlappingEnabledRule(
+            range.minDistanceKm, range.maxDistanceKm, null, session
+        )) {
             throw createError("Distance range overlaps with an enabled rule.", 409);
         }
-
-        rule.enabled = true;
-
-        await rule.save();
-
+        const rule = new DistanceFeeRule({ ...ruleData, ...range });
+        await rule.save({ session });
         return rule.toObject();
-    };
+    });
 
-export const deleteDistanceFeeRule =
-    async (ruleId) => {
-        const rule =
-            await DistanceFeeRule.findById(
-                ruleId
-            );
-
-        if (!rule) {
-            throw createError(
-                "Distance fee rule not found.",
-                404
-            );
+export const updateDistanceFeeRule = async (ruleId, ruleData) =>
+    withBookingCreationTransaction([RULE_RESOURCE], async (session) => {
+        const rule = await DistanceFeeRule.findById(ruleId).session(session);
+        if (!rule) throw createError("Distance fee rule not found.", 404);
+        const next = { ...rule.toObject(), ...ruleData };
+        const range = resolveDistanceRange(next);
+        if (next.enabled && await findOverlappingEnabledRule(
+            range.minDistanceKm, range.maxDistanceKm, ruleId, session
+        )) {
+            throw createError("Distance range overlaps with an enabled rule.", 409);
         }
-
-        rule.enabled = false;
-
-        await rule.save();
-
+        Object.assign(rule, ruleData, range);
+        await rule.save({ session });
         return rule.toObject();
-    };
+    });
+
+export const disableDistanceFeeRule = (ruleId) =>
+    updateDistanceFeeRule(ruleId, { enabled: false });
+
+export const enableDistanceFeeRule = (ruleId) =>
+    updateDistanceFeeRule(ruleId, { enabled: true });
+
+export const deleteDistanceFeeRule = (ruleId) =>
+    updateDistanceFeeRule(ruleId, { enabled: false });
 
 export const getDistanceFeeRuleForDistance =
     async (distanceKm) => {

@@ -1,6 +1,27 @@
 import { body } from "express-validator";
 
 export const updateSettingsValidator = [
+    ...[
+        "bookingSettings",
+        "penaltySettings",
+        "refundSettings",
+        "refundSettings.cancellationPolicy",
+        "earlyReturnSettings",
+        "driverPricingSettings",
+        "driverAssignmentSettings",
+        "validIdRenewalSettings",
+        "validIdExpirationSettings",
+        "bookingSettings.bookingHours",
+        "bookingSettings.pickupHours",
+        "bookingSettings.offRoadVehicles",
+        "bookingSettings.earlyPickup",
+    ].map((path) =>
+        body(path)
+            .optional()
+            .isObject({ strict: true })
+            .withMessage(`${path} must be an object.`)
+    ),
+
     body("allowOnlyDefaultLocation")
         .optional()
         .isBoolean()

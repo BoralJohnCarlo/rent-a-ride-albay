@@ -7,13 +7,12 @@ import Input from "../../../components/common/Input";
 
 import { usePayouts } from "../../../hooks/payouts/usePayouts";
 import useToast from "../../../hooks/toast/useToast";
+import { normalizeCommissionSettings, buildCommissionSettingsPatch, getCommissionSettingsError, MAX_PAYOUT_HOLD_HOURS } from "../../../utils/commissionSettings";
 
 const CommissionSettings = () => {
     const toast = useToast();
 
     const {
-        settings,
-        loading,
         error,
         loadPayoutSettings,
         updatePayoutSettings,
@@ -26,18 +25,25 @@ const CommissionSettings = () => {
         payoutHoldHours: 24,
     });
 
-    useEffect(() => {
-        loadPayoutSettings();
-    }, [loadPayoutSettings]);
+    const [baseline, setBaseline] = useState({});
+    const [loadState, setLoadState] = useState("loading");
+    const [loadAttempt, setLoadAttempt] = useState(0);
 
     useEffect(() => {
-        if (settings && Object.keys(settings).length > 0) {
-            setLocalSettings((prev) => ({
-                ...prev,
-                ...settings,
-            }));
-        }
-    }, [settings]);
+        let active = true;
+        setLoadState("loading");
+        loadPayoutSettings().then(
+            (response) => {
+                if (!active) return;
+                const loaded = normalizeCommissionSettings(response.data);
+                setLocalSettings(loaded);
+                setBaseline(loaded);
+                setLoadState("ready");
+            },
+            () => { if (active) setLoadState("error"); }
+        );
+        return () => { active = false; };
+    }, [loadPayoutSettings, loadAttempt]);
 
     useEffect(() => {
         if (error) {
@@ -51,6 +57,7 @@ const CommissionSettings = () => {
     }, [error, toast]);
 
     const handleChange = (field, value) => {
+        if (loadState !== "ready" || saving) return;
         setLocalSettings((prev) => ({
             ...prev,
             [field]: value,
@@ -58,13 +65,18 @@ const CommissionSettings = () => {
     };
 
     const handleSave = async () => {
+        if (loadState !== "ready" || saving) return;
+        const validationError = getCommissionSettingsError(localSettings);
+        if (validationError) { toast.error(validationError); return; }
+        const patch = buildCommissionSettingsPatch(localSettings, baseline);
+        if (!Object.keys(patch).length) { toast.success("No changes to save."); return; }
         setSaving(true);
 
         try {
-            await updatePayoutSettings({
-                ...localSettings,
-                payoutCurrency: "PHP",
-            }).unwrap();
+            const response = await updatePayoutSettings(patch).unwrap();
+            const refreshed = normalizeCommissionSettings(response.data);
+            setLocalSettings(refreshed);
+            setBaseline(refreshed);
             toast.success(
                 "Commission & payout settings saved successfully."
             );
@@ -80,8 +92,18 @@ const CommissionSettings = () => {
         }
     };
 
+    if (loadState === "error") {
+        return (
+            <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-gray-200 p-6 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-red-600 dark:text-red-400">Unable to load commission settings. Retry before making changes.</p>
+                <Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry</Button>
+            </div>
+        );
+    }
+    if (loadState !== "ready") return <p role="status" className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">Loading commission settings?</p>;
+
     return (
-        <div className="space-y-6">
+        <fieldset disabled={saving} className="min-w-0 space-y-6">
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                 <div className="mb-6 flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
@@ -160,6 +182,7 @@ const CommissionSettings = () => {
                     <Input
                         id="payout-hold-hours"
                         name="payoutHoldHours"
+                        max={MAX_PAYOUT_HOLD_HOURS}
                         type="number"
                         label="Payout Hold Period (hours)"
                         min={0}
@@ -174,7 +197,7 @@ const CommissionSettings = () => {
                                 Number(event.target.value) || 0
                             )
                         }
-                        helperText="How long after a rental completes before its payout is automatically released to the partner's wallet. Gives time to catch a late refund or dispute first."
+                        helperText="How long after a rental completes before its payout is automatically released to the partner's wallet. Gives time to catch a late refund or dispute first. Maximum 8,760 hours (one year)."
                     />
                 </div>
 
@@ -182,13 +205,13 @@ const CommissionSettings = () => {
                     <Button
                         type="button"
                         onClick={handleSave}
-                        loading={saving || loading}
+                        loading={saving}
                     >
                         Save Commission Settings
                     </Button>
                 </div>
             </div>
-        </div>
+        </fieldset>
     );
 };
 
