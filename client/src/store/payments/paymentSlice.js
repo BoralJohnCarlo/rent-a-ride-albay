@@ -144,13 +144,14 @@ export const createCheckout =
     createAsyncThunk(
         "payment/createCheckout",
         async (
-            { paymentId, force = false },
+            { paymentId, force = false, expectedAmount },
             { rejectWithValue }
         ) => {
             try {
                 return await createNewCheckout(
                     paymentId,
-                    force
+                    force,
+                    expectedAmount
                 );
             } catch (error) {
                 return rejectWithValue(

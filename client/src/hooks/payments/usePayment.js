@@ -89,11 +89,12 @@ const usePayment = () => {
 
 
     const initiateCheckout = useCallback(
-        (paymentId, force = false) => {
+        (paymentId, force = false, expectedAmount) => {
             return dispatch(
                 createCheckout({
                     paymentId,
                     force,
+                    expectedAmount,
                 })
             );
         },

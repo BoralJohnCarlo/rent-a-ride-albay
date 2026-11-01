@@ -23,6 +23,18 @@ export const paymentIdValidator = [
         .withMessage("Invalid payment ID."),
 ];
 
+export const createCheckoutValidator = [
+    ...paymentIdValidator,
+    body("expectedAmount")
+        .custom((value) => typeof value === "number" && Number.isFinite(value) && value > 0)
+        .withMessage("Please reload checkout and review the current payment amount."),
+    body("force")
+        .optional()
+        .isBoolean()
+        .withMessage("force must be a boolean.")
+        .toBoolean(),
+];
+
 export const createPaymentValidator = [
     body("bookingId")
         .custom(isValidObjectId)

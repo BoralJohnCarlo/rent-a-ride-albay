@@ -20,6 +20,7 @@ import Button from "../../components/common/Button";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 
 import usePayment from "../../hooks/payments/usePayment";
+import { isPaymentAmountChangedError } from "../../utils/bookingQuote";
 
 const SESSION_EXISTS_ERROR =
     "A PayMongo Checkout Session has already been created for this payment.";
@@ -43,10 +44,15 @@ const Checkout = () => {
 
     const [paymentRequest, setPaymentRequest] = useState(null);
     const [paymentReload, setPaymentReload] = useState(0);
+    const [amountChangedNotice, setAmountChangedNotice] = useState("");
     const selectedPayment = paymentRequest?.id === paymentId
         ? paymentRequest?.payment
         : null;
     const paymentLoading = paymentRequest?.id !== paymentId || Boolean(paymentRequest?.loading);
+
+    useEffect(() => {
+        setAmountChangedNotice("");
+    }, [paymentId]);
 
     useEffect(() => {
         if (!paymentId) {
@@ -102,10 +108,13 @@ const Checkout = () => {
             }
 
             setIsRedirecting(true);
+            setAmountChangedNotice("");
 
             const result =
                 await initiateCheckout(
-                    paymentId
+                    paymentId,
+                    false,
+                    selectedPayment.amount
                 );
 
             if (
@@ -123,6 +132,10 @@ const Checkout = () => {
                 }
             } else {
                 setIsRedirecting(false);
+                if (isPaymentAmountChangedError(result?.payload)) {
+                    setAmountChangedNotice(result.payload);
+                    setPaymentReload((previous) => previous + 1);
+                }
             }
         },
         [paymentId, initiateCheckout, selectedPayment, paymentLoading, loading, isRedirecting]
@@ -137,11 +150,13 @@ const Checkout = () => {
             clearError();
 
             setIsRedirecting(true);
+            setAmountChangedNotice("");
 
             const result =
                 await initiateCheckout(
                     paymentId,
-                    true
+                    true,
+                    selectedPayment.amount
                 );
 
             if (
@@ -159,6 +174,10 @@ const Checkout = () => {
                 }
             } else {
                 setIsRedirecting(false);
+                if (isPaymentAmountChangedError(result?.payload)) {
+                    setAmountChangedNotice(result.payload);
+                    setPaymentReload((previous) => previous + 1);
+                }
             }
         }, [
             paymentId,
@@ -321,7 +340,13 @@ const Checkout = () => {
                         </div>
                     </div>
 
-                    {error && (
+                    {amountChangedNotice && (
+                        <p role="status" className="mt-5 break-words rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                            {amountChangedNotice}
+                        </p>
+                    )}
+
+                    {error && !amountChangedNotice && (
                         <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/20 dark:bg-red-500/10">
                             <p className="text-sm font-medium text-red-800 dark:text-red-300">
                                 {error}

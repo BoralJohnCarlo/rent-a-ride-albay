@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, it, mock } from "node:test";
 import nodemailer from "nodemailer";
+import { validationResult } from "express-validator";
+import { createCheckoutValidator } from "../../validators/paymentValidator.js";
 import Booking from "../../models/Booking.js";
 import Payment from "../../models/Payment.js";
 import { BOOKING_STATUS } from "../../constants/bookingConstants.js";
@@ -19,7 +21,8 @@ const HOUR = 60 * 60 * 1000;
 afterEach(() => mock.restoreAll());
 
 const prepare = ({ ageHours = 25, pickupHours = 72, status = PAYMENT_STATUS.PENDING,
-    bookingStatus = BOOKING_STATUS.PENDING, paymentType = PAYMENT_TYPE.RESERVATION_FEE } = {}) => {
+    bookingStatus = BOOKING_STATUS.PENDING, paymentType = PAYMENT_TYPE.RESERVATION_FEE,
+    amount = 500, paymongo = {} } = {}) => {
     const booking = {
         _id: "booking", status: bookingStatus,
         createdAt: new Date(Date.now() - ageHours * HOUR),
@@ -27,7 +30,7 @@ const prepare = ({ ageHours = 25, pickupHours = 72, status = PAYMENT_STATUS.PEND
     };
     const payment = {
         _id: "payment", booking: booking._id, customer: "customer",
-        paymentType, paymentMethod: PAYMENT_METHOD.GCASH, status, amount: 500,
+        paymentType, paymentMethod: PAYMENT_METHOD.GCASH, status, amount, paymongo,
     };
     mock.method(Booking, "findById", async () => booking);
     mock.method(Payment, "findById", async () => payment);
@@ -45,6 +48,44 @@ for (const force of [false, true]) {
         assert.equal(writes.mock.callCount(), 0);
     });
 }
+
+for (const force of [false, true]) {
+    it(`rejects a stale displayed amount before opening or replacing checkout (force=${force})`, async () => {
+        const writes = prepare({ ageHours: 1, amount: 700, paymongo: { checkoutSessionId: "existing" } });
+        await assert.rejects(createPaymongoCheckout("payment", "customer", "", { force, expectedAmount: 500 }),
+            (error) => error.statusCode === 409 && error.message.startsWith("The payment amount has changed."));
+        assert.equal(writes.mock.callCount(), 0);
+        assert.equal(Booking.findById.mock.callCount(), 0);
+    });
+}
+
+it("does not reopen a cancelled payment when its reviewed amount is stale", async () => {
+    const writes = prepare({ ageHours: 1, amount: 700, status: PAYMENT_STATUS.CANCELLED });
+    await assert.rejects(createPaymongoCheckout("payment", "customer", "", { expectedAmount: 500 }), /payment amount has changed/);
+    assert.equal(writes.mock.callCount(), 0);
+    assert.equal(Booking.findById.mock.callCount(), 0);
+});
+
+it("allows a matching reviewed amount through eligibility checks", async () => {
+    prepare({ ageHours: 1, amount: 700 });
+    await assert.rejects(createPaymongoCheckout("payment", "customer", "", { expectedAmount: 700 }), /Client base URL is required/);
+});
+
+it("requires a valid reviewed amount on customer checkout requests", async () => {
+    for (const expectedAmount of [undefined, null, "500", 0, -1]) {
+        const req = { params: { paymentId: "507f1f77bcf86cd799439011" }, body: { expectedAmount } };
+        for (const validator of createCheckoutValidator) await validator.run(req);
+        assert.ok(validationResult(req).array().some((error) => error.path === "expectedAmount"));
+    }
+});
+
+it("validates normal checkout and retry requests with the reviewed amount", async () => {
+    for (const force of [false, true]) {
+        const req = { params: { paymentId: "507f1f77bcf86cd799439011" }, body: { expectedAmount: 700, force } };
+        for (const validator of createCheckoutValidator) await validator.run(req);
+        assert.deepEqual(validationResult(req).array(), []);
+    }
+});
 
 it("rejects payment after pickup even when less than 24 hours old", async () => {
     prepare({ ageHours: 2, pickupHours: -1 });

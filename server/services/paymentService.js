@@ -1,4 +1,5 @@
 import Payment from "../models/Payment.js";
+import { assertCheckoutAmountMatches } from "../utils/bookingQuote.js";
 import Booking from "../models/Booking.js";
 import { withBookingCreationTransaction } from "./bookingCreationTransaction.js";
 import Rental from "../models/Rental.js";
@@ -639,7 +640,7 @@ const createPaymongoCheckout = async (
     clientBaseUrl,
     options = {}
 ) => {
-    const { force = false } = options;
+    const { force = false, expectedAmount } = options;
 
     let payment =
         await Payment.findById(
@@ -694,6 +695,10 @@ const createPaymongoCheckout = async (
             409
         );
     }
+
+    // The customer route requires this amount. Check it before reopening a
+    // cancelled payment or closing an existing checkout.
+    if (expectedAmount !== undefined) assertCheckoutAmountMatches(expectedAmount, payment.amount);
 
     /*
      * The customer cancelled their own payment attempt and is now paying
@@ -830,6 +835,7 @@ const createPaymongoCheckout = async (
 
     // Closing an earlier attempt may take time; check again before charging.
     ensureReservationPaymentWindowOpen(booking, payment);
+    if (expectedAmount !== undefined) assertCheckoutAmountMatches(expectedAmount, payment.amount);
 
     const checkout =
         await createCheckoutSession({

@@ -51,11 +51,13 @@ export const cancelExistingPayment = async (
 
 export const createNewCheckout = async (
     paymentId,
-    force = false
+    force = false,
+    expectedAmount
 ) => {
     return await createCheckout(
         paymentId,
-        force
+        force,
+        expectedAmount
     );
 };
 

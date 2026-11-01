@@ -556,7 +556,11 @@ const VehicleDetails = () => {
 
                 const checkout =
                     await initiateCheckout(
-                        payment._id
+                        payment._id,
+                        false,
+                        bookingData.payInFull
+                            ? bookingData.expectedPricing.totalAmount
+                            : bookingData.expectedPricing.upfrontAmount
                     );
 
                 const checkoutUrl =

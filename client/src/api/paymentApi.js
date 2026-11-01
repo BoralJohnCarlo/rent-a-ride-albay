@@ -82,11 +82,12 @@ export const getPayments = async (
 
 export const createCheckout = async (
     paymentId,
-    force = false
+    force = false,
+    expectedAmount
 ) => {
     const { data } = await api.post(
         `/payments/${paymentId}/checkout`,
-        { force }
+        { force, expectedAmount }
     );
 
     return data;

@@ -99,7 +99,7 @@ export const createCheckout = async (
             return;
         }
 
-        const { force } = req.body;
+        const { force, expectedAmount } = req.body;
 
         const clientBaseUrl =
             process.env.CLIENT_URL;
@@ -119,6 +119,7 @@ export const createCheckout = async (
                 clientBaseUrl,
                 {
                     force: Boolean(force),
+                    expectedAmount,
                 }
             );
 

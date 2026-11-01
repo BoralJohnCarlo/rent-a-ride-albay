@@ -23,6 +23,7 @@ import {
 
 import {
     paymentIdValidator,
+    createCheckoutValidator,
     createPaymentValidator,
     verifyPaymentValidator,
     reconcileRefundValidator,
@@ -63,7 +64,7 @@ router.use(protect);
 router.post(
     "/:paymentId/checkout",
     authorize("customer"),
-    paymentIdValidator,
+    createCheckoutValidator,
     createCheckout
 );
 

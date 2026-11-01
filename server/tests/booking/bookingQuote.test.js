@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { assertBookingQuoteMatches, BOOKING_PRICE_CHANGED_MESSAGE } from "../../utils/bookingQuote.js";
+import { assertBookingQuoteMatches, BOOKING_PRICE_CHANGED_MESSAGE, assertCheckoutAmountMatches } from "../../utils/bookingQuote.js";
 
 it("accepts the reviewed total and upfront payment", () => {
     assert.doesNotThrow(() => assertBookingQuoteMatches({ totalAmount: 2500, upfrontAmount: 500 }, 2500, 500));
@@ -32,5 +32,15 @@ it("rejects missing, nonnumeric, nonfinite, and negative reviewed amounts", () =
         { totalAmount: -1, upfrontAmount: 0 }]) {
         assert.throws(() => assertBookingQuoteMatches(expected, 2500, 500),
             (error) => error.statusCode === 400);
+    }
+});
+
+it("checkout amount checks use cents and reject increases or decreases", () => {
+    assert.doesNotThrow(() => assertCheckoutAmountMatches(0.1 + 0.2, 0.3));
+    for (const amount of [250, 750]) {
+        assert.throws(() => assertCheckoutAmountMatches(500, amount), (error) => error.statusCode === 409);
+    }
+    for (const amount of [undefined, null, "500", 0, -1, Infinity]) {
+        assert.throws(() => assertCheckoutAmountMatches(amount, 500), (error) => error.statusCode === 400);
     }
 });
