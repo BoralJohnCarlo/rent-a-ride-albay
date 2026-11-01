@@ -274,7 +274,7 @@ const RefundSettings = () => {
 
         try {
             const result = await updateSettings({
-                ...localSettings,
+                earlyReturnSettings: localSettings.earlyReturnSettings,
                 refundSettings: {
                     ...localSettings.refundSettings,
                     cancellationPolicy: savedPolicy,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { fetchPublicSettings } from "../../services/settingsService";
 
@@ -18,16 +18,17 @@ const SHARED_FETCH_TTL_MS = 30 * 1000;
 let sharedFetch = null;
 let sharedFetchAt = 0;
 
-const fetchPublicSettingsShared = () => {
+const fetchPublicSettingsShared = (force = false) => {
     const now = Date.now();
 
-    if (!sharedFetch || now - sharedFetchAt > SHARED_FETCH_TTL_MS) {
+    if (force || !sharedFetch || now - sharedFetchAt > SHARED_FETCH_TTL_MS) {
         sharedFetchAt = now;
-        sharedFetch = fetchPublicSettings().catch((error) => {
+        const request = fetchPublicSettings().catch((error) => {
             // Don't keep a failure around for the next caller.
-            sharedFetch = null;
+            if (sharedFetch === request) sharedFetch = null;
             throw error;
         });
+        sharedFetch = request;
     }
 
     return sharedFetch;
@@ -38,6 +39,7 @@ import {
 } from "../../constants/bookingStatus";
 
 const DEFAULTS = {
+    allowOnlyDefaultLocation: false,
     enableDistanceFeeCalculation: false,
     requireCancellationReason: true,
     refundRequestWindowHours: 24,
@@ -72,6 +74,7 @@ const DEFAULTS = {
  * did when they booked.
  */
 export const normalizePublicSettings = (data = {}) => ({
+    allowOnlyDefaultLocation: data.allowOnlyDefaultLocation === true,
     enableDistanceFeeCalculation:
         typeof data.enableDistanceFeeCalculation === "boolean"
             ? data.enableDistanceFeeCalculation
@@ -151,42 +154,57 @@ export const normalizePublicSettings = (data = {}) => ({
  * answers 403 — so screens that asked for it silently ran on built-in
  * defaults instead of whatever the admin configured.
  *
- * Until the request finishes (or if it fails) the values are the same
- * defaults the server uses, so behaviour degrades to what it always was;
- * `ready` says whether the real values have arrived. `policy` stays null
- * until then so callers quoting numbers can hold back rather than show
- * defaults that might not match.
+ * Defaults support non-booking informational screens. Booking callers must
+ * wait for `ready` before quoting or submitting prices. Failed requests expose
+ * an error and an explicit retry rather than silently treating defaults as live.
  */
 const usePublicRefundSettings = () => {
     const [state, setState] = useState({
         ...DEFAULTS,
         policy: null,
         ready: false,
+        error: null,
     });
+    const [retryKey, setRetryKey] = useState(0);
+    const retry = useCallback(() => setRetryKey((key) => key + 1), []);
 
     useEffect(() => {
         let active = true;
+        setState((previous) => ({ ...previous, ready: false, error: null }));
 
-        fetchPublicSettingsShared()
+        fetchPublicSettingsShared(retryKey > 0)
             .then((response) => {
                 const data = response?.data;
 
-                if (!active || !data) {
-                    return;
+                if (!active) return;
+                if (!data || typeof data !== "object" || Array.isArray(data) ||
+                    !["global", "individual"].includes(data.driverPricing?.mode) ||
+                    !Number.isFinite(data.driverPricing?.globalDailyRate) ||
+                    data.driverPricing.globalDailyRate < 0 ||
+                    !["allowOnlyDefaultLocation", "enableDistanceFeeCalculation", "licenseRestrictionEnabled",
+                        "requireAdminDriverAssignment", "motorcycleDriversEnabled"]
+                        .every((key) => typeof data[key] === "boolean") ||
+                    typeof data.bookingHours?.enabled !== "boolean" ||
+                    typeof data.pickupHours?.earliestTime !== "string" ||
+                    typeof data.pickupHours?.latestTime !== "string") {
+                    throw new Error("Incomplete booking settings.");
                 }
 
-                setState(normalizePublicSettings(data));
+                setState({ ...normalizePublicSettings(data), error: null });
             })
             .catch(() => {
-                /* keep the defaults */
+                if (active) setState((previous) => ({
+                    ...previous, ready: false,
+                    error: "Unable to load booking settings. Please try again.",
+                }));
             });
 
         return () => {
             active = false;
         };
-    }, []);
+    }, [retryKey]);
 
-    return state;
+    return { ...state, retry };
 };
 
 export default usePublicRefundSettings;

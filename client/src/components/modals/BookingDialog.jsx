@@ -27,6 +27,7 @@ const BookingDialog = ({
     errorMessage = "",
     forceWithDriver = false,
     onSubmit,
+    onRefreshPricing,
     onClose,
 }) => {
     // The dialog body has its own scroll area; lock the page behind it
@@ -255,6 +256,7 @@ const BookingDialog = ({
                                         forceWithDriver
                                     }
                                     onSubmit={onSubmit}
+                                    onRefreshPricing={onRefreshPricing}
                                     onCancel={onClose}
                                 />
                                 </div>

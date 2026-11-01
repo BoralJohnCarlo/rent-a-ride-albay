@@ -155,29 +155,29 @@ const ServiceLocations = () => {
 
         try {
             if (locationDialog.mode === "create") {
-                await createServiceLocation(payload);
+                await createServiceLocation(payload).unwrap();
                 toast.success("Service location created successfully.");
             } else if (locationDialog.mode === "edit") {
                 await updateServiceLocation({
                     locationId: locationDialog.location._id,
                     locationData: payload,
-                });
+                }).unwrap();
                 toast.success("Service location updated successfully.");
             } else if (locationDialog.mode === "disable") {
-                await disableServiceLocation(locationDialog.location._id);
+                await disableServiceLocation(locationDialog.location._id).unwrap();
                 toast.success("Service location disabled.");
             } else if (locationDialog.mode === "enable") {
-                await enableServiceLocation(locationDialog.location._id);
+                await enableServiceLocation(locationDialog.location._id).unwrap();
                 toast.success("Service location enabled.");
             } else if (locationDialog.mode === "delete") {
-                await deleteServiceLocation(locationDialog.location._id);
+                await deleteServiceLocation(locationDialog.location._id).unwrap();
                 toast.success("Service location deleted.");
             }
 
             handleLocationClose();
             await getServiceLocations();
         } catch (error) {
-            toast.error(error.message || "Something went wrong.");
+            toast.error((typeof error === "string" ? error : error?.message) || "Something went wrong.");
         } finally {
             setLocationSubmitting(false);
         }
@@ -210,7 +210,7 @@ const ServiceLocations = () => {
             handleRuleClose();
             await getDistanceFeeRules();
         } catch (error) {
-            toast.error(error.message || "Something went wrong.");
+            toast.error((typeof error === "string" ? error : error?.message) || "Something went wrong.");
         } finally {
             setRuleSubmitting(false);
         }
@@ -220,10 +220,13 @@ const ServiceLocations = () => {
         setSettingsSubmitting(true);
 
         try {
-            await updateSettings(localSettings);
+            await updateSettings({
+                allowOnlyDefaultLocation: localSettings.allowOnlyDefaultLocation,
+                enableDistanceFeeCalculation: localSettings.enableDistanceFeeCalculation,
+            }).unwrap();
             toast.success("Settings saved successfully.");
         } catch (error) {
-            toast.error(error.message || "Something went wrong.");
+            toast.error((typeof error === "string" ? error : error?.message) || "Something went wrong.");
         } finally {
             setSettingsSubmitting(false);
         }

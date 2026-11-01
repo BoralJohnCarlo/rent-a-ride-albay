@@ -1,4 +1,5 @@
 import {
+    useCallback,
     useEffect,
     useMemo,
     useState,
@@ -150,6 +151,22 @@ const VehicleDetails = () => {
 
     const [driversLoading, setDriversLoading] =
         useState(false);
+
+    const refreshBookingPricing = useCallback(async () => {
+        setDriversLoading(true);
+        try {
+            const results = await Promise.allSettled([
+                getVehicleById(vehicleId).unwrap(),
+                getAvailableDrivers(),
+            ]);
+            if (results[0].status === "rejected" || results[1].status === "rejected") {
+                throw new Error("Unable to refresh booking prices.");
+            }
+            setAvailableDrivers(results[1].value?.data ?? []);
+        } finally {
+            setDriversLoading(false);
+        }
+    }, [getVehicleById, vehicleId]);
 
     useEffect(() => {
         if (!vehicleId) {
@@ -1505,8 +1522,9 @@ const VehicleDetails = () => {
                 drivers={selfDriveOnly ? [] : availableDrivers}
                 loading={bookingLoading || driversLoading}
                 errors={bookingError}
-                forceWithDriver={noLicenseAtAll}
+                forceWithDriver={licenseRestrictionEnabled && noLicenseAtAll}
                 onSubmit={handleBookingSubmit}
+                onRefreshPricing={refreshBookingPricing}
                 onClose={handleCloseBooking}
             />
         </>

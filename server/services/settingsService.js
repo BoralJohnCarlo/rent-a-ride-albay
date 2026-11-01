@@ -1,6 +1,9 @@
 import createError from "../utils/createError.js";
 
 import Settings from "../models/Settings.js";
+import ServiceLocation from "../models/ServiceLocation.js";
+import { withBookingCreationTransaction } from "./bookingCreationTransaction.js";
+import { assertDefaultLocationPolicy, SERVICE_LOCATION_POLICY_RESOURCE } from "../utils/defaultLocationPolicy.js";
 import { deleteImage, deleteVideo } from "../utils/cloudinary.js";
 
 import { resolveCancellationPolicy } from "./cancellationPolicyService.js";
@@ -417,6 +420,18 @@ export const getBookingLocationPolicy =
 
 export const updateBookingLocationPolicy =
     async (policyData) => {
+        if (Object.hasOwn(policyData, "allowOnlyDefaultLocation") ||
+            Object.hasOwn(policyData, "enableDistanceFeeCalculation")) {
+            return withBookingCreationTransaction([SERVICE_LOCATION_POLICY_RESOURCE], async (session) => {
+                const current = await Settings.findOne().session(session).lean();
+                const next = { ...current, ...policyData };
+                const defaultLocation = await ServiceLocation.findOne({ enabled: true, isDefault: true }).session(session).lean();
+                assertDefaultLocationPolicy(next, defaultLocation);
+                return Settings.findOneAndUpdate({}, { ...policyData }, {
+                    new: true, upsert: true, runValidators: true, session,
+                }).lean();
+            });
+        }
         const settings =
             await Settings.findOneAndUpdate(
                 {},

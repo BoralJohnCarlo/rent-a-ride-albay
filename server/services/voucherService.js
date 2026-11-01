@@ -705,6 +705,21 @@ const calculatePricingWithVoucher = (
     return updatedPricing;
 };
 
+// Existing bookings retain the voucher terms accepted at creation, even if
+// the original promotion is changed or removed later.
+const calculatePricingWithVoucherSnapshot = (pricing, snapshot) => {
+    if (!snapshot?.voucher) return pricing;
+
+    return calculatePricingWithVoucher(pricing, {
+        _id: snapshot.voucher,
+        code: snapshot.code,
+        name: snapshot.name,
+        type: snapshot.type,
+        discountMethod: snapshot.discountMethod,
+        discountValue: snapshot.discountValue,
+    });
+};
+
 const createVoucher = async (
     voucherData,
     currentUserId
@@ -1311,6 +1326,7 @@ export {
     validateVoucherForUser,
     applyVoucherDiscount,
     calculatePricingWithVoucher,
+    calculatePricingWithVoucherSnapshot,
     createVoucher,
     getVouchers,
     getVoucherById,

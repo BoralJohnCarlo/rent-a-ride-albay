@@ -1,4 +1,6 @@
 import createError from "../utils/createError.js";
+import { assertBookingQuoteMatches } from "../utils/bookingQuote.js";
+import { getPeakConcurrentBookings } from "../utils/bookingConcurrency.js";
 import { getActiveAllocatedPriceChangeRefund } from "../utils/bookingRefundAllocations.js";
 
 import mongoose from "mongoose";
@@ -127,11 +129,10 @@ import {
 import {
     validateVoucherForUser,
     calculatePricingWithVoucher,
+    calculatePricingWithVoucherSnapshot,
     claimVoucherUsage,
     releaseVoucherUsage,
 } from "./voucherService.js";
-
-import Voucher from "../models/Voucher.js";
 
 import {
     getActiveDiscounts,
@@ -1028,7 +1029,7 @@ const validateServiceLocation = async (
     return serviceLocation;
 };
 
-const findDefaultServiceLocation = async () => {
+const findDefaultServiceLocation = async ({ requireCoordinates = true } = {}) => {
     const locations =
         await getEnabledServiceLocations();
 
@@ -1045,14 +1046,14 @@ const findDefaultServiceLocation = async () => {
         );
     }
 
-    if (
+    if (requireCoordinates && (
         defaultLocation.latitude == null ||
         defaultLocation.longitude == null ||
         !Number.isFinite(Number(defaultLocation.latitude)) ||
         !Number.isFinite(Number(defaultLocation.longitude)) ||
         Math.abs(Number(defaultLocation.latitude)) > 90 ||
         Math.abs(Number(defaultLocation.longitude)) > 180
-    ) {
+    )) {
         throw createError(
             "The default service location does not have valid coordinates. Please contact support.",
             500
@@ -1077,7 +1078,7 @@ const validateLocationPolicy = async (
     }
 
     const defaultLocation =
-        await findDefaultServiceLocation();
+        await findDefaultServiceLocation({ requireCoordinates: false });
 
     /*
      * Not gated on the ID being present - a custom (no serviceLocationId)
@@ -2001,8 +2002,8 @@ const validateVehicleDateAvailability = async (
  * Admin-configurable cap on how many bookings (across any vehicle) a single
  * customer may hold with overlapping date ranges at once. `maxConcurrentBookings`
  * of 0 (or unset) means no limit - preserves pre-feature behavior until an
- * admin opts in via Customer Settings. Uses the same $lt/$gt overlap idiom
- * as the vehicle/driver conflict checks above, scoped to `customer` instead.
+ * admin opts in via Customer Settings. Fetch intersecting bookings, then
+ * count the peak concurrency inside the new range rather than their total.
  */
 const ensureCustomerBookingLimitNotExceeded = async (
     customerId,
@@ -2019,8 +2020,8 @@ const ensureCustomerBookingLimitNotExceeded = async (
         return;
     }
 
-    const overlappingCount =
-        await Booking.countDocuments({
+    const overlappingBookings =
+        await Booking.find({
             customer: customerId,
 
             status: {
@@ -2040,11 +2041,12 @@ const ensureCustomerBookingLimitNotExceeded = async (
             ...(excludeBookingId
                 ? { _id: { $ne: excludeBookingId } }
                 : {}),
-        }).session(session);
+        }).select("startDate endDate").session(session).lean();
 
-    if (overlappingCount >= maxConcurrentBookings) {
+    const peak = getPeakConcurrentBookings(overlappingBookings, startDate, endDate);
+    if (peak >= maxConcurrentBookings) {
         throw createError(
-            `You already have ${overlappingCount} booking(s) for these dates, which is the maximum allowed (${maxConcurrentBookings}). Please choose different dates or complete/cancel an existing booking first.`,
+            `You already have ${peak} simultaneous booking(s) during these dates, which is the maximum allowed (${maxConcurrentBookings}). Please choose different dates or complete/cancel an existing booking first.`,
             400
         );
     }
@@ -2905,6 +2907,12 @@ const createBooking = async (
         pricing,
         voucher: voucherDiscount,
     }).total;
+
+    // HTTP creation requires the reviewed quote. Keep internal service calls
+    // compatible; the customer route validates its presence before this call.
+    if (bookingData.expectedPricing !== undefined) {
+        assertBookingQuoteMatches(bookingData.expectedPricing, pricing.totalAmount, upfrontAmount);
+    }
 
     if (
         upfrontAmount > 0 &&
@@ -4103,55 +4111,14 @@ const updateBooking = async (
 
     /*
      * Re-price any voucher that was applied at creation against the new
-     * pricing so `pricing.totalAmount` and the stored voucher discount stay
-     * consistent. If the voucher can no longer be resolved, drop it.
+     * pricing using its recorded terms so the total and stored voucher stay
+     * consistent even if an admin changes or deletes the promotion later.
      */
     if (booking.voucher?.voucher) {
-        try {
-            const appliedVoucher =
-                await Voucher.findById(
-                    booking.voucher.voucher
-                );
-
-            if (appliedVoucher) {
-                pricing =
-                    calculatePricingWithVoucher(
-                        pricing,
-                        appliedVoucher,
-                        booking.customer
-                    );
-
-                const discountAmount =
-                    pricing.voucher?.discount
-                        ? Object.entries(
-                              pricing.voucher.discount
-                          )
-                              .filter(([key]) =>
-                                  key.endsWith(
-                                      "Discount"
-                                  )
-                              )
-                              .reduce(
-                                  (sum, [, val]) =>
-                                      sum +
-                                      (Number(val) || 0),
-                                  0
-                              )
-                        : 0;
-
-                booking.voucher.discountAmount =
-                    discountAmount;
-            } else {
-                booking.voucher = null;
-            }
-        } catch (voucherError) {
-            console.error(
-                "Failed to re-apply voucher on booking update:",
-                voucherError.message
-            );
-
-            booking.voucher = null;
-        }
+        pricing = calculatePricingWithVoucherSnapshot(pricing, booking.voucher);
+        booking.voucher.discountAmount = Object.entries(pricing.voucher?.discount || {})
+            .filter(([key]) => key.endsWith("Discount"))
+            .reduce((sum, [, value]) => sum + (Number(value) || 0), 0);
     }
 
     booking.pricing =
@@ -7546,14 +7513,7 @@ const buildReschedulePricing = (
         return base;
     }
 
-    return calculatePricingWithVoucher(base, {
-        _id: booking.voucher.voucher,
-        code: booking.voucher.code,
-        name: booking.voucher.name,
-        type: booking.voucher.type,
-        discountMethod: booking.voucher.discountMethod,
-        discountValue: booking.voucher.discountValue,
-    });
+    return calculatePricingWithVoucherSnapshot(base, booking.voucher);
 };
 
 /*

@@ -116,11 +116,14 @@ const ValidIdRenewalSettings = () => {
         setSaving(true);
 
         try {
-            await updateSettings(localSettings);
+            await updateSettings({
+                validIdRenewalSettings: localSettings.validIdRenewalSettings,
+                validIdExpirationSettings: localSettings.validIdExpirationSettings,
+            }).unwrap();
             toast.success("Valid ID renewal settings saved successfully.");
         } catch (error) {
             toast.error(
-                error.message || "Unable to save settings."
+                (typeof error === "string" ? error : error?.message) || "Unable to save settings."
             );
         } finally {
             setSaving(false);

@@ -13,6 +13,7 @@ import {
 } from "../services/settingsService.js";
 
 import { getCancellationPolicyError } from "../services/cancellationPolicyService.js";
+import handleValidation from "../utils/handleValidation.js";
 import { buildTermsPolicySnapshot } from "../services/legalDocumentService.js";
 import {
     areMotorcycleDriversEnabled,
@@ -36,8 +37,8 @@ import {
 
 /*
  * Returns an error message when the merged refund settings are invalid,
- * otherwise null. The express-validator chain on this route isn't enforced,
- * so this is the real gate for the refund section.
+ * otherwise null. This validates merged policy values in addition to the
+ * request validators, including fields omitted by a partial update.
  */
 const getRefundSettingsError = (refundSettings) => {
     if (
@@ -160,6 +161,8 @@ export const getPublicSettings = async (req, res) => {
             res,
             "Public settings retrieved successfully.",
             {
+                allowOnlyDefaultLocation:
+                    settings?.allowOnlyDefaultLocation ?? false,
                 enableDistanceFeeCalculation:
                     settings?.enableDistanceFeeCalculation ?? false,
                 licenseRestrictionEnabled:
@@ -228,6 +231,7 @@ export const getPublicSettings = async (req, res) => {
 };
 
 export const updateSettings = async (req, res) => {
+    if (!handleValidation(req, res)) return;
     try {
         const settingsData = req.body;
 

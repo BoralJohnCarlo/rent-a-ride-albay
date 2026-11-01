@@ -63,6 +63,7 @@ export const updateSettings = createAsyncThunk(
             return await updateSettingsAction(settingsData);
         } catch (error) {
             return rejectWithValue(
+                error.response?.data?.errors?.[0]?.msg ||
                 error.response?.data?.message ||
                     "Unable to update settings."
             );

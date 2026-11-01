@@ -81,13 +81,20 @@ const CustomerSettings = () => {
     };
 
     const handleSave = async () => {
+        const limit = localSettings.customerBookingSettings?.maxConcurrentBookings ?? 0;
+        if (!Number.isInteger(limit) || limit < 0) {
+            toast.error("Maximum bookings must be a non-negative whole number.");
+            return;
+        }
         setSaving(true);
 
         try {
-            await updateSettings(localSettings);
+            await updateSettings({
+                customerBookingSettings: localSettings.customerBookingSettings,
+            }).unwrap();
             toast.success("Customer settings saved successfully.");
         } catch (error) {
-            toast.error(error.message || "Unable to save settings.");
+            toast.error((typeof error === "string" ? error : error?.message) || "Unable to save settings.");
         } finally {
             setSaving(false);
         }

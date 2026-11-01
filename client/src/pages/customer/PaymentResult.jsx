@@ -39,21 +39,17 @@ const PaymentResult = () => {
     const navigate = useNavigate();
     const routeParams = useParams();
 
-    const failureReportedRef = useRef(false);
+    const failureReportedRef = useRef(new Set());
 
     const {
-        selectedPayment,
+        selectedPayment: storedSelectedPayment,
         loading,
         fetchPaymentById,
         reconcilePayment,
         clearSelected,
     } = usePayment();
 
-    const [pollExhausted, setPollExhausted] =
-        useState(false);
-
-    const [pollError, setPollError] =
-        useState(false);
+    const [pollState, setPollState] = useState(null);
 
     const queryParams = new URLSearchParams(
         location.search
@@ -70,6 +66,17 @@ const PaymentResult = () => {
         "success";
 
     const isSuccess = status === "success";
+
+    // Shared payment state can still belong to a previous page or request.
+    // Never show its booking details or treat it as this payment's success.
+    const selectedPayment = paymentId && storedSelectedPayment?._id === paymentId
+        ? storedSelectedPayment
+        : null;
+    const currentPollState = pollState?.paymentId === paymentId && pollState?.status === status
+        ? pollState
+        : null;
+    const pollExhausted = Boolean(currentPollState?.exhausted);
+    const pollError = Boolean(currentPollState?.error);
 
     // No payment reference at all — nothing to show here.
     useEffect(() => {
@@ -89,8 +96,8 @@ const PaymentResult = () => {
 
         fetchPaymentById(paymentId);
 
-        if (!failureReportedRef.current) {
-            failureReportedRef.current = true;
+        if (!failureReportedRef.current.has(paymentId)) {
+            failureReportedRef.current.add(paymentId);
 
             reportPaymentFailure(paymentId).catch(
                 () => {
@@ -111,6 +118,7 @@ const PaymentResult = () => {
 
         let cancelled = false;
         let timerId = null;
+        setPollState(null);
 
         const poll = async (attempt) => {
             if (cancelled) {
@@ -141,20 +149,15 @@ const PaymentResult = () => {
             }
 
             const verified =
-                data?.paid === true ||
-                data?.payment?.status ===
-                    "VERIFIED";
+                data?.payment?._id === paymentId &&
+                (data?.paid === true || data.payment.status === "VERIFIED");
 
             if (verified) {
                 return;
             }
 
             if (attempt >= MAX_POLL_ATTEMPTS) {
-                if (fulfilled) {
-                    setPollExhausted(true);
-                } else {
-                    setPollError(true);
-                }
+                setPollState({ paymentId, status, exhausted: fulfilled, error: !fulfilled });
 
                 return;
             }
@@ -176,6 +179,7 @@ const PaymentResult = () => {
         };
     }, [
         paymentId,
+        status,
         isSuccess,
         reconcilePayment,
         fetchPaymentById,

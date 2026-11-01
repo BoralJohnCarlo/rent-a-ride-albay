@@ -22,6 +22,7 @@ const validate = async (overrides = {}) => {
         pickupLocation: location(),
         returnLocation: location(),
         paymentMethod: "GCASH",
+        expectedPricing: { totalAmount: 2500, upfrontAmount: 500 },
         ...overrides,
     } };
     for (const validator of createBookingValidator) await validator.run(req);
@@ -53,4 +54,12 @@ it("still requires terms acceptance and valid saved location IDs", async () => {
     });
     assert.ok(errors.some((error) => error.path === "termsAccepted"));
     assert.ok(errors.some((error) => error.path === "pickupLocation.serviceLocationId"));
+});
+
+it("requires the customer's reviewed booking amounts", async () => {
+    for (const expectedPricing of [undefined, null, [], {}, { totalAmount: "2500", upfrontAmount: 500 },
+        { totalAmount: 2500, upfrontAmount: -1 }]) {
+        const errors = await validate({ expectedPricing });
+        assert.ok(errors.some((error) => error.path.startsWith("expectedPricing")));
+    }
 });

@@ -56,7 +56,6 @@ import BookingDateRangeCalendar from "../vehicle/BookingDateRangeCalendar";
 
 import useServiceLocation from "../../hooks/serviceLocations/useServiceLocation";
 
-import useSettings from "../../hooks/settings/useSettings";
 
 import useVoucher from "../../hooks/promotions/useVoucher";
 
@@ -100,6 +99,7 @@ const timeToMinutes = (time) => {
     return hour * 60 + minute;
 };
 import { describeBookingHours } from "../../utils/bookingPolicyText";
+import { isBookingPriceChangedError } from "../../utils/bookingQuote";
 import usePublicRefundSettings from "../../hooks/settings/usePublicRefundSettings";
 import {
     getDriverDailyRate,
@@ -285,6 +285,7 @@ const BookingForm = ({
     forceWithDriver = false,
     onSubmit,
     onCancel,
+    onRefreshPricing,
 }) => {
     const [formData, setFormData] =
         useState(
@@ -357,11 +358,6 @@ const BookingForm = ({
         getEnabledServiceLocations,
     } = useServiceLocation();
 
-    const {
-        settings,
-        getSettings,
-    } = useSettings();
-
     const defaultsAppliedRef = useRef(false);
 
     const geocodingInProgressRef = useRef(false);
@@ -419,6 +415,11 @@ const BookingForm = ({
     // Settings → Bookings: booking hours (overnight bookings start later)
     // and the pickup window.
     const {
+        ready: settingsReady,
+        error: settingsError,
+        retry: retrySettings,
+        allowOnlyDefaultLocation,
+        licenseRestrictionEnabled,
         bookingHours,
         pickupHours,
         enableDistanceFeeCalculation,
@@ -427,15 +428,29 @@ const BookingForm = ({
         motorcycleDriversEnabled: publicMotorcycleDriversEnabled,
     } = usePublicRefundSettings();
 
-    /*
-     * Whether admins pick the driver. Customers can't read the admin-only
-     * settings, so this comes from the public settings (admins booking on a
-     * customer's behalf have both).
-     */
-    const requireAdminDriverAssignment = Boolean(
-        publicRequireAdminDriverAssignment ||
-            settings?.driverAssignmentSettings?.requireAdminDriverAssignment
-    );
+    const [priceRefreshing, setPriceRefreshing] = useState(false);
+    const [priceRefreshError, setPriceRefreshError] = useState("");
+    const refreshPricing = useCallback(async () => {
+        setPriceRefreshing(true);
+        setPriceRefreshError("");
+        setCurrentStep(0);
+        retrySettings();
+        try {
+            await onRefreshPricing?.();
+        } catch {
+            setPriceRefreshError("Unable to refresh booking prices. Please try again.");
+        } finally {
+            setPriceRefreshing(false);
+        }
+    }, [retrySettings, onRefreshPricing]);
+
+    useEffect(() => {
+        if (isBookingPriceChangedError(errorMessage)) void refreshPricing();
+    }, [errorMessage, refreshPricing]);
+
+    // The public endpoint supplies the same driver-assignment rule enforced
+    // by booking creation, without requiring admin access.
+    const requireAdminDriverAssignment = publicRequireAdminDriverAssignment;
 
     /*
      * Settings → Drivers can make motorcycles self-drive only: no driver
@@ -445,11 +460,9 @@ const BookingForm = ({
      */
     const selfDriveOnly =
         vehicle?.vehicleType === "Motorcycle" &&
-        (publicMotorcycleDriversEnabled === false ||
-            settings?.driverAssignmentSettings?.motorcycleDriversEnabled ===
-                false);
+        publicMotorcycleDriversEnabled === false;
 
-    const mustUseDriver = forceWithDriver && !selfDriveOnly;
+    const mustUseDriver = settingsReady && licenseRestrictionEnabled && forceWithDriver && !selfDriveOnly;
 
     const toast = useToast();
 
@@ -471,10 +484,6 @@ const BookingForm = ({
     useEffect(() => {
         fetchAvailableVouchers();
     }, [fetchAvailableVouchers]);
-
-    useEffect(() => {
-        getSettings();
-    }, [getSettings]);
 
     /*
      * Unlike the admin-assignment fixed-value case below (which only
@@ -517,7 +526,8 @@ const BookingForm = ({
     }, [selfDriveOnly]);
 
     useEffect(() => {
-        if (defaultsAppliedRef.current) {
+        if (!settingsReady) return;
+        if (defaultsAppliedRef.current && !allowOnlyDefaultLocation) {
             return;
         }
 
@@ -577,7 +587,7 @@ const BookingForm = ({
                 previous
                     .pickupLocation
                     .serviceLocationId &&
-                !settings?.allowOnlyDefaultLocation
+                !allowOnlyDefaultLocation
             ) {
                 return previous;
             }
@@ -603,7 +613,8 @@ const BookingForm = ({
     }, [
         serviceLocations,
         locationsLoading,
-        settings?.allowOnlyDefaultLocation,
+        allowOnlyDefaultLocation,
+        settingsReady,
     ]);
 
     const distanceFeeRequestKey = JSON.stringify([
@@ -613,8 +624,11 @@ const BookingForm = ({
     ]);
     const [confirmedDistanceFeeKey, setConfirmedDistanceFeeKey] = useState(null);
     const [distanceFeeRetry, setDistanceFeeRetry] = useState(0);
-    const feesPending = enableDistanceFeeCalculation && formData.driverOption !== "With Driver" &&
-        (confirmedDistanceFeeKey !== distanceFeeRequestKey || distanceFeeLoading || Boolean(distanceFeeError) || !distanceFeePreview);
+    useEffect(() => {
+        if (isBookingPriceChangedError(errorMessage)) setDistanceFeeRetry((key) => key + 1);
+    }, [errorMessage]);
+    const feesPending = !settingsReady || (enableDistanceFeeCalculation && formData.driverOption !== "With Driver" &&
+        (confirmedDistanceFeeKey !== distanceFeeRequestKey || distanceFeeLoading || Boolean(distanceFeeError) || !distanceFeePreview));
 
     useEffect(() => {
         const pickupLat =
@@ -1071,15 +1085,26 @@ const BookingForm = ({
     /*
      * Keep the chosen time one that's listed: when the dates, driver, pickup
      * hours or the clock make it invalid, move to the nearest valid time
-     * (and say so once dates are picked).
+     * on Rental Details, where the adjustment warning is visible.
      */
     useEffect(() => {
         if (
-            pickupTimeOptions.length === 0 ||
+            loading ||
             pickupTimeOptions.some(
                 ({ value }) => value === formData.pickupTime
             )
         ) {
+            return;
+        }
+
+        // A customer reading terms or reviewing must see and review a changed
+        // pickup time on Details before proceeding again.
+        if (currentStep !== 0) {
+            setCurrentStep(0);
+            return;
+        }
+
+        if (pickupTimeOptions.length === 0) {
             return;
         }
 
@@ -1100,7 +1125,7 @@ const BookingForm = ({
             ...previous,
             pickupTime: nearest,
         }));
-    }, [pickupTimeOptions, formData.pickupTime, formData.startDate]);
+    }, [pickupTimeOptions, formData.pickupTime, formData.startDate, currentStep, loading]);
 
     const rentalDays = useMemo(() => {
         if (
@@ -1264,6 +1289,9 @@ const BookingForm = ({
     const pricingKey = JSON.stringify(basePricing);
     const voucherCode = storedAppliedVoucher?.voucher?.code;
     const [confirmedVoucher, setConfirmedVoucher] = useState(null);
+    useEffect(() => {
+        if (isBookingPriceChangedError(errorMessage)) setConfirmedVoucher(null);
+    }, [errorMessage]);
     const voucherMatches = confirmedVoucher?.key === pricingKey && confirmedVoucher?.code === voucherCode;
     const appliedVoucher = voucherMatches ? confirmedVoucher.value : null;
     const voucherPending = Boolean(voucherCode) && (!voucherMatches || feesPending);
@@ -1376,13 +1404,22 @@ const BookingForm = ({
         };
     }, [appliedVoucher, basePricing, finalTotal]);
 
+    const effectivePayInFull = formData.paymentMethod === "GCASH" &&
+        upfrontFees.total > 0 && payInFull;
+
+    useEffect(() => {
+        if (!feesPending && !voucherPending && upfrontFees.total <= 0) {
+            setPayInFull(false);
+        }
+    }, [feesPending, voucherPending, upfrontFees.total]);
+
     /*
      * What the Pay button charges, as the server sizes the payment: the full
      * total when paying in full, otherwise the upfront fees. Nothing to pay
      * online means a plain "Submit Booking".
      */
     const amountDueNow =
-        formData.paymentMethod === "GCASH" && payInFull
+        effectivePayInFull
             ? finalTotal
             : upfrontFees.total;
 
@@ -1633,6 +1670,10 @@ const BookingForm = ({
     };
 
     const validateStep = (step = currentStep) => {
+        if (!settingsReady || priceRefreshing || priceRefreshError) {
+            setValidationErrors({ startDate: "Please wait until booking settings have loaded." });
+            return false;
+        }
         const nextErrors = {};
 
         if (step === 0) {
@@ -1695,6 +1736,10 @@ const BookingForm = ({
                     nextErrors.startDate = `Pickup time must be between ${formatPickupHours(
                         pickupHours
                     )} (Philippine time).`;
+                }
+
+                if (pickupTimeAvailability?.[formData.pickupTime] === false) {
+                    nextErrors.startDate = "Your selected pickup time is no longer available. Please choose another time or different dates.";
                 }
             }
 
@@ -2015,9 +2060,12 @@ const BookingForm = ({
             paymentMethod:
                 formData.paymentMethod,
 
-            payInFull:
-                formData.paymentMethod ===
-                    "GCASH" && payInFull,
+            payInFull: effectivePayInFull,
+
+            expectedPricing: {
+                totalAmount: finalTotal,
+                upfrontAmount: upfrontFees.total,
+            },
 
             voucherCode:
                 appliedVoucher
@@ -2056,7 +2104,7 @@ const BookingForm = ({
             return;
         }
 
-        if (loading) {
+        if (loading || !settingsReady || priceRefreshing || priceRefreshError) {
             return;
         }
 
@@ -2126,7 +2174,7 @@ const BookingForm = ({
         }
 
         const locations =
-            settings?.allowOnlyDefaultLocation
+            allowOnlyDefaultLocation
             ? serviceLocations.filter(
                     (loc) => loc.isDefault
                 )
@@ -2161,7 +2209,7 @@ const BookingForm = ({
     }, [
         serviceLocations,
         locationsLoading,
-        settings?.allowOnlyDefaultLocation,
+        allowOnlyDefaultLocation,
     ]);
 
     const handleLocationChange = (
@@ -2169,7 +2217,7 @@ const BookingForm = ({
         locationId
     ) => {
         if (
-            settings?.allowOnlyDefaultLocation
+            allowOnlyDefaultLocation
         ) {
             return;
         }
@@ -2317,7 +2365,7 @@ const BookingForm = ({
     const mapSelectionDisabled =
         loading ||
         locationsLoading ||
-        Boolean(settings?.allowOnlyDefaultLocation);
+        Boolean(allowOnlyDefaultLocation);
 
     /* Square icon button beside a location dropdown, the same height as
        the dropdown trigger. */
@@ -2334,7 +2382,7 @@ const BookingForm = ({
                 disabled={mapSelectionDisabled}
                 aria-label={label}
                 title={
-                    settings?.allowOnlyDefaultLocation
+                    allowOnlyDefaultLocation
                         ? "Default location only - map selection is disabled."
                         : label
                 }
@@ -2497,7 +2545,7 @@ const BookingForm = ({
                     {!isPickup &&
                         hasPickupLocation &&
                         !returnMatchesPickup &&
-                        !settings?.allowOnlyDefaultLocation && (
+                        !allowOnlyDefaultLocation && (
                             <button
                                 type="button"
                                 onClick={copyPickupToReturn}
@@ -2565,6 +2613,26 @@ const BookingForm = ({
             </li>
         );
     };
+
+    if (!settingsReady || priceRefreshing || priceRefreshError) {
+        return (
+            <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 sm:p-6">
+                <p role={settingsError || priceRefreshError ? "alert" : "status"} className="break-words text-sm text-gray-700 dark:text-gray-300">
+                    {priceRefreshError || settingsError || "Loading booking settings and pricing..."}
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                    {(settingsError || priceRefreshError) && (
+                        <Button type="button" onClick={refreshPricing} disabled={loading || priceRefreshing}>
+                            Retry loading prices
+                        </Button>
+                    )}
+                    <Button type="button" variant="secondary" onClick={onCancel} disabled={loading}>
+                        Cancel
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <form
@@ -3097,7 +3165,7 @@ const BookingForm = ({
                                     description="Where your trip starts and where you'll bring the vehicle back."
                                 />
 
-                                {settings?.allowOnlyDefaultLocation &&
+                                {allowOnlyDefaultLocation &&
                                     !defaultServiceLocation && (
                                         <p className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
                                             The default service location has not been configured. Please contact support.
@@ -3109,12 +3177,12 @@ const BookingForm = ({
                                     {renderLocationStop("returnLocation")}
                                 </ol>
 
-                                {(settings?.allowOnlyDefaultLocation ||
+                                {(allowOnlyDefaultLocation ||
                                     distanceFeeLoading ||
                                     distanceFeeError ||
                                     geocodeError) && (
                                     <div className="mt-4 space-y-1 border-t border-gray-100 pt-3 text-xs dark:border-gray-800">
-                                        {settings?.allowOnlyDefaultLocation && (
+                                        {allowOnlyDefaultLocation && (
                                             <p className="text-gray-500 dark:text-gray-400">
                                                 Pickup and return are at our
                                                 default location only.
@@ -3209,7 +3277,7 @@ const BookingForm = ({
                                     options={PAYMENT_METHOD_OPTIONS}
                                     value={formData.paymentMethod}
                                     onChange={handlePaymentMethodChange}
-                                    payInFull={payInFull}
+                                    payInFull={effectivePayInFull}
                                     onPayInFullChange={setPayInFull}
                                     upfrontTotal={upfrontFees.total}
                                     reservationFee={upfrontFees.reservationFee}

@@ -33,9 +33,8 @@ const PaymentMethodPicker = ({
                         No reservation fee required
                     </p>
                     <p className="mt-1 text-sm text-green-700 dark:text-green-400">
-                        This vehicle does not require a reservation fee. You
-                        will only pay the rental fee when you pick up the
-                        vehicle.
+                        No upfront payment is due. Any remaining rental balance
+                        will be paid when you pick up the vehicle.
                     </p>
                 </div>
             </div>

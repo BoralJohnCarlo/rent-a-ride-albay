@@ -71,6 +71,14 @@ const validateDriver = (
     return true;
 };
 export const createBookingValidator = [
+    body("expectedPricing")
+        .isObject({ strict: true })
+        .withMessage("Please reload the page and review the current booking price."),
+    ...["totalAmount", "upfrontAmount"].map((key) =>
+        body(`expectedPricing.${key}`)
+            .custom((value) => typeof value === "number" && Number.isFinite(value) && value >= 0)
+            .withMessage("The reviewed booking price is missing or invalid. Please reload the page.")
+    ),
     body("vehicle")
         .notEmpty()
         .withMessage(

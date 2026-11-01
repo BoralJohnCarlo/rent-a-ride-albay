@@ -115,11 +115,14 @@ const VehicleRegistrationSettings = () => {
         setSaving(true);
 
         try {
-            await updateSettings(localSettings);
+            await updateSettings({
+                vehicleRegistrationRenewalSettings: localSettings.vehicleRegistrationRenewalSettings,
+                vehicleRegistrationExpirationSettings: localSettings.vehicleRegistrationExpirationSettings,
+            }).unwrap();
             toast.success("Vehicle registration settings saved successfully.");
         } catch (error) {
             toast.error(
-                error.message || "Unable to save settings."
+                (typeof error === "string" ? error : error?.message) || "Unable to save settings."
             );
         } finally {
             setSaving(false);

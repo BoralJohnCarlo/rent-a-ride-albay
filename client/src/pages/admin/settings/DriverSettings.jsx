@@ -83,13 +83,21 @@ const DriverSettings = () => {
     };
 
     const handleSave = async () => {
+        const rate = Number(localSettings.driverPricingSettings?.globalDailyRate ?? 0);
+        if (!Number.isFinite(rate) || rate < 0 || rate > 1000000) {
+            toast.error("The global driver rate must be a number from 0 to 1,000,000.");
+            return;
+        }
         setSubmitting(true);
 
         try {
-            await updateSettings(localSettings);
+            await updateSettings({
+                driverAssignmentSettings: localSettings.driverAssignmentSettings,
+                driverPricingSettings: localSettings.driverPricingSettings,
+            }).unwrap();
             toast.success("Driver settings saved successfully.");
         } catch (error) {
-            toast.error(error.message || "Something went wrong.");
+            toast.error((typeof error === "string" ? error : error?.message) || "Something went wrong.");
         } finally {
             setSubmitting(false);
         }

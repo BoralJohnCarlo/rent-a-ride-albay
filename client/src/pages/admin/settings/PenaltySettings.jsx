@@ -151,13 +151,15 @@ const PenaltySettings = () => {
         setSaving(true);
 
         try {
-            await updateSettings(localSettings);
+            await updateSettings({
+                penaltySettings: localSettings.penaltySettings,
+            }).unwrap();
             toast.success(
                 "Penalty settings saved successfully."
             );
         } catch (error) {
             toast.error(
-                error.message ||
+                (typeof error === "string" ? error : error?.message) ||
                     "Unable to save settings."
             );
         } finally {
