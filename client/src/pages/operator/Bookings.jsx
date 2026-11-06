@@ -8,7 +8,7 @@ import {
     RefreshCw,
     UserRound,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import useBooking from "../../hooks/bookings/useBooking";
@@ -226,6 +226,11 @@ const Bookings = () => {
     const [detail, setDetail] = useState(null);
     const [detailOpen, setDetailOpen] = useState(false);
     const [detailLoading, setDetailLoading] = useState(false);
+    const detailRequest = useRef(0);
+
+    useEffect(() => () => {
+        detailRequest.current += 1;
+    }, []);
 
     const load = () => fetchBookings({ role: "operator" });
 
@@ -267,7 +272,7 @@ const Bookings = () => {
                 booking.vehicle?.model,
                 booking.vehicle?.plateNumber,
                 booking.vehicle?.vehicleCode,
-                booking.customer?.firstName,
+                getRenterName(booking.customer),
             ]
                 .filter(Boolean)
                 .join(" ")
@@ -277,6 +282,7 @@ const Bookings = () => {
     }, [bookings, tab, search]);
 
     const openDetail = async (booking) => {
+        const request = ++detailRequest.current;
         setDetail(booking);
         setDetailOpen(true);
         setDetailLoading(true);
@@ -285,17 +291,21 @@ const Bookings = () => {
             const result = await fetchBookingById(booking._id);
             const fresh = result?.payload?.data ?? result?.data;
 
-            if (fresh) {
+            if (fresh && request === detailRequest.current) {
                 setDetail(fresh);
             }
         } catch {
             // Keep showing the list row's copy - it's the same view.
         } finally {
-            setDetailLoading(false);
+            if (request === detailRequest.current) {
+                setDetailLoading(false);
+            }
         }
     };
 
     const closeDetail = () => {
+        detailRequest.current += 1;
+        setDetailLoading(false);
         setDetailOpen(false);
         setDetail(null);
     };

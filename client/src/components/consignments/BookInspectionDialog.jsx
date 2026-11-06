@@ -21,6 +21,7 @@ const BookInspectionDialog = ({
     const [fetching, setFetching] = useState(false);
     const [loadError, setLoadError] = useState("");
     const [selected, setSelected] = useState(null);
+    const [retryCount, setRetryCount] = useState(0);
 
     const currentAppointment =
         consignment?.application?.inspection?.scheduledDate
@@ -38,6 +39,8 @@ const BookInspectionDialog = ({
         }
 
         let cancelled = false;
+        setSlots([]);
+        setSelected(null);
         setFetching(true);
         setLoadError("");
 
@@ -48,6 +51,7 @@ const BookInspectionDialog = ({
             })
             .catch((error) => {
                 if (cancelled) return;
+                setSlots([]);
                 setLoadError(
                     error?.response?.data?.message ||
                         "Unable to load inspection availability."
@@ -60,7 +64,7 @@ const BookInspectionDialog = ({
         return () => {
             cancelled = true;
         };
-    }, [open]);
+    }, [open, consignment?._id, retryCount]);
 
     const bookableSlots = useMemo(
         () =>
@@ -76,7 +80,7 @@ const BookInspectionDialog = ({
     );
 
     const handleSubmit = async () => {
-        if (!selected || loading) return;
+        if (!selected || loading || fetching || loadError) return;
         await onSubmit?.(selected);
     };
 
@@ -101,7 +105,7 @@ const BookInspectionDialog = ({
                     </Button>
                     <Button
                         loading={loading}
-                        disabled={!selected}
+                        disabled={!selected || loading || fetching || !!loadError}
                         onClick={handleSubmit}
                     >
                         {currentAppointment
@@ -127,14 +131,17 @@ const BookInspectionDialog = ({
                 )}
 
                 {loadError && (
-                    <Alert variant="error" message={loadError} />
+                    <div className="space-y-3">
+                        <Alert variant="error" message={loadError} />
+                        <Button size="sm" variant="outline" disabled={fetching || loading} onClick={() => setRetryCount((count) => count + 1)} className="w-full sm:w-auto">Retry available slots</Button>
+                    </div>
                 )}
 
                 {fetching ? (
                     <p className="text-sm text-gray-500">
                         Loading available slots…
                     </p>
-                ) : bookableSlots.length === 0 ? (
+                ) : loadError ? null : bookableSlots.length === 0 ? (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
                         No inspection slots are currently open. Please check
                         back later or contact the administrator.
@@ -157,6 +164,7 @@ const BookInspectionDialog = ({
                                             <button
                                                 key={ts.time}
                                                 type="button"
+                                                disabled={loading || fetching || !!loadError}
                                                 onClick={() =>
                                                     setSelected({
                                                         date: day.date,

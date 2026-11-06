@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarClock, ClipboardList, Plus } from "lucide-react";
 
@@ -9,7 +9,7 @@ import PillSearch from "../../components/common/PillSearch";
 import PillTabs from "../../components/common/PillTabs";
 
 import ConsignmentCardGrid from "../../components/consignments/ConsignmentCardGrid";
-import ConsignmentAppointmentsPanel from "../../components/consignments/ConsignmentAppointmentsPanel";
+import OperatorAppointmentsPanel from "../../components/consignments/OperatorAppointmentsPanel";
 import OperatorPendingVehiclesPanel from "../../components/consignments/OperatorPendingVehiclesPanel";
 
 import NewConsignmentDialog from "../../components/consignments/NewConsignmentDialog";
@@ -60,12 +60,24 @@ const Consignments = () => {
         consignments,
         loading,
         withdrawConsignment,
-        submitConsignment,
         getMyConsignments,
         bookInspectionAppointment,
     } = useConsignments();
 
     const toast = useToast();
+    const [listError, setListError] = useState("");
+
+    const handleRefresh = useCallback(async () => {
+        setListError("");
+        try {
+            await getMyConsignments().unwrap();
+        } catch (error) {
+            setListError(
+                (typeof error === "string" ? error : error?.message) ||
+                    "Unable to load your consignment applications. Please try again."
+            );
+        }
+    }, [getMyConsignments]);
 
     const [section, setSection] =
         useState("applications");
@@ -97,8 +109,8 @@ const Consignments = () => {
         useState(null);
 
     useEffect(() => {
-        getMyConsignments();
-    }, [getMyConsignments]);
+        handleRefresh();
+    }, [handleRefresh]);
 
     /*
      * Once approved, a consignment becomes a real vehicle — it moves to
@@ -179,10 +191,6 @@ const Consignments = () => {
         statusFilter,
     ]);
 
-    const handleRefresh = () => {
-        getMyConsignments();
-    };
-
     const handleOpenNewDialog = () => {
         setNewDialogOpen(true);
     };
@@ -201,23 +209,9 @@ const Consignments = () => {
         setEditingConsignment(null);
     };
 
-    const handleSubmit = async (consignment) => {
-        try {
-            await submitConsignment(
-                consignment._id
-            ).unwrap();
-
-            toast.success(
-                "Consignment application submitted successfully."
-            );
-
-            handleRefresh();
-        } catch (error) {
-            toast.error(
-                error?.message ||
-                    "Unable to submit consignment application."
-            );
-        }
+    // Card submissions use the same validated wizard and terms as new applications.
+    const handleSubmit = (consignment) => {
+        handleEdit(consignment);
     };
 
     const handleOpenReview = (
@@ -390,8 +384,17 @@ const Consignments = () => {
                     </div>
                 </div>
 
-                {section === "appointments" ? (
-                    <ConsignmentAppointmentsPanel
+                {listError && (
+                    <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                        <p className="min-w-0 break-words">{listError}</p>
+                        <Button size="sm" variant="outline" disabled={loading} onClick={handleRefresh} className="w-full shrink-0 sm:w-auto">
+                            Retry loading applications
+                        </Button>
+                    </div>
+                )}
+
+                {listError ? null : section === "appointments" ? (
+                    <OperatorAppointmentsPanel
                         consignments={consignments}
                         loading={loading}
                         onView={handleOpenReview}

@@ -1,5 +1,6 @@
 import {
     useEffect,
+    useRef,
     useState,
 } from "react";
 
@@ -211,6 +212,8 @@ const NewConsignmentDialog = ({
 
     const [imageUploading, setImageUploading] =
         useState(false);
+    const submissionLock = useRef(false);
+    const [submitting, setSubmitting] = useState(false);
 
     const [currentStep, setCurrentStep] =
         useState(STEP_VEHICLE);
@@ -244,8 +247,9 @@ const NewConsignmentDialog = ({
     updateDraftConsignment,
     submitConsignment,
     bookInspectionAppointment,
-    loading,
+    loading: workflowLoading,
 } = useConsignments();
+    const loading = workflowLoading || submitting;
 
     const toast = useToast();
 
@@ -759,7 +763,7 @@ const handleBack = () => {
     );
 };
 
-const handleSubmitApplication = async () => {
+const performSubmitApplication = async () => {
     if (!appointmentValue) {
         setErrors((previous) => ({
             ...previous,
@@ -978,7 +982,20 @@ const handleSubmitApplication = async () => {
 
     onSuccess?.();
 
-    handleClose();
+    resetForm();
+    onClose?.();
+};
+
+const handleSubmitApplication = async () => {
+    if (submissionLock.current || workflowLoading || imageUploading) return;
+    submissionLock.current = true;
+    setSubmitting(true);
+    try {
+        await performSubmitApplication();
+    } finally {
+        submissionLock.current = false;
+        setSubmitting(false);
+    }
 };
 
     const footer =

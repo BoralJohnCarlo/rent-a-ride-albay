@@ -174,11 +174,18 @@ const CTASection = () => {
                                         fullWidth
                                         className="
                                             border-gray-700
-                                            bg-transparent
-                                            text-white
-                                            hover:border-gray-600
-                                            hover:bg-gray-900
-                                            hover:text-white
+                                            bg-transparent!
+                                            text-white!
+                                            dark:bg-transparent!
+                                            dark:text-white!
+                                            hover:border-yellow-400!
+                                            hover:bg-yellow-500/15!
+                                            hover:text-yellow-300!
+                                            dark:hover:bg-yellow-500/15!
+                                            dark:hover:text-yellow-300!
+                                            motion-safe:hover:-translate-y-0.5
+                                            hover:shadow-lg
+                                            hover:shadow-yellow-500/15
                                             focus:ring-gray-500
                                         "
                                     >

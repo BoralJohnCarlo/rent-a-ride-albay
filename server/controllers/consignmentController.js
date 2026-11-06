@@ -180,7 +180,7 @@ export const updateDraft = async (
         return errorResponse(
             res,
             error.message,
-            400
+            error.statusCode || 400
         );
     }
 };
@@ -220,7 +220,7 @@ export const submit = async (req, res) => {
         return errorResponse(
             res,
             error.message,
-            400
+            error.statusCode || 400
         );
     }
 };

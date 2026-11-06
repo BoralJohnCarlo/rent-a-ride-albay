@@ -323,15 +323,30 @@ const Dashboard = () => {
 
     const [period, setPeriod] = useState("30d");
     const [earningsLoaded, setEarningsLoaded] = useState(false);
+    const [earningsErrors, setEarningsErrors] = useState({});
+
+    const loadEarnings = useCallback(async () => {
+        setEarningsLoaded(false);
+        setEarningsErrors({});
+        const [summaryResult, walletResult] = await Promise.allSettled([
+            loadOperatorPayoutSummary(),
+            fetchMyWallet({}),
+        ]);
+        const message = (result, fallback) => result.status === "rejected"
+            ? (typeof result.reason === "string" ? result.reason : result.reason?.message) || fallback
+            : "";
+        setEarningsErrors({
+            summary: message(summaryResult, "Unable to load earnings totals."),
+            wallet: message(walletResult, "Unable to load wallet balance."),
+        });
+        setEarningsLoaded(true);
+    }, [loadOperatorPayoutSummary, fetchMyWallet]);
 
     useEffect(() => {
         dispatch(getDashboardData());
 
-        Promise.allSettled([
-            loadOperatorPayoutSummary(),
-            fetchMyWallet({}),
-        ]).finally(() => setEarningsLoaded(true));
-    }, [dispatch, loadOperatorPayoutSummary, fetchMyWallet]);
+        loadEarnings();
+    }, [dispatch, loadEarnings]);
 
     useEffect(() => {
         fetchStats(period);
@@ -386,7 +401,7 @@ const Dashboard = () => {
             key: "wallet",
             label: "Wallet balance",
             value: wallet?.balance ?? 0,
-            format: (v) => peso(v),
+            format: (v) => earningsErrors.wallet ? "Unavailable" : peso(v),
             hint: "Available to withdraw",
             icon: Wallet,
             tone: "emerald",
@@ -397,7 +412,7 @@ const Dashboard = () => {
             key: "earned",
             label: "Total earned",
             value: payoutSummary?.totalEarned ?? 0,
-            format: (v) => peso(v),
+            format: (v) => earningsErrors.summary ? "Unavailable" : peso(v),
             hint:
                 Number(payoutSummary?.totalScheduled) > 0
                     ? `${peso(payoutSummary.totalScheduled)} scheduled for release`
@@ -555,6 +570,16 @@ const Dashboard = () => {
                 >
                     {errorMessage}
                 </motion.div>
+            )}
+
+            {(earningsErrors.wallet || earningsErrors.summary) && (
+                <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                    <div className="min-w-0 break-words">
+                        {earningsErrors.wallet && <p>{earningsErrors.wallet}</p>}
+                        {earningsErrors.summary && <p>{earningsErrors.summary}</p>}
+                    </div>
+                    <button type="button" onClick={loadEarnings} className="shrink-0 rounded-lg border border-current px-4 py-2 font-semibold focus-visible:outline-2">Retry earnings</button>
+                </div>
             )}
 
             {expiredRegistrations > 0 && (

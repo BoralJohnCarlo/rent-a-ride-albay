@@ -514,6 +514,16 @@ const updateDraftConsignmentValidator = [
  */
 const submitConsignmentValidator = [
     ...submissionValidation,
+    // Operators must accept the version shown in the wizard. Admins may
+    // still submit on a partner's behalf without collecting acceptance.
+    body("termsAgreed")
+        .if((_value, { req }) => req.user?.role === "operator")
+        .custom((value) => value === true)
+        .withMessage("Please agree to the Partner/Consignment Terms before submitting."),
+    body("termsVersionId")
+        .if((_value, { req }) => req.user?.role === "operator")
+        .isMongoId()
+        .withMessage("Please review the current Partner/Consignment Terms before submitting."),
 ];
 
 const reviewConsignmentValidator = [

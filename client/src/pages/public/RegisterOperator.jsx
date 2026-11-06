@@ -1615,8 +1615,8 @@ const RegisterOperator = () => {
     ]);
 
     return (
-        <div className="relative min-h-screen w-full overflow-x-hidden bg-[#f3f1ec] dark:bg-gray-950">
-            <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="relative min-h-screen w-full overflow-x-hidden bg-[#f3f1ec] max-sm:overflow-x-clip max-sm:bg-white dark:bg-gray-950 max-sm:dark:bg-gray-900">
+            <div className="pointer-events-none fixed inset-0 hidden overflow-hidden sm:block">
                 <AnimatePresence initial={false}>
                     <motion.img
                         key={currentImage}
@@ -1634,14 +1634,14 @@ const RegisterOperator = () => {
                 <div className="absolute inset-0 bg-gradient-to-br from-gray-950/85 via-gray-950/65 to-yellow-950/20" />
             </div>
 
-            <div className="relative z-10 flex min-h-screen items-start justify-center px-3 pb-4 pt-20 sm:px-5 sm:pb-5 sm:pt-20 lg:px-8 lg:pt-20">
+            <div className="relative z-10 flex min-h-screen items-start justify-center px-0 pb-0 pt-20 sm:px-5 sm:pb-5 sm:pt-20 lg:px-8 lg:pt-20">
                 <motion.div
                     initial={{ opacity: 0, y: 28, scale: 0.97 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    className="h-[480px] max-h-[calc(100vh-96px)] w-full max-w-[660px] overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-gray-900 dark:ring-white/10"
+                    className="h-[480px] max-h-[calc(100vh-96px)] max-sm:h-auto max-sm:max-h-none max-sm:min-h-[calc(100dvh-80px)] max-sm:rounded-none max-sm:shadow-none max-sm:ring-0 max-sm:pb-24 w-full max-w-[660px] overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-gray-900 dark:ring-white/10"
                 >
-                    <div className="flex h-full min-h-0 flex-col lg:flex-row">
+                    <div className="flex h-full min-h-0 flex-col max-sm:h-auto lg:flex-row">
                         <aside className="relative w-full shrink-0 overflow-hidden bg-[#f8f7f3] px-4 py-4 sm:px-5 sm:py-4 lg:h-full lg:w-[27%] lg:px-5 lg:py-5 dark:bg-gray-900">
                             <div className="absolute -bottom-24 -left-16 h-44 w-44 rounded-full border-[28px] border-gray-200/60 dark:border-gray-700/60" />
                             <div className="absolute -bottom-32 left-12 h-44 w-44 rounded-full border-[28px] border-gray-200/40 dark:border-gray-700/40" />
@@ -1730,7 +1730,7 @@ const RegisterOperator = () => {
                             </div>
                         </aside>
 
-                        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 py-3.5 sm:px-5 sm:py-4 lg:px-6 lg:py-4">
+                        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden max-sm:overflow-visible px-4 py-3.5 sm:px-5 sm:py-4 lg:px-6 lg:py-4">
                             <div className="mx-auto flex min-h-full w-full max-w-[480px] flex-col">
                                 {error && (
                                     <Alert variant="error" message={error} className="mb-3" />
@@ -1757,7 +1757,7 @@ const RegisterOperator = () => {
 
                                 <div className="mb-3 shrink-0 border-b border-gray-200 dark:border-gray-700" />
 
-                                <div ref={stepTopRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [&_label]:text-xs [&_h3]:text-[13px] [&_p]:text-[11px] [&_input]:py-2 [&_input]:text-[13px] [&_[role=combobox]]:py-2 [&_[role=combobox]]:text-[13px] [&_.space-y-2]:space-y-1">
+                                <div ref={stepTopRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain max-sm:flex-none max-sm:overflow-visible max-sm:overscroll-auto max-sm:pr-0 max-sm:[&_input]:text-base max-sm:[&_[role=combobox]]:text-base pr-1 [&_label]:text-xs [&_h3]:text-[13px] [&_p]:text-[11px] [&_input]:py-2 [&_input]:text-[13px] [&_[role=combobox]]:py-2 [&_[role=combobox]]:text-[13px] [&_.space-y-2]:space-y-1">
                                     <AnimatePresence mode="wait" initial={false}>
                                         <motion.div key={currentStep} variants={STEP_VARIANTS} initial="initial" animate="animate" exit="exit" transition={STEP_TRANSITION} className="flex min-h-full w-full flex-col justify-center">
                                             {currentStep === 0 && (

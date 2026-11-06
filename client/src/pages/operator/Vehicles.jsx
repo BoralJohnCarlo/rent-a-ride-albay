@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import useVehicle from "../../hooks/vehicles/useVehicle";
-import { usePayouts } from "../../hooks/payouts/usePayouts";
+import useVerifiedPayoutSettings from "../../hooks/payouts/useVerifiedPayoutSettings";
+import Button from "../../components/common/Button";
 import VehicleCardList from "../../components/vehicle/VehicleCardList";
 import EmptyState from "../../components/common/EmptyState";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
@@ -25,21 +26,19 @@ const Vehicles = () => {
 
     const {
         settings: payoutSettings,
-        loadPayoutSettings,
-    } = usePayouts();
+        error: settingsError,
+        loading: settingsLoading,
+        retry: retrySettings,
+    } = useVerifiedPayoutSettings();
 
     const platformCommissionRate =
-        payoutSettings?.platformCommissionRate ?? 10;
+        payoutSettings?.platformCommissionRate ?? null;
 
     const [search, setSearch] = useState("");
 
     useEffect(() => {
         getMyVehicles();
     }, [getMyVehicles]);
-
-    useEffect(() => {
-        loadPayoutSettings();
-    }, [loadPayoutSettings]);
 
     const filteredVehicles = useMemo(() => {
         const keyword = search.trim().toLowerCase();
@@ -76,6 +75,13 @@ const Vehicles = () => {
                 />
             </div>
 
+            {settingsLoading && <p role="status" className="text-sm text-gray-500">Loading commission settings...</p>}
+            {settingsError && (
+                <div role="alert" className="flex flex-col gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between dark:bg-red-950/30 dark:text-red-400">
+                    <p className="min-w-0 break-words">{settingsError} Platform commission rate unavailable.</p>
+                    <Button size="sm" variant="outline" onClick={retrySettings} className="w-full shrink-0 sm:w-auto">Retry commission settings</Button>
+                </div>
+            )}
             {error && (
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
                     <span>

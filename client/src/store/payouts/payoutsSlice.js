@@ -221,14 +221,16 @@ const payoutsSlice = createSlice({
                 state.error = null;
             })
             .addCase(fetchPayoutRequestsByOperator.fulfilled, (state, action) => {
+                const payload = action.payload?.data ?? action.payload;
                 state.loading = false;
                 state.success = true;
-                state.payoutRequests = action.payload.payouts || [];
+                state.payoutRequests = payload?.payouts || [];
                 state.pagination = {
                     ...state.pagination,
-                    total: action.payload.pagination?.total || 0,
-                    pages: action.payload.pagination?.pages || 1,
-                    limit: action.payload.pagination?.limit || 10
+                    page: payload?.pagination?.page ?? 1,
+                    total: payload?.pagination?.total ?? 0,
+                    pages: payload?.pagination?.pages ?? 0,
+                    limit: payload?.pagination?.limit ?? 10
                 };
             })
             .addCase(fetchPayoutRequestsByOperator.rejected, (state, action) => {

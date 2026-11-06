@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { getVehicleTelemetryHistory } from "../../api/telemetryApi";
 import {
@@ -26,12 +26,17 @@ const useRouteHistory = (
     const [range, setRange] = useState(defaultHistoryRange);
     const [history, setHistory] = useState(EMPTY_HISTORY);
     const [playback, setPlayback] = useState(STOPPED_PLAYBACK);
+    const historyRequest = useRef(0);
 
     // Switching vehicles invalidates any previously loaded route/playback -
     // a stale route for a different vehicle must never linger on screen.
-    useEffect(() => {
+    useLayoutEffect(() => {
+        historyRequest.current += 1;
         setHistory(EMPTY_HISTORY);
         setPlayback(STOPPED_PLAYBACK);
+        return () => {
+            historyRequest.current += 1;
+        };
     }, [vehicleId]);
 
     // Leaving History mode stops playback rather than letting its interval
@@ -70,6 +75,7 @@ const useRouteHistory = (
     const fail = (error) => setHistory({ loading: false, error, data: null });
 
     const load = async () => {
+        const request = ++historyRequest.current;
         if (!vehicleId) {
             return;
         }
@@ -116,8 +122,11 @@ const useRouteHistory = (
                 end: range.end ? new Date(range.end).toISOString() : undefined,
             });
 
-            setHistory({ loading: false, error: null, data: response.data });
+            if (request === historyRequest.current) {
+                setHistory({ loading: false, error: null, data: response.data });
+            }
         } catch (error) {
+            if (request !== historyRequest.current) return;
             fail(
                 error.response?.data?.message ||
                     "Unable to load route history."

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { usePayouts } from "../../../hooks/payouts/usePayouts.js";
+import useVerifiedPayoutSettings from "../../../hooks/payouts/useVerifiedPayoutSettings";
 import useWallet from "../../../hooks/wallets/useWallet";
 import useWithdrawal from "../../../hooks/withdrawals/useWithdrawal";
 import useToast from "../../../hooks/toast/useToast";
@@ -42,34 +43,48 @@ const formatWalletDate = (value) => {
     });
 };
 
+const errorMessage = (error, fallback) =>
+    (typeof error === "string" ? error : error?.message) || fallback;
+
 const Earnings = () => {
     const {
         payoutRequests,
         loading,
         error,
         summary,
-        settings,
+        pagination: payoutPagination,
         loadPayoutRequestsByOperator,
         loadOperatorPayoutSummary,
-        loadPayoutSettings,
     } = usePayouts();
 
     const {
         wallet,
         transactions: walletTransactions,
         loading: walletLoading,
+        error: walletError,
         fetchMyWallet,
     } = useWallet();
 
     const {
         withdrawals,
+        pagination: withdrawalPagination,
         submitWithdrawal,
         fetchMyWithdrawals,
     } = useWithdrawal();
 
+    const { settings, loading: settingsLoading, error: settingsError, retry: retrySettings } = useVerifiedPayoutSettings();
+
     const toast = useToast();
 
     const [statusFilter, setStatusFilter] = useState("");
+    const [payoutPage, setPayoutPage] = useState(1);
+    const [payoutLoading, setPayoutLoading] = useState(false);
+    const [payoutError, setPayoutError] = useState("");
+    const [summaryLoading, setSummaryLoading] = useState(true);
+    const [summaryError, setSummaryError] = useState("");
+    const [withdrawalPage, setWithdrawalPage] = useState(1);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyError, setHistoryError] = useState("");
 
     const [withdrawOpen, setWithdrawOpen] = useState(false);
     const [withdrawSubmitting, setWithdrawSubmitting] =
@@ -81,26 +96,67 @@ const Earnings = () => {
         accountName: "",
     });
 
+    const loadSummary = useCallback(async () => {
+        setSummaryLoading(true);
+        setSummaryError("");
+        try {
+            await loadOperatorPayoutSummary();
+        } catch (error) {
+            setSummaryError(errorMessage(error, "Unable to load earnings totals."));
+        } finally {
+            setSummaryLoading(false);
+        }
+    }, [loadOperatorPayoutSummary]);
+
     useEffect(() => {
-        loadPayoutRequestsByOperator({ status: statusFilter });
-        loadOperatorPayoutSummary();
-        loadPayoutSettings();
+        loadSummary();
     }, [
-        loadPayoutRequestsByOperator,
-        loadOperatorPayoutSummary,
-        loadPayoutSettings,
-        statusFilter,
+        loadSummary,
     ]);
+
+    const loadPayoutPage = useCallback(async () => {
+        setPayoutLoading(true);
+        setPayoutError("");
+        try {
+            await loadPayoutRequestsByOperator({ status: statusFilter, page: payoutPage, limit: 10 });
+        } catch (error) {
+            setPayoutError(errorMessage(error, "Unable to load payouts."));
+        } finally {
+            setPayoutLoading(false);
+        }
+    }, [loadPayoutRequestsByOperator, statusFilter, payoutPage]);
+
+    useEffect(() => {
+        loadPayoutPage();
+    }, [loadPayoutPage]);
 
     useEffect(() => {
         fetchMyWallet({}).catch(() => {});
-        fetchMyWithdrawals({}).catch(() => {});
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [fetchMyWallet]);
+
+    const loadWithdrawalHistory = useCallback(async () => {
+        setHistoryLoading(true);
+        setHistoryError("");
+        try {
+            await fetchMyWithdrawals({ page: withdrawalPage, limit: 20 });
+        } catch (error) {
+            setHistoryError(errorMessage(error, "Unable to load withdrawal history."));
+        } finally {
+            setHistoryLoading(false);
+        }
+    }, [fetchMyWithdrawals, withdrawalPage]);
+
+    useEffect(() => {
+        loadWithdrawalHistory();
+    }, [loadWithdrawalHistory]);
 
     const refreshWallet = () => {
         fetchMyWallet({}).catch(() => {});
-        fetchMyWithdrawals({}).catch(() => {});
+        if (withdrawalPage === 1) {
+            loadWithdrawalHistory();
+        } else {
+            setWithdrawalPage(1);
+        }
     };
 
     const openWithdraw = () => {
@@ -166,8 +222,7 @@ const Earnings = () => {
             }
         } catch (error) {
             setWithdrawError(
-                error?.message ||
-                    "Unable to submit withdrawal request."
+                errorMessage(error, "Unable to submit withdrawal request.")
             );
         } finally {
             setWithdrawSubmitting(false);
@@ -199,6 +254,11 @@ const Earnings = () => {
     ];
 
     const withdrawAmountNumber = Number(withdrawForm.amount) || 0;
+    const summaryValue = (value) => summaryLoading
+        ? "Loading..."
+        : summaryError
+          ? "Unavailable"
+          : `${(Number(value) || 0).toFixed(2)} ${settings?.payoutCurrency || "PHP"}`;
 
     if (loading && payoutRequests.length === 0) {
         return (
@@ -228,8 +288,8 @@ const Earnings = () => {
                                 Wallet Balance
                             </p>
                             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                {walletLoading && !wallet
-                                    ? "—"
+                                {walletError || !wallet
+                                    ? walletLoading ? "Loading..." : "Unavailable"
                                     : `${(wallet?.balance ?? 0).toFixed(2)} ${wallet?.currency || "PHP"}`}
                             </p>
                         </div>
@@ -238,12 +298,21 @@ const Earnings = () => {
                     <Button
                         type="button"
                         onClick={openWithdraw}
-                        disabled={!wallet?.balance}
+                        disabled={walletLoading || !!walletError || !wallet?.balance}
                         leftIcon={<Send className="h-4 w-4" />}
                     >
                         Withdraw to GCash
                     </Button>
                 </div>
+
+                {walletError && (
+                    <div role="alert" className="mt-4 flex flex-col gap-2 text-sm text-red-600 sm:flex-row sm:items-center sm:justify-between dark:text-red-400">
+                        <p className="min-w-0 break-words">{errorMessage(walletError, "Unable to load your wallet.")}</p>
+                        <Button size="sm" variant="outline" disabled={walletLoading} onClick={() => fetchMyWallet({}).catch(() => {})}>
+                            Retry wallet
+                        </Button>
+                    </div>
+                )}
 
                 {walletTransactions.length > 0 && (
                     <div className="mt-5 space-y-2 border-t border-gray-100 pt-4 dark:border-gray-800">
@@ -292,13 +361,24 @@ const Earnings = () => {
             </div>
 
             {/* Withdrawal History */}
-            {withdrawals.length > 0 && (
+            <section aria-busy={historyLoading}>
                 <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         Withdrawal History
                     </h3>
 
-                    <div className="mt-4 space-y-3">
+                    {historyError && (
+                        <div role="alert" className="mt-4 flex flex-col gap-2 text-sm text-red-600 sm:flex-row sm:items-center sm:justify-between dark:text-red-400">
+                            <p className="min-w-0 break-words">{historyError}</p>
+                            <Button size="sm" variant="outline" disabled={historyLoading} onClick={loadWithdrawalHistory}>Retry history</Button>
+                        </div>
+                    )}
+                    {historyLoading ? (
+                        <p role="status" className="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading withdrawal history...</p>
+                    ) : !historyError && withdrawals.length === 0 ? (
+                        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">No withdrawals on this page.</p>
+                    ) : null}
+                    <div className={`mt-4 space-y-3 ${historyLoading || historyError ? "hidden" : ""}`}>
                         {withdrawals.map((item) => (
                             <div
                                 key={item._id}
@@ -309,7 +389,7 @@ const Earnings = () => {
                                         {item.withdrawalCode} · GCash{" "}
                                         {item.gcashNumber}
                                     </p>
-                                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                                    <p className="break-words text-xs text-gray-400 dark:text-gray-500">
                                         {formatWalletDate(item.createdAt)}
                                         {item.status === "FAILED" &&
                                             item.failureReason &&
@@ -330,10 +410,25 @@ const Earnings = () => {
                             </div>
                         ))}
                     </div>
+                    <nav aria-label="Withdrawal history pages" className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p aria-live="polite" className="text-sm text-gray-500 dark:text-gray-400">
+                            Page {withdrawalPage} of {Math.max(1, withdrawalPagination?.pages || 0)}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 sm:flex">
+                            <Button size="sm" variant="outline" disabled={historyLoading || withdrawSubmitting || withdrawalPage <= 1} onClick={() => setWithdrawalPage((page) => page - 1)}>Previous</Button>
+                            <Button size="sm" variant="outline" disabled={historyLoading || withdrawSubmitting || !!historyError || withdrawalPage >= (withdrawalPagination?.pages || 1)} onClick={() => setWithdrawalPage((page) => page + 1)}>Next</Button>
+                        </div>
+                    </nav>
                 </div>
-            )}
+            </section>
 
             {/* Earnings Summary Cards */}
+            {summaryError && (
+                <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                    <p className="min-w-0 break-words">{summaryError}</p>
+                    <Button size="sm" variant="outline" disabled={summaryLoading} onClick={loadSummary} className="w-full shrink-0 sm:w-auto">Retry earnings totals</Button>
+                </div>
+            )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                     <div className="flex items-center gap-4">
@@ -343,7 +438,7 @@ const Earnings = () => {
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Total Earned</p>
                             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                {summary?.totalEarned?.toFixed(2) || "0.00"} {settings?.payoutCurrency || "PHP"}
+                                {summaryValue(summary?.totalEarned)}
                             </p>
                         </div>
                     </div>
@@ -357,7 +452,7 @@ const Earnings = () => {
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Total Paid</p>
                             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                {summary?.totalPaid?.toFixed(2) || "0.00"} {settings?.payoutCurrency || "PHP"}
+                                {summaryValue(summary?.totalPaid)}
                             </p>
                         </div>
                     </div>
@@ -371,7 +466,7 @@ const Earnings = () => {
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Scheduled</p>
                             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                {summary?.totalScheduled?.toFixed(2) || "0.00"} {settings?.payoutCurrency || "PHP"}
+                                {summaryValue(summary?.totalScheduled)}
                             </p>
                             <p className="text-xs text-gray-400">
                                 Held before release to wallet
@@ -390,11 +485,18 @@ const Earnings = () => {
                             Commission Structure
                         </p>
                         <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                            {`Platform Commission: ${settings?.platformCommissionRate ?? 10}% — you receive the remaining ${100 - (settings?.platformCommissionRate ?? 10)}% of each booking, unless one of your vehicles was given its own individually-negotiated rate when it was approved.`}
+                            {settingsLoading ? "Loading commission settings..." : settingsError ? "Platform commission rate unavailable." : `Platform Commission: ${settings.platformCommissionRate}% - you receive the remaining ${100 - settings.platformCommissionRate}% of each booking, unless your vehicle has an individually negotiated rate.`}
                         </p>
                     </div>
                 </div>
             </div>
+
+            {settingsError && (
+                <div role="alert" className="flex flex-col gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between dark:bg-red-950/30 dark:text-red-400">
+                    <p className="min-w-0 break-words">{settingsError}</p>
+                    <Button size="sm" variant="outline" onClick={retrySettings} className="w-full shrink-0 sm:w-auto">Retry commission settings</Button>
+                </div>
+            )}
 
             {/* Payout History */}
             <div className="space-y-4">
@@ -407,7 +509,11 @@ const Earnings = () => {
                         {statusFilters.map((filter) => (
                             <button
                                 key={filter.value}
-                                onClick={() => setStatusFilter(filter.value)}
+                                disabled={payoutLoading}
+                                onClick={() => {
+                                    setPayoutPage(1);
+                                    setStatusFilter(filter.value);
+                                }}
                                 className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                                     statusFilter === filter.value
                                         ? "bg-blue-600 text-white"
@@ -422,11 +528,19 @@ const Earnings = () => {
 
                 {error && (
                     <div className="rounded-lg bg-rose-50 p-4 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400">
-                        {error}
+                        {errorMessage(error, "Unable to load earnings data.")}
                     </div>
                 )}
 
-                {payoutRequests?.length === 0 ? (
+                {payoutError && (
+                    <div role="alert" className="flex flex-col gap-3 text-sm text-red-600 sm:flex-row sm:items-center sm:justify-between dark:text-red-400">
+                        <p className="min-w-0 break-words">{payoutError}</p>
+                        <Button size="sm" variant="outline" disabled={payoutLoading} onClick={loadPayoutPage}>Retry payouts</Button>
+                    </div>
+                )}
+                {payoutLoading ? (
+                    <p role="status" className="text-sm text-gray-500 dark:text-gray-400">Loading payouts...</p>
+                ) : payoutError ? null : payoutRequests?.length === 0 ? (
                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center dark:border-gray-700 dark:bg-gray-900">
                         <Banknote className="mx-auto h-12 w-12 text-gray-400" />
                         <p className="mt-4 text-gray-500 dark:text-gray-400">
@@ -446,6 +560,13 @@ const Earnings = () => {
                         ))}
                     </div>
                 )}
+                <nav aria-label="Payout history pages" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p aria-live="polite" className="text-sm text-gray-500 dark:text-gray-400">Page {payoutPage} of {Math.max(1, payoutPagination?.pages || 0)}</p>
+                    <div className="grid grid-cols-2 gap-2 sm:flex">
+                        <Button size="sm" variant="outline" disabled={payoutLoading || payoutPage <= 1} onClick={() => setPayoutPage((page) => page - 1)}>Previous</Button>
+                        <Button size="sm" variant="outline" disabled={payoutLoading || !!payoutError || payoutPage >= (payoutPagination?.pages || 1)} onClick={() => setPayoutPage((page) => page + 1)}>Next</Button>
+                    </div>
+                </nav>
             </div>
 
             <Modal

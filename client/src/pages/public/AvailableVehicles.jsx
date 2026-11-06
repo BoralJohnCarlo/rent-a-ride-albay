@@ -766,16 +766,16 @@ const AvailableVehicles = () => {
                     <LightTexture accent="yellow" />
                 </div>
 
-                <PageContainer className="relative z-10 pb-20 pt-24 sm:pb-28 sm:pt-32">
+                <PageContainer className="relative z-10 pb-16 pt-24 sm:pb-20 sm:pt-28 lg:pb-24">
                     <motion.div
                         variants={heroContainer}
                         initial="hidden"
                         animate="visible"
-                        className="max-w-2xl"
+                        className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] lg:items-start lg:gap-x-12"
                     >
                         <motion.span
                             variants={heroItem}
-                            className="inline-flex items-center gap-2 rounded-full border border-yellow-500/30 bg-yellow-100/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-yellow-800 backdrop-blur-md dark:border-yellow-400/30 dark:bg-yellow-400/10 dark:text-yellow-300"
+                            className="inline-flex items-center gap-2 rounded-full lg:col-start-1 lg:justify-self-start border border-yellow-500/30 bg-yellow-100/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-yellow-800 backdrop-blur-md dark:border-yellow-400/30 dark:bg-yellow-400/10 dark:text-yellow-300"
                         >
                             <span className="relative flex h-1.5 w-1.5">
                                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75" />
@@ -786,7 +786,7 @@ const AvailableVehicles = () => {
 
                         <motion.h1
                             variants={heroItem}
-                            className="mt-5 text-[2.5rem] font-black leading-[1.03] tracking-tight text-gray-900 dark:text-white sm:text-[3.25rem]"
+                            className="mt-4 lg:col-start-1 text-[2.5rem] font-black leading-[1.03] tracking-tight text-gray-900 dark:text-white sm:text-[3.25rem]"
                         >
                             Vehicles ready for{" "}
                             <span className="relative whitespace-nowrap text-yellow-500 dark:text-yellow-400">
@@ -810,7 +810,7 @@ const AvailableVehicles = () => {
 
                         <motion.p
                             variants={heroItem}
-                            className="mt-5 max-w-xl text-sm leading-6 text-gray-600 dark:text-white/70 sm:text-base"
+                            className="mt-4 lg:col-start-1 max-w-xl text-sm leading-6 text-gray-600 dark:text-white/70 sm:text-base"
                         >
                             Set your pickup and return dates and a budget that
                             works for you — we&apos;ll show only the cars and
@@ -820,7 +820,7 @@ const AvailableVehicles = () => {
 
                         <motion.div
                             variants={heroItem}
-                            className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3"
+                            className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3 lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:mt-0 lg:grid-cols-1 lg:gap-2 lg:self-center"
                         >
                             <HeroStat
                                 icon={CarFront}
@@ -908,9 +908,9 @@ const AvailableVehicles = () => {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.97, y: -8 }}
                     transition={{ type: "spring", stiffness: 380, damping: 34 }}
-                    className="rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl shadow-gray-950/10 ring-1 ring-black/5 dark:border-gray-800 dark:bg-gray-900 dark:shadow-black/40 dark:ring-white/10 sm:p-4"
+                    className="rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl shadow-gray-950/10 ring-1 ring-black/5 dark:border-gray-800 dark:bg-gray-900 dark:shadow-black/40 dark:ring-white/10 sm:p-2.5"
                 >
-                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-1.5">
                         <Field icon={CalendarDays} label="Pick-up date">
                             <DatePicker
                                 bare
@@ -986,7 +986,7 @@ const AvailableVehicles = () => {
                         </Field>
                     </div>
 
-                    <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         <details className="group relative">
                             <summary className="flex h-9 cursor-pointer list-none items-center rounded-full border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:border-yellow-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                                 Seats
@@ -1061,7 +1061,7 @@ const AvailableVehicles = () => {
                             </div>
                         </details>
 
-                        <div className="flex min-w-[240px] flex-1 flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2.5 dark:border-gray-800 dark:bg-gray-800/50">
+                        <div className="flex min-w-0 basis-full sm:basis-0 flex-1 flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 dark:border-gray-800 dark:bg-gray-800/50">
                             <div className="inline-flex items-baseline gap-1.5 text-sm text-gray-500 dark:text-gray-400">
                                 <AnimatedCounter
                                     value={results.length}
@@ -1388,7 +1388,7 @@ const VEHICLE_TYPE_FILTER_OPTIONS = [
 ];
 
 const Field = ({ icon: Icon, label, children }) => (
-    <div className="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2 transition-colors focus-within:border-yellow-500 focus-within:ring-2 focus-within:ring-yellow-500/15 dark:border-gray-800 dark:bg-gray-800/50">
+    <div className="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2 lg:px-2 lg:py-1 transition-colors focus-within:border-yellow-500 focus-within:ring-2 focus-within:ring-yellow-500/15 dark:border-gray-800 dark:bg-gray-800/50">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-yellow-100 text-yellow-700 dark:bg-yellow-400/10 dark:text-yellow-400">
             <Icon size={15} />
         </span>

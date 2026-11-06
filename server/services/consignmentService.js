@@ -1,4 +1,5 @@
 import createError from "../utils/createError.js";
+import { assertConsignmentWriteAccess } from "../utils/consignmentAccess.js";
 
 import Consignment from "../models/Consignment.js";
 import Vehicle from "../models/Vehicle.js";
@@ -563,7 +564,7 @@ const updateDraftConsignment = async (
     updateData,
     currentUserId
 ) => {
-    await ensureUserExists(
+    const user = await ensureUserExists(
         currentUserId
     );
 
@@ -572,6 +573,7 @@ const updateDraftConsignment = async (
             consignmentId
         );
 
+    assertConsignmentWriteAccess(consignment, user);
     ensureEditableDraft(
         consignment
     );
@@ -613,7 +615,7 @@ const submitConsignment = async (
     { remarks, termsAgreed, termsVersionId } = {},
     currentUserId
 ) => {
-    await ensureUserExists(
+    const user = await ensureUserExists(
         currentUserId
     );
 
@@ -622,6 +624,7 @@ const submitConsignment = async (
             consignmentId
         );
 
+    assertConsignmentWriteAccess(consignment, user);
     ensureEditableDraft(
         consignment
     );

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import PendingVehicleGrid from "../pendingVehicles/PendingVehicleGrid";
+import Button from "../common/Button";
 
 import usePendingVehicles from "../../hooks/pendingVehicles/usePendingVehicles";
 
@@ -22,6 +23,7 @@ const OperatorPendingVehiclesPanel = () => {
     const {
         pendingVehicles,
         loading,
+        error,
         loadMyPendingVehicles,
     } = usePendingVehicles();
 
@@ -29,7 +31,7 @@ const OperatorPendingVehiclesPanel = () => {
         loadMyPendingVehicles(LIST_PARAMS);
     }, [loadMyPendingVehicles]);
 
-    if (!loading && pendingVehicles.length === 0) {
+    if (!loading && !error && pendingVehicles.length === 0) {
         return null;
     }
 
@@ -46,10 +48,16 @@ const OperatorPendingVehiclesPanel = () => {
                 </p>
             </div>
 
-            <PendingVehicleGrid
+            {error && (
+                <div role="alert" className="mb-4 flex flex-col gap-3 text-sm text-red-600 sm:flex-row sm:items-center sm:justify-between dark:text-red-400">
+                    <p className="min-w-0 break-words">{(typeof error === "string" ? error : error?.message) || "Unable to load your registration vehicle submission."}</p>
+                    <Button size="sm" variant="outline" disabled={loading} onClick={() => loadMyPendingVehicles(LIST_PARAMS)} className="w-full shrink-0 sm:w-auto">Retry submission</Button>
+                </div>
+            )}
+            {!error && <PendingVehicleGrid
                 pendingVehicles={pendingVehicles}
                 loading={loading}
-            />
+            />}
         </div>
     );
 };

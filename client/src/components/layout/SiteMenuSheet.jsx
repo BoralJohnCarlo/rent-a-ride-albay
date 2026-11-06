@@ -162,7 +162,7 @@ const SiteMenuSheet = ({
 
     const themeOptions = getThemeOptions({
         christmasAvailable: isChristmasAvailable,
-        includeLight: true,
+        includeLight: false,
     });
 
     if (typeof document === "undefined") return null;
@@ -312,8 +312,8 @@ const SiteMenuSheet = ({
                                     role="radiogroup"
                                     aria-label="Theme"
                                     className={`grid gap-1.5 rounded-2xl bg-gray-200/70 p-1.5 dark:bg-gray-900 ${
-                                        themeOptions.length > 3
-                                            ? "grid-cols-2 min-[440px]:grid-cols-4"
+                                        themeOptions.length === 2
+                                            ? "grid-cols-2"
                                             : "grid-cols-3"
                                     }`}
                                 >

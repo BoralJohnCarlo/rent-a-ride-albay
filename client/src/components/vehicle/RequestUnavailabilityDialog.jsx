@@ -134,6 +134,8 @@ const RequestUnavailabilityDialog = ({
 
     const [calendarLoading, setCalendarLoading] =
         useState(false);
+    const [calendarError, setCalendarError] = useState("");
+    const [calendarRetry, setCalendarRetry] = useState(0);
 
     const [selectedDates, setSelectedDates] = useState(
         new Set()
@@ -181,6 +183,7 @@ const RequestUnavailabilityDialog = ({
 
         const load = async () => {
             setCalendarLoading(true);
+            setCalendarError("");
 
             try {
                 const { data } =
@@ -197,9 +200,10 @@ const RequestUnavailabilityDialog = ({
                         )
                     );
                 }
-            } catch {
+            } catch (error) {
                 if (!cancelled) {
                     setUnavailableDates(new Set());
+                    setCalendarError(error.response?.data?.message || "Unable to load availability. Retry before selecting dates.");
                 }
             } finally {
                 if (!cancelled) {
@@ -213,7 +217,7 @@ const RequestUnavailabilityDialog = ({
         return () => {
             cancelled = true;
         };
-    }, [open, vehicleId, visibleMonth]);
+    }, [open, vehicleId, visibleMonth, calendarRetry]);
 
     const weeks = useMemo(
         () =>
@@ -238,6 +242,7 @@ const RequestUnavailabilityDialog = ({
         visibleMonth.getMonth() === today.getMonth();
 
     const toggleDate = (date) => {
+        if (calendarLoading || calendarError || submitting) return;
         if (date < today) {
             return;
         }
@@ -267,6 +272,7 @@ const RequestUnavailabilityDialog = ({
     );
 
     const handleSubmit = async () => {
+        if (calendarLoading || calendarError || submitting) return;
         setFormError("");
 
         if (selectedDates.size === 0) {
@@ -339,7 +345,7 @@ const RequestUnavailabilityDialog = ({
 
                     <Button
                         loading={submitting}
-                        disabled={submitting}
+                        disabled={submitting || calendarLoading || !!calendarError}
                         onClick={handleSubmit}
                     >
                         Submit Request
@@ -348,6 +354,12 @@ const RequestUnavailabilityDialog = ({
             }
         >
             <div className="space-y-5">
+                {calendarError && (
+                    <div role="alert" className="flex flex-col gap-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between dark:bg-red-950/30 dark:text-red-400">
+                        <p className="min-w-0 break-words">{calendarError}</p>
+                        <Button size="sm" variant="outline" disabled={calendarLoading || submitting} onClick={() => setCalendarRetry((retry) => retry + 1)} className="w-full shrink-0 sm:w-auto">Retry calendar</Button>
+                    </div>
+                )}
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                     Select the date(s) this vehicle
                     should be withdrawn from booking.
@@ -447,7 +459,9 @@ const RequestUnavailabilityDialog = ({
                                         const isDisabled =
                                             isPast ||
                                             isUnavailable ||
-                                            calendarLoading;
+                                            calendarLoading ||
+                                            !!calendarError ||
+                                            submitting;
 
                                         return (
                                             <button

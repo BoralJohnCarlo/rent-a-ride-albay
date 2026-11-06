@@ -383,22 +383,8 @@ const Profile = () => {
                 );
             }
 
-            toast.success(
-                "Profile image uploaded successfully.",
-                "Success"
-            );
-
-            setProfileImageFile(null);
-            setProfileImagePreview(null);
-
-            if (
-                fileInputRef
-                    .current
-            ) {
-                fileInputRef.current.value =
-                    "";
-            }
-
+            // Keep the selected photo and preview until the profile save
+            // succeeds, so a failed save can be retried with the same photo.
             return imageUrl;
         } catch (error) {
             toast.error(

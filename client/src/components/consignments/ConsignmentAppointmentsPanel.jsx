@@ -16,6 +16,7 @@ import StatusChip from "../common/StatusChip";
 
 import getConsignmentCardData from "../../utils/getConsignmentCardData";
 import formatDate from "../../utils/formatDate";
+import useNowTicker from "../../hooks/gps/useNowTicker";
 
 const formatTime12h = (time) => {
     if (!time) {
@@ -41,8 +42,7 @@ const formatTime12h = (time) => {
  * body) so the timestamp read stays out of the component's own render/memo
  * scope - same pattern as getTripProgress in TripProgressBar.jsx.
  */
-const partitionAppointments = (consignments) => {
-    const now = Date.now();
+const partitionAppointments = (consignments, now) => {
 
     const withAppointments = consignments
         .filter(
@@ -88,24 +88,27 @@ const partitionAppointments = (consignments) => {
     return { upcoming, past };
 };
 
-/*
- * Every place in the app that lets an operator book a vehicle inspection
- * slot (registration, a new consignment application, or rescheduling one
- * already submitted) writes to the same `application.inspection` fields on
- * the Consignment. Nothing previously aggregated those into one place to
- * actually see which vehicles have an appointment coming up - this reads
- * that straight off the consignment list already loaded by the page, so it
- * needs no new endpoint.
- */
+// Shared appointment list; operators also supply registration inspections.
 const ConsignmentAppointmentsPanel = ({
     consignments = [],
+    registrationVehicles = [],
     loading = false,
     showApplicant = false,
     onView,
 }) => {
+    const now = useNowTicker(1000);
     const { upcoming, past } = useMemo(
-        () => partitionAppointments(consignments),
-        [consignments]
+        () => partitionAppointments([
+            ...consignments,
+            ...registrationVehicles.map((vehicle) => ({
+                _id: `registration-${vehicle._id}`,
+                registrationAppointment: true,
+                consignmentCode: "Registration inspection",
+                snapshots: { vehicle },
+                application: { inspection: { ...vehicle.inspection, status: "Scheduled" } },
+            })),
+        ], now),
+        [consignments, registrationVehicles, now]
     );
 
     if (loading) {
@@ -130,7 +133,7 @@ const ConsignmentAppointmentsPanel = ({
             transition={{ duration: 0.2 }}
             className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between"
         >
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500">
                     {card.image ? (
                         <img
@@ -143,7 +146,7 @@ const ConsignmentAppointmentsPanel = ({
                     )}
                 </div>
 
-                <div>
+                <div className="min-w-0 break-words">
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                         {card.title}
                     </p>
@@ -181,7 +184,7 @@ const ConsignmentAppointmentsPanel = ({
                     size="sm"
                 />
 
-                {onView && (
+                {onView && !consignment.registrationAppointment && (
                     <Button
                         size="sm"
                         variant="outline"

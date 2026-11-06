@@ -42,6 +42,7 @@ const PublicNavbarShell = ({
     if (!isPill) {
         return (
             <motion.header
+                layoutRoot
                 {...HEADER_ENTRANCE}
                 className={`
                     fixed
@@ -80,6 +81,7 @@ const PublicNavbarShell = ({
 
     return (
         <motion.header
+            layoutRoot
             {...HEADER_ENTRANCE}
             className="
                 pointer-events-none
