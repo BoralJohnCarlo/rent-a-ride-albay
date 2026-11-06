@@ -231,8 +231,8 @@ describe("customer sign-up over HTTP", () => {
                 hasDriversLicense: true,
                 licenseNumber: "N01-23-456789",
                 licenseExpirationDate: futureDate(400),
-                licenseCodes: ["B"],
-                motorcycleTransmission: [],
+                licenseCodes: ["A", "B"],
+                motorcycleTransmission: ["manual", "automatic"],
                 carTransmission: ["automatic"],
                 currentAddress: {
                     houseUnitLot: "12",
@@ -253,6 +253,10 @@ describe("customer sign-up over HTTP", () => {
         });
 
         assert.equal(register.status, 201, JSON.stringify(register.body));
+
+        const pending = await PendingRegistration.findOne({ email }).lean();
+        assert.deepEqual(pending.motorcycleTransmission, ["manual", "automatic"]);
+        assert.deepEqual(pending.carTransmission, ["automatic"]);
 
         // Uploads are held for the registration, not yet kept for good.
         assert.equal(await TemporaryValidIdUpload.countDocuments(), 3);
@@ -293,6 +297,9 @@ describe("customer sign-up over HTTP", () => {
 
         const user = await User.findOne({ email }).lean();
         assert.equal(user.role, "customer");
+        assert.deepEqual(user.licenseCodes, ["A", "B"]);
+        assert.deepEqual(user.motorcycleTransmission, ["manual", "automatic"]);
+        assert.deepEqual(user.carTransmission, ["automatic"]);
         assert.equal(user.firstName, "María");
         assert.equal(user.validIdImage, front.url);
         assert.equal(user.proofOfBillingImage, billing.url);

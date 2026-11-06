@@ -341,6 +341,14 @@ describe("partner registration", () => {
 });
 
 describe("customer registration", () => {
+    it("rejects impossible birthdates even when called without the HTTP validator", async () => {
+        await assert.rejects(
+            registerUser({ ...baseUser("bad-date@test.com"), birthdate: "1990-02-31" }),
+            /Birthdate must be a valid date/
+        );
+        assert.equal(await PendingRegistration.countDocuments(), 0);
+    });
+
     it("accepts ID images uploaded for the registration", async () => {
         await registerUser(await customerPayload("c1@test.com"));
 
@@ -373,6 +381,27 @@ describe("customer registration", () => {
             }),
             /could not be confirmed/
         );
+    });
+
+    it("rejects expired uploads even before the cleanup sweep removes them", async () => {
+        const payload = await customerPayload("expired-upload@test.com");
+        await TemporaryValidIdUpload.updateOne(
+            { _id: payload.uploads[0].recordId },
+            { $set: { expiresAt: new Date(Date.now() - 1000) } }
+        );
+        await assert.rejects(registerUser(payload), /could not be confirmed/);
+    });
+
+    it("requires the image URL to identify the exact uploaded image", async () => {
+        const payload = await customerPayload("wrong-path@test.com");
+        payload.validIdImage += "/different-image.jpg";
+        await assert.rejects(registerUser(payload), /could not be confirmed/);
+    });
+
+    it("reports malformed image URL escapes as an upload error", async () => {
+        const payload = await customerPayload("bad-escape@test.com");
+        payload.validIdImage = payload.validIdImage.replace("/image/upload/", "/image/upload/%ZZ/");
+        await assert.rejects(registerUser(payload), /could not be confirmed/);
     });
 
     it("requires agreeing to the terms and privacy notice", async () => {
@@ -659,6 +688,43 @@ describe("abuse limits and identity rules", () => {
         );
     });
 
+    it("rechecks phone ownership before creating the verified account", async () => {
+        const email = "phone-changed@test.com";
+        const payload = await customerPayload(email);
+        await registerUser(payload);
+        await User.create({
+            ...baseUser("claimed-phone@test.com"),
+            phoneNumber: payload.phoneNumber,
+        });
+
+        await assert.rejects(
+            verifyEmail(email, lastCodeFor(email)),
+            /phone number is already used/
+        );
+        assert.equal(await User.exists({ email }), null);
+        assert.ok(await PendingRegistration.exists({ email }));
+    });
+
+    it("rechecks identity restrictions added while waiting for verification", async () => {
+        const email = "restriction-changed@test.com";
+        await registerUser(await customerPayload(email, {
+            licenseNumber: "N01-12-345678",
+        }));
+        await User.create({
+            ...baseUser("newly-suspended@test.com"),
+            role: "operator",
+            licenseNumber: "N01-12-345678",
+            isSuspended: true,
+        });
+
+        await assert.rejects(
+            verifyEmail(email, lastCodeFor(email)),
+            /unable to create an account/
+        );
+        assert.equal(await User.exists({ email }), null);
+        assert.ok(await PendingRegistration.exists({ email }));
+    });
+
     it("caps unverified partner registrations per IP", async () => {
         await setSlots(5);
 
@@ -684,6 +750,28 @@ describe("abuse limits and identity rules", () => {
         await registerOperator(await payloadFor("ip4@test.com", "IP 004"), {
             ip: "198.51.100.9",
         });
+    });
+
+    it("does not overwrite a pending signup when two submissions race", async () => {
+        const email = "racing-signup@test.com";
+        await registerUser(await customerPayload(email));
+        await PendingRegistration.updateOne(
+            { email },
+            { $set: { emailVerificationExpires: new Date(Date.now() - 1000) } }
+        );
+        sentMail = [];
+        const first = await customerPayload(email, { password: "FirstPassword123" });
+        const second = await customerPayload(email, { password: "SecondPassword123" });
+        const results = await Promise.allSettled([
+            registerUser(first),
+            registerUser(second),
+        ]);
+        assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+        const rejected = results.find((result) => result.status === "rejected");
+        assert.match(rejected.reason.message, /waiting for verification/);
+        assert.equal(sentMail.filter((mail) => mail.to === email).length, 1);
+        await verifyEmail(email, lastCodeFor(email));
+        assert.equal(await User.countDocuments({ email }), 1);
     });
 
     it("reports 'already verified' when the same code is submitted twice", async () => {

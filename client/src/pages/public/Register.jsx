@@ -61,7 +61,6 @@ import useAuth from "../../hooks/auth/useAuth";
 import {
     verifyUserEmail,
     resendVerificationEmail as resendVerificationEmailApi,
-    loginUser,
 } from "../../services/authService";
 
 import { fetchPublicSettings } from "../../services/settingsService";
@@ -215,6 +214,8 @@ const Register = () => {
     const stepTopRef = useScrollTopOnChange(currentStep);
 
     const registrationFlowRef = useRef(false);
+    const submissionInFlightRef = useRef(false);
+    const verificationRequestRef = useRef(false);
 
     const [validationErrors, setValidationErrors] =
         useState({});
@@ -239,6 +240,7 @@ const Register = () => {
 
     const [isVerifying, setIsVerifying] =
         useState(false);
+    const [isResending, setIsResending] = useState(false);
 
     const [code, setCode] =
         useState(["", "", "", "", "", ""]);
@@ -868,7 +870,7 @@ const Register = () => {
                         "Email is required.";
                 } else                 if (
                     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-                        formData.email
+                        formData.email.trim()
                     )
                 ) {
                     errors.email =
@@ -940,6 +942,10 @@ const Register = () => {
     };
 
     const handlePrevious = () => {
+        if (submissionInFlightRef.current || verificationRequestRef.current) {
+            return;
+        }
+
         setCurrentStep(
             (previous) =>
                 previous - 1
@@ -948,12 +954,13 @@ const Register = () => {
 
     const verifyCode = async () => {
         if (
-            isVerifying ||
+            verificationRequestRef.current ||
             code.some((digit) => digit === "")
         ) {
             return;
         }
 
+        verificationRequestRef.current = true;
         setVerificationError(null);
         setResendError(null);
         setIsVerifying(true);
@@ -964,26 +971,7 @@ const Register = () => {
                 code.join("")
             );
 
-            /*
-             * The account exists from here on. Signing in is a convenience:
-             * if it fails (e.g. the code was for an earlier registration
-             * with a different password), the success step still shows,
-             * with its "Go to Login" button.
-             */
-            try {
-                await loginUser({
-                    email: formData.email,
-                    password: formData.password,
-                });
-            } catch {
-                // Not an error here — fall through to the success step.
-                clearError();
-            }
-
-            setCurrentStep(
-                (previous) =>
-                    previous + 1
-            );
+            setCurrentStep(4);
         } catch (err) {
             const message =
                 err.response?.data?.message ||
@@ -992,13 +980,14 @@ const Register = () => {
             // The code was already used (e.g. submitted twice): the account
             // exists, so this is the success step, not an error.
             if (isAlreadyVerifiedError(message)) {
-                setCurrentStep((previous) => previous + 1);
+                setCurrentStep(4);
 
                 return;
             }
 
             setVerificationError(message);
         } finally {
+            verificationRequestRef.current = false;
             setIsVerifying(false);
         }
     };
@@ -1026,10 +1015,12 @@ const Register = () => {
     };
 
     const resendCode = async () => {
-        if (resendDisabled) {
+        if (resendDisabled || verificationRequestRef.current) {
             return;
         }
 
+        verificationRequestRef.current = true;
+        setIsResending(true);
         setResendError(null);
         startResendCooldown();
 
@@ -1037,6 +1028,9 @@ const Register = () => {
             await resendVerificationEmailApi(
                 formData.email
             );
+            setCode(["", "", "", "", "", ""]);
+            setVerificationError(null);
+            codeInputRefs.current[0]?.focus();
         } catch (err) {
             setResendError(
                 err.response?.data?.message ||
@@ -1049,18 +1043,23 @@ const Register = () => {
                 resendTimerRef.current = null;
             }
             return;
+        } finally {
+            verificationRequestRef.current = false;
+            setIsResending(false);
         }
 
     };
 
     const handleSubmit = async () => {
         if (
-            !validateStep() ||
-            loading
+            submissionInFlightRef.current ||
+            loading ||
+            !validateStep()
         ) {
             return;
         }
 
+        submissionInFlightRef.current = true;
         registrationFlowRef.current = true;
 
         /*
@@ -1155,6 +1154,7 @@ const Register = () => {
             ) {
                 await discardUploads();
                 registrationFlowRef.current = false;
+                setCurrentStep(1);
 
                 return;
             }
@@ -1175,9 +1175,9 @@ const Register = () => {
                 licenseNumber: formData.licenseNumber.trim(),
                 licenseExpirationDate: formData.licenseExpirationDate,
                 hasDriversLicense: formData.hasDriversLicense,
-                licenseCodes: formData.licenseCodes,
-                motorcycleTransmission: formData.motorcycleTransmission,
-                carTransmission: formData.carTransmission,
+                licenseCodes: licenseRestrictionEnabled ? formData.licenseCodes : [],
+                motorcycleTransmission: licenseRestrictionEnabled ? formData.motorcycleTransmission : [],
+                carTransmission: licenseRestrictionEnabled ? formData.carTransmission : [],
                 currentAddress: formData.currentAddress,
                 temporaryUploadIds,
                 termsAgreed,
@@ -1188,9 +1188,7 @@ const Register = () => {
 
             startResendCooldown();
 
-            setCurrentStep(
-                (previous) => previous + 1
-            );
+            setCurrentStep(3);
         } catch (err) {
             setIdUploading(false);
             await discardUploads();
@@ -1206,7 +1204,7 @@ const Register = () => {
             if (isPendingVerificationError(errorMessage)) {
                 clearError();
                 startResendCooldown();
-                setCurrentStep((previous) => previous + 1);
+                setCurrentStep(3);
 
                 return;
             }
@@ -1230,6 +1228,17 @@ const Register = () => {
                 setCurrentStep(0);
             }
 
+            const licenseField = getRegistrationErrorField(errorMessage);
+            if (["licenseCodes", "motorcycleTransmission", "carTransmission",
+                "licenseNumber", "licenseExpirationDate"].includes(licenseField)) {
+                clearError();
+                if (["licenseCodes", "motorcycleTransmission", "carTransmission"].includes(licenseField)) {
+                    setLicenseRestrictionEnabled(true);
+                }
+                setValidationErrors({ [licenseField]: errorMessage });
+                setCurrentStep(1);
+            }
+
             // Proof of billing was turned on after this form loaded.
             if (
                 getRegistrationErrorField(errorMessage) ===
@@ -1240,6 +1249,9 @@ const Register = () => {
                 setValidationErrors({ proofOfBillingImage: errorMessage });
                 setCurrentStep(1);
             }
+        } finally {
+            submissionInFlightRef.current = false;
+            setIdUploading(false);
         }
     };
 
@@ -2210,6 +2222,7 @@ ${isCarTransmissionSelected("manual")
                                                         <Button
                                                             type="button"
                                                             variant="outline"
+                                                            disabled={idUploading || loading || isVerifying || isResending}
                                                             onClick={handlePrevious}
                                                             leftIcon={<ChevronLeft size={16} />}
                                                             className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800"
@@ -2320,6 +2333,7 @@ ${isCarTransmissionSelected("manual")
                                                         <Button
                                                             type="button"
                                                             variant="outline"
+                                                            disabled={idUploading || loading || isVerifying || isResending}
                                                             onClick={handlePrevious}
                                                             leftIcon={<ChevronLeft size={16} />}
                                                             className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800"
@@ -2517,7 +2531,7 @@ ${isCarTransmissionSelected("manual")
                         <button
                             type="button"
                             onClick={resendCode}
-                            disabled={resendDisabled}
+                            disabled={resendDisabled || isVerifying || isResending}
                             className="ml-1 font-medium text-yellow-600 hover:text-yellow-700 disabled:opacity-50 dark:text-yellow-400"
                         >
                             Resend Code
@@ -2530,6 +2544,7 @@ ${isCarTransmissionSelected("manual")
                 <Button
                     type="button"
                     variant="outline"
+                    disabled={idUploading || loading || isVerifying || isResending}
                     onClick={handlePrevious}
                     leftIcon={<ChevronLeft size={16} />}
                     className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800"
@@ -2541,7 +2556,7 @@ ${isCarTransmissionSelected("manual")
                     type="button"
                     onClick={verifyCode}
                     loading={isVerifying}
-                    disabled={isVerifying || code.some((digit) => digit === "")}
+                    disabled={isVerifying || isResending || code.some((digit) => digit === "")}
                     className="!min-w-[132px] !border-yellow-400 !bg-yellow-400 !px-3 !py-2 !text-xs !text-gray-950 dark:!text-gray-900 hover:!bg-yellow-300"
                 >
                     Verify &amp; Continue

@@ -97,9 +97,11 @@ const assertRegistrationUploads = async (
 
     const isOwnUpload = (url) => {
         let parsed;
+        let path;
 
         try {
             parsed = new URL(url);
+            path = decodeURIComponent(parsed.pathname);
         } catch {
             return false;
         }
@@ -111,8 +113,6 @@ const assertRegistrationUploads = async (
             return false;
         }
 
-        const path = decodeURIComponent(parsed.pathname);
-
         // Must be this app's own Cloudinary account — the path's first
         // segment is the cloud name — not the same public id re-uploaded
         // to someone else's account.
@@ -120,10 +120,15 @@ const assertRegistrationUploads = async (
             return false;
         }
 
-        return publicIds.some(
-            (publicId) =>
-                path.endsWith(`/${publicId}`) ||
-                path.includes(`/${publicId}.`)
+        const deliveryPrefix = `/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/`;
+        if (!path.startsWith(deliveryPrefix)) {
+            return false;
+        }
+
+        const imagePath = path.slice(deliveryPrefix.length).replace(/^v\d+\//, "");
+        return publicIds.some((publicId) =>
+            imagePath === publicId ||
+            imagePath.replace(/\.[a-zA-Z0-9]+$/, "") === publicId
         );
     };
 
@@ -359,7 +364,14 @@ const assertAdult = (birthdate) => {
     const [year, month, day] = String(birthdate).split("-").map(Number);
     const birthdateDate = new Date(year, month - 1, day);
 
-    if (isNaN(birthdateDate.getTime())) {
+    if (
+        typeof birthdate !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(birthdate) ||
+        isNaN(birthdateDate.getTime()) ||
+        birthdateDate.getFullYear() !== year ||
+        birthdateDate.getMonth() !== month - 1 ||
+        birthdateDate.getDate() !== day
+    ) {
         throw new Error(
             "Birthdate must be a valid date."
         );
@@ -450,18 +462,27 @@ const savePendingRegistration = async (email, fields) => {
         lastCodeSentAt: now,
     };
 
-    const existingPending = await PendingRegistration.findOne({ email });
+    // Apply the same nested schema defaults as document creation before
+    // atomically inserting or replacing the registration.
+    const registrationData = new PendingRegistration({ email, ...data }).toObject();
+    delete registrationData._id;
+    delete registrationData.email;
 
     let pendingRegistration;
 
-    if (existingPending) {
-        existingPending.set(data);
-        pendingRegistration = await existingPending.save();
-    } else {
-        pendingRegistration = await PendingRegistration.create({
-            email,
-            ...data,
-        });
+    try {
+        // Only replace an expired registration. The unique email index
+        // rejects a competing request once another has claimed this email.
+        pendingRegistration = await PendingRegistration.findOneAndUpdate(
+            { email, emailVerificationExpires: { $lte: now } },
+            { $set: registrationData, $setOnInsert: { email } },
+            { upsert: true, returnDocument: "after", runValidators: true }
+        );
+    } catch (error) {
+        if (error?.code === 11000) {
+            throw createError(PENDING_VERIFICATION_MESSAGE, 409);
+        }
+        throw error;
     }
 
     try {
@@ -471,6 +492,7 @@ const savePendingRegistration = async (email, fields) => {
 
         await PendingRegistration.deleteOne({
             _id: pendingRegistration._id,
+            emailVerificationToken: hashedCode,
         });
 
         throw new Error(VERIFICATION_EMAIL_FAILED_MESSAGE);
@@ -817,6 +839,16 @@ export const verifyEmail = async (
             throw new Error(PLATE_TAKEN_MESSAGE);
         }
     }
+
+    // Identity rules may have changed while the email code was pending.
+    // Recheck before creating the account, excluding this registration
+    // from the pending-phone lookup.
+    await assertIdentityAllowed({
+        email: pendingRegistration.email,
+        phoneNumber: pendingRegistration.phoneNumber,
+        alternativeContact: pendingRegistration.alternativeContact,
+        licenseNumber: pendingRegistration.licenseNumber,
+    });
 
     // Create the actual User account with already-hashed password. A
     // duplicate-key error means a simultaneous submit of the same code got

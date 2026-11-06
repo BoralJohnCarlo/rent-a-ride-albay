@@ -89,5 +89,10 @@ export const getRegistrationErrorField = (message = "") => {
     }
     // Sent when the admin turned the field on after the form loaded.
     if (/proof of billing/i.test(message)) return "proofOfBillingImage";
+    if (/motorcycle transmission/i.test(message)) return "motorcycleTransmission";
+    if (/car transmission/i.test(message)) return "carTransmission";
+    if (/driving category|license codes/i.test(message)) return "licenseCodes";
+    if (/license number/i.test(message)) return "licenseNumber";
+    if (/license.*expir|expir.*license/i.test(message)) return "licenseExpirationDate";
     return null;
 };

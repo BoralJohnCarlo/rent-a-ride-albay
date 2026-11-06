@@ -99,6 +99,16 @@ validIdBack: {
             trim: true,
         }],
 
+        motorcycleTransmission: [{
+            type: String,
+            trim: true,
+        }],
+
+        carTransmission: [{
+            type: String,
+            trim: true,
+        }],
+
         currentAddress: {
             houseUnitLot: {
                 type: String,

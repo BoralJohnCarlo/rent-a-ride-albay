@@ -52,6 +52,7 @@ export const findUploadsByHandles = async (handles = []) => {
 
     const uploads = await TemporaryValidIdUpload.find({
         _id: { $in: parsed.map((entry) => entry.id) },
+        expiresAt: { $gt: new Date() },
     }).lean();
 
     return uploads.filter((upload) =>

@@ -102,8 +102,12 @@ const isNotPastDate = (value) => {
 const notPastDateRule = (field, message) =>
     body(field)
         .optional({ nullable: true, checkFalsy: true })
-        .isISO8601()
+        .custom((value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value))
         .withMessage("Please enter a valid date.")
+        .bail()
+        .isISO8601({ strict: true })
+        .withMessage("Please enter a valid date.")
+        .bail()
         .custom((value) => {
             if (!isNotPastDate(value)) {
                 throw new Error(message);
@@ -128,10 +132,15 @@ const birthdateRule = () =>
     body("birthdate")
         .notEmpty()
         .withMessage("Birthdate is required")
-        .isISO8601()
+        .bail()
+        .custom((value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value))
+        .withMessage("Birthdate must be a valid date")
+        .bail()
+        .isISO8601({ strict: true })
         .withMessage(
             "Birthdate must be a valid date"
         )
+        .bail()
         .custom((value) => {
             const [year, month, day] = value
                 .split("-")
