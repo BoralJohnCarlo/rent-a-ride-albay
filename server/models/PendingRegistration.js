@@ -36,6 +36,12 @@ const pendingRegistrationSchema =
                 trim: true,
             },
 
+            // Server-derived key reserves equivalent phone formats atomically.
+            // No default: older registrations can retain their existing data.
+            phoneReservationKey: {
+                type: String,
+            },
+
             alternativeContact: {
                 type: String,
                 default: "",
@@ -379,6 +385,11 @@ pendingRegistrationSchema.index(
     {
         expireAfterSeconds: 0,
     }
+);
+
+pendingRegistrationSchema.index(
+    { phoneReservationKey: 1 },
+    { unique: true, partialFilterExpression: { phoneReservationKey: { $type: "string" } } }
 );
 
 const PendingRegistration = mongoose.model(

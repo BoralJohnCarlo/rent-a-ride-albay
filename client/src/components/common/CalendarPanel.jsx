@@ -134,7 +134,12 @@ const CalendarPanel = ({ value, onSelect, minDay, maxDay, compact = false }) => 
             next.setDate(next.getDate() + deltas[event.key]);
         } else if (event.key === "PageUp" || event.key === "PageDown") {
             next = new Date(current);
+            // Change months from day one so short months cannot overflow.
+            const day = next.getDate();
+            next.setDate(1);
             next.setMonth(next.getMonth() + (event.key === "PageUp" ? -1 : 1));
+            const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+            next.setDate(Math.min(day, lastDay));
         } else if (event.key === "Home" || event.key === "End") {
             next = new Date(current);
             next.setDate(next.getDate() - (event.key === "Home" ? next.getDay() : next.getDay() - 6));
@@ -166,7 +171,7 @@ const CalendarPanel = ({ value, onSelect, minDay, maxDay, compact = false }) => 
 
     /* ------------------------------ render ------------------------------ */
 
-    const cell = compact ? "h-8 w-8 text-[12px]" : "h-9 w-9 text-[13px]";
+    const cell = compact ? "h-8 w-full max-w-8 text-[12px]" : "h-9 w-full max-w-9 text-[13px]";
     const navButton =
         "flex h-8 w-8 items-center justify-center rounded-xl text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-white";
 

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { assertPasswordByteLimit } from "../utils/passwordPolicy.js";
 
 const userSchema = new mongoose.Schema(
     {
@@ -281,12 +282,16 @@ emailVerificationExpires: {
             default: null,
         },
 
-        // Set by the pre-save hook on every password change (not on
-        // creation). Auth rejects tokens issued before it, which is how a
-        // password change signs out other devices.
+        // Records password changes for security notices and legacy sessions.
+        // credentialVersion invalidates current sessions without clock rounding.
         passwordChangedAt: {
             type: Date,
             default: null,
+        },
+        credentialVersion: {
+            type: Number,
+            default: 0,
+            min: 0,
         },
 
         /*
@@ -351,20 +356,27 @@ emailVerificationExpires: {
 );
 
 userSchema.pre("save", async function () {
+    // Only registration may explicitly supply an already-hashed password.
+    // Consume this document-local marker so future edits always get hashed.
+    const registrationPasswordHash = this.$locals.registrationPasswordHash;
+    delete this.$locals.registrationPasswordHash;
+
     if (!this.isModified("password")) {
         return;
     }
 
+    assertPasswordByteLimit(this.password);
+
     if (!this.isNew) {
-        /*
-         * Backdated 1s: JWT `iat` is in whole seconds, so the token issued
-         * right after this save (to keep the current device signed in) must
-         * not compare as older than the change.
-         */
-        this.passwordChangedAt = new Date(Date.now() - 1000);
+        this.passwordChangedAt = new Date();
+        this.credentialVersion = (this.credentialVersion ?? 0) + 1;
     }
 
-    if (this.password.startsWith("$2")) {
+    if (
+        this.isNew &&
+        registrationPasswordHash === this.password &&
+        /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(registrationPasswordHash)
+    ) {
         return;
     }
 
@@ -376,13 +388,23 @@ userSchema.methods.comparePassword = async function (password) {
     return bcrypt.compare(password, this.password);
 };
 
-// True when the JWT was issued before the last password change.
-userSchema.methods.isTokenStale = function (tokenIssuedAt) {
-    if (!this.passwordChangedAt || !tokenIssuedAt) {
+// Versions invalidate prior sessions even within the same JWT second.
+// Legacy tokens retain the date check until the first versioned change.
+userSchema.methods.isTokenStale = function (tokenIssuedAt, tokenCredentialVersion) {
+    const version = this.credentialVersion ?? 0;
+    if (tokenCredentialVersion !== undefined) {
+        if (!Number.isSafeInteger(tokenCredentialVersion) || tokenCredentialVersion !== version) {
+            return true;
+        }
+        if (version > 0) return false;
+    } else if (version > 0) {
+        return true;
+    }
+    if (!this.passwordChangedAt) {
         return false;
     }
 
-    return tokenIssuedAt * 1000 < this.passwordChangedAt.getTime();
+    return !Number.isFinite(tokenIssuedAt) || tokenIssuedAt * 1000 < this.passwordChangedAt.getTime();
 };
 
 const User = mongoose.model("User", userSchema);

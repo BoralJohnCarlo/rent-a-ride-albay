@@ -1,4 +1,5 @@
 import { body } from "express-validator";
+import { isPasswordWithinByteLimit, PASSWORD_BYTE_LIMIT_MESSAGE } from "../utils/passwordPolicy.js";
 
 import {
     licenseCodeValidators,
@@ -22,6 +23,8 @@ const passwordRule = () =>
     body("password")
         .notEmpty()
         .withMessage("Password is required")
+        .custom(isPasswordWithinByteLimit)
+        .withMessage(PASSWORD_BYTE_LIMIT_MESSAGE)
         .isLength({ min: 8 })
         .withMessage(
             "Password must be at least 8 characters"
@@ -205,7 +208,6 @@ const proofOfBillingRule = () =>
 
 const currentAddressRules = () => [
     body("currentAddress")
-        .optional({ nullable: true })
         .isObject()
         .withMessage("Current address must be an object."),
 
@@ -224,6 +226,24 @@ const currentAddressRules = () => [
             .withMessage(`${label} must be a string.`)
             .trim()
     ),
+    ...[
+        ["barangay", "Barangay"],
+        ["cityMunicipality", "City/municipality"],
+        ["province", "Province"],
+        ["region", "Region"],
+        ["postalCode", "Postal code"],
+    ].map(([field, label]) =>
+        body(`currentAddress.${field}`)
+            .isString()
+            .withMessage(`${label} is required.`)
+            .bail()
+            .trim()
+            .notEmpty()
+            .withMessage(`${label} is required.`)
+    ),
+    body("currentAddress.postalCode")
+        .matches(/^\d{4}$/)
+        .withMessage("Postal code must be exactly 4 digits."),
 ];
 
 export const registerValidator = [
@@ -468,6 +488,8 @@ export const resetPasswordValidator = [
     body("newPassword")
         .notEmpty()
         .withMessage("New password is required.")
+        .custom(isPasswordWithinByteLimit)
+        .withMessage(PASSWORD_BYTE_LIMIT_MESSAGE)
         .isLength({ min: 8 })
         .withMessage("Password must be at least 8 characters.")
         .matches(/[A-Z]/)

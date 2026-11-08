@@ -49,14 +49,18 @@ export const assertPhoneAvailable = async (
             phoneNumber: pattern,
             ...(excludeUserId && { _id: { $ne: excludeUserId } }),
         }),
-        PendingRegistration.exists({
+        PendingRegistration.findOne({
             phoneNumber: pattern,
             emailVerificationExpires: { $gt: new Date() },
-            ...(excludeEmail && { email: { $ne: excludeEmail } }),
-        }),
+        })
+            // For legacy duplicates, let the earliest registration verify.
+            // Later registrations must not block the original email owner.
+            .sort({ registrationStartedAt: 1, _id: 1 })
+            .select("email")
+            .lean(),
     ]);
 
-    if (user || pending) {
+    if (user || (pending && pending.email !== excludeEmail)) {
         throw createError(PHONE_TAKEN_MESSAGE, 409);
     }
 };

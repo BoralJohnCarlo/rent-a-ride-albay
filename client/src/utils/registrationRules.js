@@ -5,10 +5,13 @@
  */
 
 export const PASSWORD_HINT =
-    "At least 8 characters, with an uppercase letter, a lowercase letter and a number.";
+    "At least 8 characters, with an uppercase letter, a lowercase letter and a number. Maximum 72 UTF-8 bytes.";
 
 export const getPasswordError = (password = "") => {
     if (!password) return "Password is required.";
+    if (new TextEncoder().encode(password).length > 72) {
+        return "Password must not exceed 72 UTF-8 bytes. Accented letters and emoji may use more than one byte.";
+    }
     if (password.length < 8) return "Password must be at least 8 characters.";
     if (!/[A-Z]/.test(password)) {
         return "Password must contain at least one uppercase letter.";

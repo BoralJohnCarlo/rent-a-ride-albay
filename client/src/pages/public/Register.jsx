@@ -84,6 +84,7 @@ import image3 from "../../assets/images/slideshow/image3.png";
 import image4 from "../../assets/images/slideshow/image4.jpg";
 import image5 from "../../assets/images/slideshow/image5.png";
 import useScrollTopOnChange from "../../hooks/useScrollTopOnChange";
+import { rememberVerificationEmail, readVerificationEmail, clearVerificationEmail } from "../../utils/registrationVerification";
 
 const REGISTER_IMAGES = [
     image1,
@@ -160,8 +161,9 @@ const STEP_TRANSITION = {
     ease: "easeOut",
 };
 
-const Register = () => {
+const Register = ({ verificationOnly = false }) => {
     const navigate = useNavigate();
+    const [resumeEmail] = useState(() => verificationOnly ? readVerificationEmail() : "");
 
     const {
         register,
@@ -180,7 +182,7 @@ const Register = () => {
         alternativeContact: "",
         password: "",
         confirmPassword: "",
-        email: "",
+        email: resumeEmail,
         validIdType: "Driver's License",
         validIdImage: "",
         validIdBack: "",
@@ -207,10 +209,13 @@ const Register = () => {
     // as accepted when the registration is sent.
     const {
         document: termsDocument,
+        loading: termsLoading,
+        error: termsError,
         reload: reloadTerms,
     } = useLegalDocument(LEGAL_DOCUMENT_TYPES.BOOKING_TERMS);
+    const termsReady = Boolean(termsDocument?._id) && !termsLoading && !termsError;
 
-    const [currentStep, setCurrentStep] = useState(0);
+    const [currentStep, setCurrentStep] = useState(verificationOnly ? 3 : 0);
     const stepTopRef = useScrollTopOnChange(currentStep);
 
     const registrationFlowRef = useRef(false);
@@ -237,6 +242,19 @@ const Register = () => {
     const proofOfBillingEnabled =
         proofOfBillingSetting || billingRequiredByServer;
     const [billingImage, setBillingImage] = useState(null);
+    const retainedImagesRef = useRef([]);
+
+    useEffect(() => {
+        retainedImagesRef.current = [...idImages, billingImage];
+    }, [idImages, billingImage]);
+
+    useEffect(() => () => {
+        retainedImagesRef.current.forEach((image) => {
+            if (image?.preview?.startsWith("blob:")) {
+                URL.revokeObjectURL(image.preview);
+            }
+        });
+    }, []);
 
     const [isVerifying, setIsVerifying] =
         useState(false);
@@ -251,6 +269,7 @@ const Register = () => {
         useState(false);
     const [verificationError, setVerificationError] =
         useState(null);
+    const [verificationNotice, setVerificationNotice] = useState("");
     const [resendError, setResendError] =
         useState(null);
     const resendTimerRef = useRef(null);
@@ -493,66 +512,28 @@ const Register = () => {
         });
     };
 
-    const handleMotorcycleTransmissionChange = (value) => {
+    const handleTransmissionChange = (field, value) => {
         setFormData((previous) => {
-            const current = previous.motorcycleTransmission;
-            if (current.length === 2) {
-                return { ...previous, motorcycleTransmission: [] };
-            }
-            if (value === "manual") {
-                if (current.includes("manual")) {
-                    return {
-                        ...previous,
-                        motorcycleTransmission: current.filter((t) => t !== "manual"),
-                    };
-                }
-                return {
-                    ...previous,
-                    motorcycleTransmission: [...current, "manual", "automatic"],
-                };
-            }
-            if (current.includes(value)) {
-                return {
-                    ...previous,
-                    motorcycleTransmission: current.filter((t) => t !== value),
-                };
-            }
-            return {
-                ...previous,
-                motorcycleTransmission: [...current, value],
-            };
+            const current = [...new Set(previous[field])];
+            // Manual qualification also covers automatic transmission.
+            const selected = current.includes(value)
+                ? value === "automatic" && current.includes("manual")
+                    ? []
+                    : current.filter((type) => type !== value)
+                : value === "manual"
+                ? ["manual", "automatic"]
+                : [...current, value];
+
+            return { ...previous, [field]: selected };
         });
     };
 
+    const handleMotorcycleTransmissionChange = (value) => {
+        handleTransmissionChange("motorcycleTransmission", value);
+    };
+
     const handleCarTransmissionChange = (value) => {
-        setFormData((previous) => {
-            const current = previous.carTransmission;
-            if (current.length === 2) {
-                return { ...previous, carTransmission: [] };
-            }
-            if (value === "manual") {
-                if (current.includes("manual")) {
-                    return {
-                        ...previous,
-                        carTransmission: current.filter((t) => t !== "manual"),
-                    };
-                }
-                return {
-                    ...previous,
-                    carTransmission: [...current, "manual", "automatic"],
-                };
-            }
-            if (current.includes(value)) {
-                return {
-                    ...previous,
-                    carTransmission: current.filter((t) => t !== value),
-                };
-            }
-            return {
-                ...previous,
-                carTransmission: [...current, value],
-            };
-        });
+        handleTransmissionChange("carTransmission", value);
     };
 
     const isMotorcycleTransmissionSelected = (type) => {
@@ -887,7 +868,9 @@ const Register = () => {
                     }
                 }
 
-                if (!termsAgreed) {
+                if (!termsReady) {
+                    errors.termsAgreed = "Wait for the Terms and Conditions to load, then review and accept them.";
+                } else if (!termsAgreed) {
                     errors.termsAgreed =
                         "Please agree to the Terms and Conditions and the Privacy Notice.";
                 }
@@ -942,7 +925,7 @@ const Register = () => {
     };
 
     const handlePrevious = () => {
-        if (submissionInFlightRef.current || verificationRequestRef.current) {
+        if (currentStep >= 3 || submissionInFlightRef.current || verificationRequestRef.current) {
             return;
         }
 
@@ -953,6 +936,10 @@ const Register = () => {
     };
 
     const verifyCode = async () => {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+            setVerificationError("Enter a valid registration email address.");
+            return;
+        }
         if (
             verificationRequestRef.current ||
             code.some((digit) => digit === "")
@@ -966,11 +953,13 @@ const Register = () => {
         setIsVerifying(true);
 
         try {
+            rememberVerificationEmail(formData.email);
             await verifyUserEmail(
-                formData.email,
+                formData.email.trim(),
                 code.join("")
             );
 
+            clearVerificationEmail();
             setCurrentStep(4);
         } catch (err) {
             const message =
@@ -980,6 +969,7 @@ const Register = () => {
             // The code was already used (e.g. submitted twice): the account
             // exists, so this is the success step, not an error.
             if (isAlreadyVerifiedError(message)) {
+                clearVerificationEmail();
                 setCurrentStep(4);
 
                 return;
@@ -1015,6 +1005,10 @@ const Register = () => {
     };
 
     const resendCode = async () => {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+            setResendError("Enter a valid registration email address.");
+            return;
+        }
         if (resendDisabled || verificationRequestRef.current) {
             return;
         }
@@ -1025,8 +1019,9 @@ const Register = () => {
         startResendCooldown();
 
         try {
+            rememberVerificationEmail(formData.email);
             await resendVerificationEmailApi(
-                formData.email
+                formData.email.trim()
             );
             setCode(["", "", "", "", "", ""]);
             setVerificationError(null);
@@ -1064,12 +1059,13 @@ const Register = () => {
 
         /*
          * The ID images are uploaded fresh on every attempt and the chosen
-         * files stay in `idImages` — never swapped for the uploaded URLs. A
-         * failed attempt deletes its uploads (below), so keeping those URLs
+         * files stay in `idImages` — never swapped for the uploaded URLs. An upload
+         * failure deletes its uploads (below), so keeping those URLs
          * around would make the next attempt register images that no longer
          * exist.
          */
         const temporaryUploadIds = [];
+        let registrationSubmitted = false;
 
         const discardUploads = () =>
             Promise.all(
@@ -1184,14 +1180,22 @@ const Register = () => {
                 termsVersionId: termsDocument?._id ?? null,
             };
 
+            registrationSubmitted = true;
+            rememberVerificationEmail(formData.email);
             await register(payload);
 
             startResendCooldown();
 
             setCurrentStep(3);
+            navigate("/verify-email", { replace: true });
         } catch (err) {
             setIdUploading(false);
-            await discardUploads();
+            // Once submitted, a timeout or lost response cannot tell us whether
+            // the server saved the registration. Keep its images available for
+            // verification; the server expires unclaimed uploads automatically.
+            if (!registrationSubmitted) {
+                await discardUploads();
+            }
             registrationFlowRef.current = false;
 
             const errorMessage =
@@ -1203,8 +1207,11 @@ const Register = () => {
             // a verified account keeps the error ("please log in") shown.
             if (isPendingVerificationError(errorMessage)) {
                 clearError();
+                setVerificationNotice("This email already has a registration awaiting verification. Your original details and password will be used; changes from this attempt were not saved.");
                 startResendCooldown();
                 setCurrentStep(3);
+                rememberVerificationEmail(formData.email);
+                navigate("/verify-email", { replace: true });
 
                 return;
             }
@@ -1928,11 +1935,16 @@ options={formData.currentAddress.cityMunicipality
                                                                 type="button"
                                                                 onClick={() => {
                                                                     idImages
-                                                                        .map((image) => image.temporaryUploadId)
+                                                                        .map((image) => image?.temporaryUploadId)
                                                                         .filter(Boolean)
                                                                         .forEach((uploadId) => {
                                                                             removeTemporaryValidId(uploadId).catch(() => undefined);
                                                                         });
+                                                                    idImages.forEach((image) => {
+                                                                        if (image?.preview?.startsWith("blob:")) {
+                                                                            URL.revokeObjectURL(image.preview);
+                                                                        }
+                                                                    });
                                                                     setIdImages([]);
                                                                     setFormData((previous) => ({
                                                                         ...previous,
@@ -2293,6 +2305,7 @@ ${isCarTransmissionSelected("manual")
                                                             <input
                                                                 type="checkbox"
                                                                 checked={termsAgreed}
+                                                                disabled={!termsReady}
                                                                 onChange={(event) => {
                                                                     setTermsAgreed(event.target.checked);
 
@@ -2327,6 +2340,25 @@ ${isCarTransmissionSelected("manual")
                                                                 {getFieldError("termsAgreed")}
                                                             </p>
                                                         )}
+                                                        {!termsReady && (
+                                                            <div className="mt-2 space-y-2 text-xs break-words" role="status">
+                                                                <p className="text-gray-600 dark:text-gray-400">
+                                                                    {termsError || (termsLoading ? "Loading Terms and Conditions…" : "The Terms and Conditions could not be loaded.")}
+                                                                </p>
+                                                                {!termsLoading && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setTermsAgreed(false);
+                                                                            reloadTerms();
+                                                                        }}
+                                                                        className="font-medium text-yellow-700 underline dark:text-yellow-400"
+                                                                    >
+                                                                        Retry loading terms
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     <div className="flex flex-col-reverse gap-2.5 pt-0.5 sm:flex-row sm:items-center sm:justify-between">
@@ -2344,6 +2376,7 @@ ${isCarTransmissionSelected("manual")
                                                         <Button
                                                             type="button"
                                                             onClick={handleSubmit}
+                                                            disabled={!termsReady}
                                                             loading={loading || idUploading}
                                                             rightIcon={<ChevronRight size={16} />}
                                                             className="!min-w-[112px] !whitespace-nowrap !border-yellow-400 !bg-yellow-400 !px-3 !py-2 !text-[11px] !text-gray-950 dark:!text-gray-900 hover:!bg-yellow-300"
@@ -2375,13 +2408,13 @@ ${isCarTransmissionSelected("manual")
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-yellow-100 text-yellow-600">
                     <Mail size={22} />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         Verify Your Email
                     </h3>
                     <p className="mt-1 text-sm text-gray-500">
-                        We've sent a 6-digit code to{" "}
-                        <span className="font-medium">
+                        Enter the 6-digit code for{" "}
+                        <span className="break-all font-medium">
                             {formData.email}
                         </span>
                         .
@@ -2389,14 +2422,39 @@ ${isCarTransmissionSelected("manual")
                 </div>
             </div>
 
+            <p className="text-sm text-gray-500 break-words dark:text-gray-400">
+                {verificationNotice || "Your registration details are saved. Verify your email to finish. You can update your profile or reset your password afterward."}
+            </p>
+
+            {verificationOnly && (
+                <Input
+                    id="verificationEmail"
+                    name="email"
+                    type="email"
+                    label="Registration email"
+                    value={formData.email}
+                    autoComplete="email"
+                    disabled={isVerifying || isResending}
+                    onChange={(event) => {
+                        handleChange(event);
+                        setCode(["", "", "", "", "", ""]);
+                        setVerificationError(null);
+                        setResendError(null);
+                    }}
+                    helperText="Use your registration email. Enter the latest code or choose Resend Code below."
+                />
+            )}
+
             <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor="verification-code-1" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Verification Code
                 </label>
                 <div className="mt-2 flex flex-wrap justify-center gap-1 sm:gap-2">
                     {code.map((digit, index) => (
                         <input
                             key={index}
+                            id={`verification-code-${index + 1}`}
+                            aria-label={`Verification code digit ${index + 1} of ${code.length}`}
                             ref={(el) => {
                                 codeInputRefs.current[index] =
                                     el;
@@ -2545,11 +2603,11 @@ ${isCarTransmissionSelected("manual")
                     type="button"
                     variant="outline"
                     disabled={idUploading || loading || isVerifying || isResending}
-                    onClick={handlePrevious}
+                    onClick={() => navigate("/login")}
                     leftIcon={<ChevronLeft size={16} />}
                     className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800"
                 >
-                    Back
+                    Back to login
                 </Button>
 
                 <Button
@@ -2620,8 +2678,11 @@ ${isCarTransmissionSelected("manual")
                 }
             >
                 <TermsAgreement
+                    document={termsDocument}
+                    readOnly={!termsReady}
                     accepted={termsAgreed}
                     onChange={(checked) => {
+                        if (!termsReady) return;
                         setTermsAgreed(checked);
 
                         if (checked && validationErrors.termsAgreed) {

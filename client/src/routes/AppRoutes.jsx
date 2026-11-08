@@ -171,6 +171,10 @@ const AppRoutes = () => {
                         path="register"
                         element={<Register />}
                     />
+                    <Route
+                        path="verify-email"
+                        element={<Register verificationOnly />}
+                    />
 
                     <Route
                         path="register-operator"

@@ -288,6 +288,7 @@ export const changePassword = async (req, res) => {
             generateToken({
                 id: user._id,
                 role: user.role,
+                credentialVersion: user.credentialVersion ?? 0,
             })
         );
 
@@ -302,7 +303,7 @@ export const changePassword = async (req, res) => {
         return errorResponse(
             res,
             error.message,
-            400
+            error.statusCode || 400
         );
     }
 };

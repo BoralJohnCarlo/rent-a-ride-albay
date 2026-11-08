@@ -19,6 +19,8 @@ import routes from "../../routes/index.js";
 import errorMiddleware from "../../middleware/errorMiddleware.js";
 
 import { connectTestDb, disconnectTestDb } from "../helpers/testDb.js";
+import { getCurrentLegalDocument } from "../../services/legalDocumentService.js";
+import { LEGAL_DOCUMENT_TYPES } from "../../constants/legalDocumentConstants.js";
 
 /*
  * Both sign-up journeys end to end over HTTP — the real routes, validators,
@@ -40,6 +42,7 @@ const originals = {
 
 let server;
 let baseUrl;
+let termsVersionId;
 
 const codeFor = (email) =>
     [...sentMail].reverse().find((mail) => mail.to === email)
@@ -134,6 +137,7 @@ before(async () => {
     cloudinary.uploader.destroy = async () => ({ result: "ok" });
 
     await connectTestDb();
+    termsVersionId = String((await getCurrentLegalDocument(LEGAL_DOCUMENT_TYPES.BOOKING_TERMS))._id);
     await Promise.all([User.init(), PendingRegistration.init(), Vehicle.init()]);
 
     const setting = await InspectionSetting.getInstance();
@@ -195,6 +199,7 @@ describe("customer sign-up over HTTP", () => {
                 validIdBack: "https://example.com/b.jpg",
                 hasDriversLicense: false,
                 termsAgreed: true,
+                termsVersionId,
             },
         });
 
@@ -249,6 +254,7 @@ describe("customer sign-up over HTTP", () => {
                     billing.uploadId,
                 ],
                 termsAgreed: true,
+                termsVersionId,
             },
         });
 
@@ -318,6 +324,10 @@ describe("customer sign-up over HTTP", () => {
                 email,
                 password: "Password123",
                 phoneNumber: "09189990000",
+                currentAddress: {
+                    barangay: "Bitano", cityMunicipality: "Legazpi City",
+                    province: "Albay", region: "Region V", postalCode: "4500",
+                },
                 birthdate: "1995-05-05",
                 validIdType: "Philippine Passport",
                 validIdImage: front.url,
@@ -330,6 +340,7 @@ describe("customer sign-up over HTTP", () => {
                     billing.uploadId,
                 ],
                 termsAgreed: true,
+                termsVersionId,
             },
         });
 
@@ -405,6 +416,7 @@ describe("partner sign-up over HTTP", () => {
                     },
                     inspectionDate: `${SLOT_DATE}T${SLOT_TIME}:00`,
                     termsAgreed: true,
+                    termsVersionId,
                 },
             }
         );
@@ -462,6 +474,10 @@ describe("partner sign-up over HTTP", () => {
             firstName: "Andres",
             lastName: "Bonifacio",
             email: "andres@example.com",
+            currentAddress: {
+                barangay: "Bitano", cityMunicipality: "Legazpi City",
+                province: "Albay", region: "Region V", postalCode: "4500",
+            },
             password: "Partner123",
             phoneNumber: "09194445555",
             birthdate: "1990-11-30",
@@ -491,6 +507,7 @@ describe("partner sign-up over HTTP", () => {
             },
             inspectionDate: `${SLOT_DATE}T${SLOT_TIME}:00`,
             termsAgreed: true,
+            termsVersionId,
             ...overrides,
         });
 
@@ -520,7 +537,12 @@ describe("proof of billing address over HTTP", () => {
         birthdate: "1992-03-19",
         validIdType: "Philippine Passport",
         hasDriversLicense: false,
+        currentAddress: {
+            barangay: "Bitano", cityMunicipality: "Legazpi City",
+            province: "Albay", region: "Region V", postalCode: "4500",
+        },
         termsAgreed: true,
+        termsVersionId,
         ...overrides,
     });
 

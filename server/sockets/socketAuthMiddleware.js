@@ -28,7 +28,7 @@ const authenticateSocket = async (socket, next) => {
             return next(new Error("User not found."));
         }
 
-        if (user.isTokenStale(decoded.iat)) {
+        if (user.isTokenStale(decoded.iat, decoded.credentialVersion)) {
             return next(new Error("Your password was changed. Please log in again."));
         }
 

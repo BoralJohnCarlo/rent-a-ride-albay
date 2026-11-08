@@ -12,6 +12,8 @@ import Blacklist from "../models/Blacklist.js";
 import {
     assertNotRestricted,
     assertPhoneAvailable,
+    phoneKey,
+    PHONE_TAKEN_MESSAGE,
 } from "./accountIdentityService.js";
 import { assertInspectionSlotAvailable } from "./inspectionSlotService.js";
 import {
@@ -75,6 +77,9 @@ const createEmailVerificationCode = () => {
 };
 
 const hashPassword = async (password) => {
+    if (typeof password !== "string" || Buffer.byteLength(password, "utf8") > 72) {
+        throw new Error("Password must not exceed 72 UTF-8 bytes. Accented letters and emoji may use more than one byte.");
+    }
     const bcrypt = await import("bcryptjs");
     const salt = await bcrypt.genSalt(12);
     return await bcrypt.hash(password, salt);
@@ -427,9 +432,12 @@ const assertEmailAvailable = async (email) => {
  */
 /*
  * The Terms & Conditions version a registration accepted: the one the
- * form showed (`termsVersionId`), or the current one if none was sent.
+ * form showed (`termsVersionId`), which registration must provide.
  */
 const resolveRegistrationTerms = async (termsVersionId) => {
+    if (!termsVersionId) {
+        throw createError("Please load the Terms and Conditions, review them, and accept them before registering.", 400);
+    }
     const accepted = await resolveAcceptedLegalVersion(
         LEGAL_DOCUMENT_TYPES.BOOKING_TERMS,
         termsVersionId,
@@ -450,8 +458,18 @@ const savePendingRegistration = async (email, fields) => {
 
     const now = new Date();
 
+    // Wait for the unique index before accepting registrations, including on
+    // a fresh database. Expired reservations need not wait for Mongo's TTL sweep.
+    await PendingRegistration.init();
+    const phoneReservationKey = phoneKey(fields.phoneNumber);
+    await PendingRegistration.updateMany(
+        { phoneReservationKey, emailVerificationExpires: { $lte: now } },
+        { $unset: { phoneReservationKey: "" } }
+    );
+
     const data = {
         ...fields,
+        phoneReservationKey,
         emailVerificationToken: hashedCode,
         emailVerificationExpires: verificationExpires,
         verificationAttempts: 0,
@@ -480,6 +498,9 @@ const savePendingRegistration = async (email, fields) => {
         );
     } catch (error) {
         if (error?.code === 11000) {
+            if (error.keyPattern?.phoneReservationKey || error.keyValue?.phoneReservationKey) {
+                throw createError(PHONE_TAKEN_MESSAGE, 409);
+            }
             throw createError(PENDING_VERIFICATION_MESSAGE, 409);
         }
         throw error;
@@ -783,17 +804,26 @@ export const verifyEmail = async (
         pendingRegistration.emailVerificationToken !==
         hashedCode
     ) {
+        const codeFilter = {
+            _id: pendingRegistration._id,
+            emailVerificationToken: pendingRegistration.emailVerificationToken,
+            emailVerificationExpires: { $gt: new Date() },
+        };
         const updated = await PendingRegistration.findOneAndUpdate(
-            { _id: pendingRegistration._id },
+            codeFilter,
             { $inc: { verificationAttempts: 1 } },
             { returnDocument: "after" }
         );
 
-        const attempts = updated?.verificationAttempts ?? MAX_VERIFICATION_ATTEMPTS;
+        if (!updated) {
+            throw new Error("The verification code has changed or expired. Please use the latest code sent to your email.");
+        }
+
+        const attempts = updated.verificationAttempts;
 
         if (attempts >= MAX_VERIFICATION_ATTEMPTS) {
             await PendingRegistration.updateOne(
-                { _id: pendingRegistration._id },
+                codeFilter,
                 { $set: { emailVerificationToken: null } }
             );
 
@@ -843,12 +873,21 @@ export const verifyEmail = async (
     // Identity rules may have changed while the email code was pending.
     // Recheck before creating the account, excluding this registration
     // from the pending-phone lookup.
-    await assertIdentityAllowed({
-        email: pendingRegistration.email,
-        phoneNumber: pendingRegistration.phoneNumber,
-        alternativeContact: pendingRegistration.alternativeContact,
-        licenseNumber: pendingRegistration.licenseNumber,
-    });
+    try {
+        await assertIdentityAllowed({
+            email: pendingRegistration.email,
+            phoneNumber: pendingRegistration.phoneNumber,
+            alternativeContact: pendingRegistration.alternativeContact,
+            licenseNumber: pendingRegistration.licenseNumber,
+        });
+    } catch (error) {
+        // Another verification may have created this same account after we
+        // loaded its pending record. Its phone is then our own, not a conflict.
+        if (await User.exists({ email })) {
+            throw createError(ALREADY_VERIFIED_MESSAGE, 409);
+        }
+        throw error;
+    }
 
     // Create the actual User account with already-hashed password. A
     // duplicate-key error means a simultaneous submit of the same code got
@@ -856,7 +895,7 @@ export const verifyEmail = async (
     let user;
 
     try {
-    user = await User.create({
+    user = new User({
         firstName: pendingRegistration.firstName,
         lastName: pendingRegistration.lastName,
         email: pendingRegistration.email,
@@ -905,6 +944,8 @@ export const verifyEmail = async (
             }
             : undefined,
     });
+    user.$locals.registrationPasswordHash = pendingRegistration.password;
+    await user.save();
     } catch (error) {
         if (error?.code === 11000 && (await User.exists({ email }))) {
             throw createError(ALREADY_VERIFIED_MESSAGE, 409);
@@ -1099,6 +1140,8 @@ export const resendVerificationEmail = async (
         );
     }
 
+    await assertPhoneAvailable(pendingRegistration.phoneNumber, { excludeEmail: email });
+
     /*
      * Limits are per registration rather than per IP, so the app can't be
      * used to flood one inbox from many addresses, and resending can't keep
@@ -1162,41 +1205,59 @@ export const resendVerificationEmail = async (
     const previousLastSentAt =
         pendingRegistration.lastCodeSentAt;
 
-    pendingRegistration.emailVerificationToken =
-        hashedCode;
-
-    pendingRegistration.emailVerificationExpires =
-        new Date(nextExpiry);
-
     // A fresh code gets a fresh set of attempts. Replacing a code that was
     // locked by wrong guesses doesn't count toward the limit, so someone
     // who knows the email can't use lockouts to exhaust it (they can only
     // make the registrant wait out the cooldown).
-    pendingRegistration.verificationAttempts = 0;
-    pendingRegistration.codesSent = previousToken
-        ? (previousCodesSent || 0) + 1
-        : previousCodesSent || 0;
-    pendingRegistration.lastCodeSentAt = new Date(now);
+    // Reserve this resend atomically. A competing request that read the same
+    // snapshot must not replace the winner's code or send a second email.
+    const reservedRegistration = await PendingRegistration.findOneAndUpdate(
+        {
+            _id: pendingRegistration._id,
+            emailVerificationToken: previousToken,
+            lastCodeSentAt: previousLastSentAt ?? null,
+            codesSent: previousCodesSent ?? 0,
+            emailVerificationExpires: previousExpiry,
+        },
+        { $set: {
+            emailVerificationToken: hashedCode,
+            phoneReservationKey: phoneKey(pendingRegistration.phoneNumber),
+            emailVerificationExpires: new Date(nextExpiry),
+            verificationAttempts: 0,
+            codesSent: previousToken ? (previousCodesSent || 0) + 1 : previousCodesSent || 0,
+            lastCodeSentAt: new Date(now),
+        } },
+        { returnDocument: "after" }
+    ).select("+emailVerificationToken +emailVerificationExpires").catch((error) => {
+        if (error?.code === 11000 && (error.keyPattern?.phoneReservationKey || error.keyValue?.phoneReservationKey)) {
+            throw createError(PHONE_TAKEN_MESSAGE, 409);
+        }
+        throw error;
+    });
+
+    if (!reservedRegistration) {
+        throw createError("A verification request is already being processed. Please use the latest code or wait a minute before requesting another.", 429);
+    }
 
     try {
-        await pendingRegistration.save();
-
         await sendVerificationEmail(
-            pendingRegistration,
+            reservedRegistration,
             rawCode
         );
     } catch (error) {
-        pendingRegistration.emailVerificationToken =
-            previousToken;
-        pendingRegistration.emailVerificationExpires =
-            previousExpiry;
-        pendingRegistration.verificationAttempts =
-            previousAttempts;
-        pendingRegistration.codesSent = previousCodesSent;
-        pendingRegistration.lastCodeSentAt = previousLastSentAt;
-
         try {
-            await pendingRegistration.save();
+            // Restore only our own reservation, never a newer resend or a
+            // token that verification has since locked or consumed.
+            await PendingRegistration.updateOne(
+                { _id: pendingRegistration._id, emailVerificationToken: hashedCode, lastCodeSentAt: new Date(now) },
+                { $set: {
+                    emailVerificationToken: previousToken,
+                    emailVerificationExpires: previousExpiry,
+                    verificationAttempts: previousAttempts,
+                    codesSent: previousCodesSent,
+                    lastCodeSentAt: previousLastSentAt,
+                } }
+            );
         } catch (rollbackError) {
             console.error(
                 "Failed to restore the previous verification code:",
@@ -1215,8 +1276,8 @@ export const resendVerificationEmail = async (
 
     // The registration lives on, so its images must too.
     await holdTemporaryUploadsUntil(
-        pendingRegistration.temporaryUploadIds || [],
-        pendingRegistration.emailVerificationExpires
+        reservedRegistration.temporaryUploadIds || [],
+        reservedRegistration.emailVerificationExpires
     );
 
     return {
@@ -1224,27 +1285,14 @@ export const resendVerificationEmail = async (
     };
 };
 
-export const loginUser = async ({
-    email,
-    password,
-}) => {
-    const user = await User.findOne({
-        email,
-    }).select("+password +loginAttempts +lockoutUntil");
-
-    if (!user) {
-        throw new Error(
-            "Invalid email or password."
-        );
-    }
-
-    if (user.isSuspended) {
+const assertLoginAllowed = (user) => {
+    if (user?.isSuspended) {
         throw new Error(
             "Your account has been suspended."
         );
     }
 
-    if (user.lockoutUntil && user.lockoutUntil > new Date()) {
+    if (user?.lockoutUntil && user.lockoutUntil > new Date()) {
         const remainingMinutes = Math.ceil(
             (user.lockoutUntil - new Date()) /
                 60000
@@ -1254,26 +1302,64 @@ export const loginUser = async ({
             `Account is temporarily locked due to too many failed login attempts. Please try again in ${remainingMinutes} minute${remainingMinutes !== 1 ? "s" : ""}.`
         );
     }
+};
+
+export const loginUser = async ({
+    email,
+    password,
+}) => {
+    let user = await User.findOne({
+        email,
+    }).select("+password +loginAttempts +lockoutUntil");
+
+    if (!user) {
+        throw new Error("Invalid email or password.");
+    }
+
+    assertLoginAllowed(user);
 
     const isMatch =
         await user.comparePassword(password);
 
     if (!isMatch) {
-        user.loginAttempts = (user.loginAttempts || 0) + 1;
+        const now = new Date();
+        const expiredLock = { $and: [
+            { $ne: [{ $ifNull: ["$lockoutUntil", null] }, null] },
+            { $lte: ["$lockoutUntil", now] },
+        ] };
+        const nextAttempts = { $add: [
+            { $cond: [expiredLock, 0, { $ifNull: ["$loginAttempts", 0] }] },
+            1,
+        ] };
 
-        if (user.loginAttempts >= 5) {
-            user.lockoutUntil = new Date(
-                Date.now() + 15 * 60 * 1000
-            );
+        // Count and start the lockout in one write, using current database
+        // state. A stale request must not affect a changed password or extend
+        // an active lockout. Expired lockouts start a fresh attempt budget.
+        const counted = await User.findOneAndUpdate(
+            {
+                _id: user._id,
+                password: user.password,
+                isSuspended: { $ne: true },
+                $or: [{ lockoutUntil: null }, { lockoutUntil: { $lte: now } }],
+            },
+            [{ $set: {
+                loginAttempts: nextAttempts,
+                lockoutUntil: { $cond: [
+                    { $gte: [nextAttempts, 5] },
+                    new Date(now.getTime() + 15 * 60 * 1000),
+                    null,
+                ] },
+            } }],
+            { returnDocument: "after", updatePipeline: true }
+        );
 
-            await user.save();
-
+        if (!counted) {
+            assertLoginAllowed(await User.findById(user._id).select("lockoutUntil isSuspended"));
+        } else if (counted.loginAttempts >= 5) {
             throw new Error(
                 "Too many failed login attempts. Your account has been locked for 15 minutes."
             );
         }
-
-        await user.save();
 
         throw new Error(
             "Invalid email or password."
@@ -1294,15 +1380,29 @@ export const loginUser = async ({
         }
     }
 
-    user.loginAttempts = 0;
-    user.lockoutUntil = null;
-    user.lastLogin = new Date();
-
-    await user.save();
+    // A correct password cannot clear a lockout or undo a credential change
+    // that committed while bcrypt was checking the submitted password.
+    const now = new Date();
+    const authenticated = await User.findOneAndUpdate(
+        {
+            _id: user._id,
+            password: user.password,
+            isSuspended: { $ne: true },
+            $or: [{ lockoutUntil: null }, { lockoutUntil: { $lte: now } }],
+        },
+        { $set: { loginAttempts: 0, lockoutUntil: null, lastLogin: now } },
+        { returnDocument: "after" }
+    );
+    if (!authenticated) {
+        assertLoginAllowed(await User.findById(user._id).select("lockoutUntil isSuspended"));
+        throw new Error("Your account details changed. Please sign in again.");
+    }
+    user = authenticated;
 
     const token = generateToken({
         id: user._id,
         role: user.role,
+        credentialVersion: user.credentialVersion ?? 0,
     });
 
     return {

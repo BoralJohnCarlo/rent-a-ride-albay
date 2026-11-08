@@ -14,6 +14,10 @@ export const getPasswordRules = ({
         met: newPassword.length >= 8,
     },
     {
+        label: "At most 72 UTF-8 bytes",
+        met: newPassword.length > 0 && new TextEncoder().encode(newPassword).length <= 72,
+    },
+    {
         label: "One uppercase letter (A–Z)",
         met: /[A-Z]/.test(newPassword),
     },

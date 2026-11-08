@@ -22,7 +22,8 @@ import { connectTestDb, disconnectTestDb } from "../helpers/testDb.js";
  */
 
 const PASSWORD = "OldPassw0rd";
-const NEW_PASSWORD = "BrandNew9!";
+// A user-entered bcrypt-looking prefix must still be hashed as plaintext.
+const NEW_PASSWORD = "$2Password123";
 
 let sentMail = [];
 const originalSendMail = transporter.sendMail;
@@ -86,7 +87,8 @@ const sessionCookie = (user) =>
         {
             id: user._id,
             role: user.role,
-            iat: Math.floor(Date.now() / 1000) - 60,
+            credentialVersion: user.credentialVersion ?? 0,
+            iat: Math.floor(Date.now() / 1000),
         },
         process.env.JWT_SECRET
     )}`;
@@ -199,6 +201,14 @@ describe("forgot password", () => {
         assert.equal(same.status, 400);
         assert.match(same.body.message, /different from your old one/);
 
+        for (const password of ["Aa1" + "x".repeat(70), "Aa1" + "😀".repeat(18)]) {
+            const oversized = await request("POST", "/api/auth/reset-password", {
+                json: { email: user.email, resetToken, newPassword: password, confirmPassword: password },
+            });
+            assert.equal(oversized.status, 400);
+            assert.match(oversized.body.message, /72 UTF-8 bytes/);
+        }
+
         const reset = await request("POST", "/api/auth/reset-password", {
             json: {
                 email: user.email,
@@ -208,6 +218,10 @@ describe("forgot password", () => {
             },
         });
         assert.equal(reset.status, 200, JSON.stringify(reset.body));
+        const stored = await User.findById(user._id).select("+password");
+        assert.notEqual(stored.password, NEW_PASSWORD);
+        assert.match(stored.password, /^\$2[aby]\$\d{2}\$/);
+        assert.equal(await stored.comparePassword(NEW_PASSWORD), true);
 
         // The token is single use too.
         const replay = await request("POST", "/api/auth/reset-password", {

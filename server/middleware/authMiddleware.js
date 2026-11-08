@@ -23,7 +23,7 @@ export const protect = async (req, res, next) => {
             });
         }
 
-        if (user.isTokenStale(decoded.iat)) {
+        if (user.isTokenStale(decoded.iat, decoded.credentialVersion)) {
             return res.status(401).json({
                 success: false,
                 // Lets the client sign this device out (lib/axios.js).

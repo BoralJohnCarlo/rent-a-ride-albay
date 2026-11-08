@@ -1,5 +1,6 @@
 
 import User from "../models/User.js";
+import bcrypt from "bcryptjs";
 import Blacklist from "../models/Blacklist.js";
 import Settings from "../models/Settings.js";
 import { withBookingCreationTransaction } from "./bookingCreationTransaction.js";
@@ -8,6 +9,7 @@ import Notification from "../models/Notification.js";
 import { VALID_ID_DOCUMENT_SOURCE } from "../models/ValidIdDocument.js";
 import formatUser, { isValidIdExpired } from "../utils/userFormatter.js";
 import createError from "../utils/createError.js";
+import { assertPasswordByteLimit } from "../utils/passwordPolicy.js";
 import { formatEmailDateTime } from "../utils/emailTemplates.js";
 import { disconnectUserSockets } from "../sockets/index.js";
 import {
@@ -450,24 +452,40 @@ export const changeUserPassword = async (
         throw new Error("Current password is incorrect.");
     }
 
+    assertPasswordByteLimit(newPassword);
+
     if (await user.comparePassword(newPassword)) {
         throw new Error(
             "Your new password must be different from your current password."
         );
     }
 
-    user.password = newPassword;
-
-    // The pre-save hook stamps passwordChangedAt, which signs out every
-    // other device (auth rejects tokens issued before it).
-    await user.save();
+    // Only the request that still matches the authenticated password can win.
+    // Query updates bypass the save hook, so hash and invalidate sessions here.
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const updated = await User.findOneAndUpdate(
+        { _id: user._id, password: user.password, isSuspended: { $ne: true } },
+        { $set: {
+            password: passwordHash,
+            passwordChangedAt: new Date(),
+            passwordResetCode: null,
+            passwordResetExpires: null,
+            passwordResetAttempts: 0,
+            passwordResetToken: null,
+            passwordResetTokenExpires: null,
+        }, $inc: { credentialVersion: 1 } },
+        { returnDocument: "after", runValidators: true }
+    );
+    if (!updated) {
+        throw createError("Your password changed while this request was being processed. Please sign in again and retry.", 409);
+    }
 
     // Live sockets authenticated with the old token would otherwise keep
     // receiving events until they reconnect. This device reconnects itself
     // with its fresh cookie after the response.
     disconnectUserSockets(user._id);
 
-    const changedAt = formatEmailDateTime(user.passwordChangedAt);
+    const changedAt = formatEmailDateTime(updated.passwordChangedAt);
 
     try {
         await notifyUser(user._id, {
@@ -496,7 +514,7 @@ export const changeUserPassword = async (
         console.error("Failed to send password-changed notification:", notificationError);
     }
 
-    return user;
+    return updated;
 };
 
 export const updateNotificationPreferences = async (

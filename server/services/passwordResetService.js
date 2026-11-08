@@ -1,7 +1,9 @@
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 import User from "../models/User.js";
 import createError from "../utils/createError.js";
+import { assertPasswordByteLimit } from "../utils/passwordPolicy.js";
 import { renderEmail } from "../utils/emailTemplates.js";
 import { disconnectUserSockets } from "../sockets/index.js";
 import { sendEmail } from "./emailService.js";
@@ -12,8 +14,8 @@ import { notifyUser } from "./notificationService.js";
  *   1. requestPasswordReset - emails a 6-digit code (hashed at rest).
  *   2. verifyPasswordResetCode - trades a correct code for a one-time reset
  *      token (also hashed at rest), so step 3 never re-sends the code.
- *   3. resetPassword - the token sets the new password. The User pre-save
- *      hook stamps passwordChangedAt, which signs out every device.
+ *   3. resetPassword - atomically consumes the token, sets the password,
+ *      and increments credentialVersion to sign out every prior session.
  */
 
 export const RESET_CODE_TTL_MS = 15 * 60 * 1000;
@@ -123,7 +125,7 @@ export const requestPasswordReset = async (email) => {
 
 export const verifyPasswordResetCode = async (email, code) => {
     const user = await User.findOne({ email }).select(
-        "+passwordResetCode +passwordResetExpires +passwordResetAttempts"
+        "+passwordResetCode +passwordResetExpires +passwordResetAttempts +passwordResetSentAt"
     );
 
     if (
@@ -140,17 +142,28 @@ export const verifyPasswordResetCode = async (email, code) => {
 
     if (!safeEqual(user.passwordResetCode, hashedCode)) {
         // Counted per account (not per IP, which can be rotated).
+        const codeFilter = {
+            _id: user._id,
+            passwordResetCode: user.passwordResetCode,
+            passwordResetSentAt: user.passwordResetSentAt ?? null,
+            passwordResetExpires: { $gt: new Date() },
+            isSuspended: { $ne: true },
+        };
         const counted = await User.findOneAndUpdate(
-            { _id: user._id, passwordResetCode: user.passwordResetCode },
+            codeFilter,
             { $inc: { passwordResetAttempts: 1 } },
             { returnDocument: "after" }
         ).select("+passwordResetAttempts");
 
-        const attempts = counted?.passwordResetAttempts ?? RESET_MAX_ATTEMPTS;
+        if (!counted) {
+            throw createError(INVALID_CODE_MESSAGE, 400);
+        }
+
+        const attempts = counted.passwordResetAttempts;
 
         if (attempts >= RESET_MAX_ATTEMPTS) {
             await User.updateOne(
-                { _id: user._id },
+                codeFilter,
                 {
                     $set: {
                         passwordResetCode: null,
@@ -177,7 +190,14 @@ export const verifyPasswordResetCode = async (email, code) => {
 
     // Single use: only succeeds while this exact code is still on file.
     const claimed = await User.findOneAndUpdate(
-        { _id: user._id, passwordResetCode: hashedCode },
+        {
+            _id: user._id,
+            passwordResetCode: hashedCode,
+            passwordResetSentAt: user.passwordResetSentAt ?? null,
+            passwordResetExpires: { $gt: new Date() },
+            passwordResetAttempts: { $lt: RESET_MAX_ATTEMPTS },
+            isSuspended: { $ne: true },
+        },
         {
             $set: {
                 passwordResetCode: null,
@@ -215,6 +235,8 @@ export const resetPassword = async (email, resetToken, newPassword) => {
         throw createError(RESET_SESSION_EXPIRED_MESSAGE, 400);
     }
 
+    assertPasswordByteLimit(newPassword);
+
     if (await user.comparePassword(newPassword)) {
         throw createError(
             "Your new password must be different from your old one.",
@@ -222,15 +244,32 @@ export const resetPassword = async (email, resetToken, newPassword) => {
         );
     }
 
-    user.password = newPassword;
-    user.passwordResetToken = null;
-    user.passwordResetTokenExpires = null;
-    // Proving access to the email is enough to lift a failed-login lockout.
-    user.loginAttempts = 0;
-    user.lockoutUntil = null;
+    // This conditional update consumes the token and changes the password in
+    // one write. Hash first so the token is not consumed before the password
+    // is ready. Query updates bypass the save hook, so stamp invalidation here.
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const updated = await User.findOneAndUpdate(
+        {
+            _id: user._id,
+            password: user.password,
+            passwordResetToken: sha256(resetToken),
+            passwordResetTokenExpires: { $gt: new Date() },
+            isSuspended: { $ne: true },
+        },
+        { $set: {
+            password: passwordHash,
+            passwordChangedAt: new Date(),
+            passwordResetToken: null,
+            passwordResetTokenExpires: null,
+            loginAttempts: 0,
+            lockoutUntil: null,
+        }, $inc: { credentialVersion: 1 } },
+        { returnDocument: "after", runValidators: true }
+    );
 
-    // Stamps passwordChangedAt: every existing session is now signed out.
-    await user.save();
+    if (!updated) {
+        throw createError(RESET_SESSION_EXPIRED_MESSAGE, 400);
+    }
 
     disconnectUserSockets(user._id);
 

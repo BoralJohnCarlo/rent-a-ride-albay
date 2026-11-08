@@ -19,6 +19,8 @@ import {
     verifyEmail,
 } from "../../services/authService.js";
 import { getBookedInspectionCounts } from "../../services/inspectionSlotService.js";
+import { getCurrentLegalDocument } from "../../services/legalDocumentService.js";
+import { LEGAL_DOCUMENT_TYPES } from "../../constants/legalDocumentConstants.js";
 import {
     createTemporaryValidIdUpload,
     removeTemporaryValidIdUpload,
@@ -32,6 +34,7 @@ import {
 
 /* Captured instead of sent, so tests can read the verification code. */
 let sentMail = [];
+let termsVersionId;
 const originalSendMail = transporter.sendMail;
 
 const lastCodeFor = (email) => {
@@ -80,6 +83,7 @@ const nextPhone = () => {
 };
 
 const baseUser = (email) => ({
+    termsVersionId,
     firstName: "Juan",
     lastName: "Dela Cruz",
     email,
@@ -176,6 +180,7 @@ before(async () => {
     };
 
     await connectTestDb();
+    termsVersionId = (await getCurrentLegalDocument(LEGAL_DOCUMENT_TYPES.BOOKING_TERMS))._id;
     await Promise.all([User.init(), PendingRegistration.init(), Vehicle.init()]);
 });
 
@@ -634,6 +639,49 @@ describe("abuse limits and identity rules", () => {
             lastCodeFor("lock@test.com")
         );
         assert.equal(result.email, "lock@test.com");
+    });
+
+    it("reserves one phone number atomically across simultaneous formatted signups", async () => {
+        const emails = ["phone-race-1@test.com", "phone-race-2@test.com", "phone-race-3@test.com"];
+        const phones = ["09175551234", "+63 917 555 1234", "0917-555-1234"];
+        const payloads = await Promise.all(emails.map((email, index) => customerPayload(email, { phoneNumber: phones[index] })));
+        const results = await Promise.allSettled(payloads.map(payload => registerUser(payload)));
+        assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+        for (const result of results.filter(result => result.status === "rejected")) {
+            assert.equal(result.reason.statusCode, 409);
+            assert.match(result.reason.message, /phone number is already used/);
+        }
+        const winner = emails[results.findIndex(result => result.status === "fulfilled")];
+        assert.equal(sentMail.filter(mail => emails.includes(mail.to)).length, 1);
+        assert.equal(await PendingRegistration.countDocuments({ email: { $in: emails } }), 1);
+        const verified = await verifyEmail(winner, lastCodeFor(winner));
+        assert.equal(verified.email, winner);
+    });
+
+    it("releases expired phone reservations without waiting for the TTL sweep", async () => {
+        const phoneNumber = "09175551234";
+        await registerUser(await customerPayload("expired-phone@test.com", { phoneNumber }));
+        await PendingRegistration.updateOne({ email: "expired-phone@test.com" }, {
+            $set: { emailVerificationExpires: new Date(Date.now() - 1000), lastCodeSentAt: new Date(Date.now() - 120000) },
+        });
+        await registerUser(await customerPayload("new-phone@test.com", { phoneNumber }));
+        await assert.rejects(resendVerificationEmail("expired-phone@test.com"), /phone number is already used/);
+        assert.equal((await verifyEmail("new-phone@test.com", lastCodeFor("new-phone@test.com"))).email, "new-phone@test.com");
+    });
+
+    it("lets the earliest legacy duplicate verify without deleting either registration", async () => {
+        const email = "original-phone@test.com";
+        await registerUser(await customerPayload(email, { phoneNumber: "09175551234" }));
+        const original = await PendingRegistration.findOne({ email }).select("+password +emailVerificationToken +emailVerificationExpires").lean();
+        await PendingRegistration.updateOne({ _id: original._id }, { $unset: { phoneReservationKey: "" } });
+        const { _id, phoneReservationKey, ...duplicate } = original;
+        assert.ok(_id);
+        assert.equal(phoneReservationKey, "9175551234");
+        await PendingRegistration.create({ ...duplicate, email: "later-phone@test.com", registrationStartedAt: new Date(original.registrationStartedAt.getTime() + 1000) });
+        await assert.rejects(verifyEmail("later-phone@test.com", lastCodeFor(email)), /phone number is already used/);
+        assert.equal(await PendingRegistration.countDocuments({ phoneNumber: "09175551234" }), 2);
+        assert.equal((await verifyEmail(email, lastCodeFor(email))).email, email);
+        assert.equal(await PendingRegistration.countDocuments({ email: "later-phone@test.com" }), 1);
     });
 
     it("allows one account per phone number, whatever its formatting", async () => {

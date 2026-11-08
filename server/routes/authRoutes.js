@@ -54,7 +54,10 @@ const loginRateLimiter = rateLimit({
 
 const verifyEmailRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 5,
+    // Each code already allows only five wrong guesses in authService.
+    // Leave room for a replacement code and customers sharing an IP,
+    // while keeping a separate ceiling on overall request volume.
+    max: 30,
     message: {
         success: false,
         message: "Too many verification attempts. Please try again in 15 minutes.",

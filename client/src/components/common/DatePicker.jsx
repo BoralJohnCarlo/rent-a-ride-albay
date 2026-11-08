@@ -15,8 +15,7 @@ import clsx from "clsx";
 
 import CalendarPanel from "./CalendarPanel";
 import { parseISODay, toISODate } from "../../utils/calendarGrid";
-
-const POPOVER_WIDTH = 304;
+import { getDatePickerPosition, keepPopoverFocusVisible } from "../../utils/datePickerPopover";
 
 const formatDisplay = (date) =>
     date.toLocaleDateString("en-US", {
@@ -63,6 +62,7 @@ const DatePicker = forwardRef(function DatePicker(
 
     const triggerRef = useRef(null);
     const popoverRef = useRef(null);
+    const contentRef = useRef(null);
 
     const [open, setOpen] = useState(false);
     const [position, setPosition] = useState(null);
@@ -101,28 +101,42 @@ const DatePicker = forwardRef(function DatePicker(
         if (!trigger) return;
 
         const rect = trigger.getBoundingClientRect();
-        const popHeight = popoverRef.current?.offsetHeight || 400;
-        const width = Math.min(POPOVER_WIDTH, window.innerWidth - 24);
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const placeAbove = spaceBelow < popHeight + 12 && rect.top > spaceBelow;
+        const panel = popoverRef.current;
+        const borderHeight = panel ? panel.offsetHeight - panel.clientHeight : 2;
+        const popHeight = (contentRef.current?.offsetHeight || 400) + borderHeight;
+        const viewport = window.visualViewport;
+        const nextPosition = getDatePickerPosition(rect, {
+            width: viewport?.width ?? window.innerWidth,
+            height: viewport?.height ?? window.innerHeight,
+            offsetLeft: viewport?.offsetLeft ?? 0,
+            offsetTop: viewport?.offsetTop ?? 0,
+        }, popHeight);
 
-        setPosition({
-            top: placeAbove ? rect.top - popHeight - 8 : rect.bottom + 8,
-            left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)),
-            width,
-            placeAbove,
+        setPosition((previous) => {
+            if (previous && Object.keys(nextPosition).every(key => previous[key] === nextPosition[key])) return previous;
+            return nextPosition;
         });
     }, []);
 
     useLayoutEffect(() => {
         if (!open) return undefined;
         reposition();
-        // Re-measure once the popover has its real height.
-        const frame = requestAnimationFrame(reposition);
+        const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(reposition);
+        // The first positioning render mounts the popup before this frame.
+        const frame = requestAnimationFrame(() => {
+            reposition();
+            if (contentRef.current) observer?.observe(contentRef.current);
+        });
+        const viewport = window.visualViewport;
+        viewport?.addEventListener("resize", reposition);
+        viewport?.addEventListener("scroll", reposition);
         window.addEventListener("resize", reposition);
         window.addEventListener("scroll", reposition, true);
         return () => {
             cancelAnimationFrame(frame);
+            observer?.disconnect();
+            viewport?.removeEventListener("resize", reposition);
+            viewport?.removeEventListener("scroll", reposition);
             window.removeEventListener("resize", reposition);
             window.removeEventListener("scroll", reposition, true);
         };
@@ -192,71 +206,75 @@ const DatePicker = forwardRef(function DatePicker(
                         top: position.top,
                         left: position.left,
                         width: position.width,
+                        maxHeight: position.maxHeight,
                         transformOrigin: position.placeAbove ? "bottom left" : "top left",
                     }}
-                    className="z-[2000] overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-[0_24px_48px_-16px_rgba(17,24,39,0.35)] dark:border-gray-700/80 dark:bg-gray-900 dark:shadow-black/60"
+                    onFocusCapture={(event) => keepPopoverFocusVisible(popoverRef.current, event.target)}
+                    className="z-[2000] overflow-x-hidden overflow-y-auto overscroll-contain rounded-2xl border border-gray-200/80 bg-white shadow-[0_24px_48px_-16px_rgba(17,24,39,0.35)] dark:border-gray-700/80 dark:bg-gray-900 dark:shadow-black/60"
                 >
-                    {/* Ticket stub: the picked date, torn off a dashed perforation. */}
-                    <div className="relative bg-gray-950 px-4 pb-3.5 pt-3 dark:bg-black/50">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400">
-                            {label || "Date"}
-                        </p>
-                        <p
-                            className={clsx(
-                                "mt-0.5 truncate text-lg font-bold tracking-tight",
-                                selected ? "text-white" : "text-white/40"
-                            )}
-                        >
-                            {selected ? formatDisplay(selected) : "No date yet"}
-                        </p>
-                        <CalendarDays
-                            size={44}
-                            strokeWidth={1.25}
-                            aria-hidden="true"
-                            className="pointer-events-none absolute -right-1.5 top-1/2 -translate-y-1/2 text-white/[0.07]"
-                        />
-                        <span
-                            aria-hidden="true"
-                            className="absolute inset-x-3 -bottom-px border-b-2 border-dashed border-yellow-400/50"
-                        />
-                    </div>
+                    <div ref={contentRef}>
+                        {/* Ticket stub: the picked date, torn off a dashed perforation. */}
+                        <div className="relative bg-gray-950 px-4 pb-3.5 pt-3 dark:bg-black/50">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400">
+                                {label || "Date"}
+                            </p>
+                            <p
+                                className={clsx(
+                                    "mt-0.5 truncate text-lg font-bold tracking-tight",
+                                    selected ? "text-white" : "text-white/40"
+                                )}
+                            >
+                                {selected ? formatDisplay(selected) : "No date yet"}
+                            </p>
+                            <CalendarDays
+                                size={44}
+                                strokeWidth={1.25}
+                                aria-hidden="true"
+                                className="pointer-events-none absolute -right-1.5 top-1/2 -translate-y-1/2 text-white/[0.07]"
+                            />
+                            <span
+                                aria-hidden="true"
+                                className="absolute inset-x-3 -bottom-px border-b-2 border-dashed border-yellow-400/50"
+                            />
+                        </div>
 
-                    <div className="p-3">
-                        <CalendarPanel
-                            value={selected ? toISODate(selected) : null}
-                            onSelect={pick}
-                            minDay={minDay}
-                            maxDay={maxDay}
-                        />
-                    </div>
+                        <div className="p-3">
+                            <CalendarPanel
+                                value={selected ? toISODate(selected) : null}
+                                onSelect={pick}
+                                minDay={minDay}
+                                maxDay={maxDay}
+                            />
+                        </div>
 
-                    <div className="flex items-center justify-between gap-2 border-t border-gray-100 bg-gray-50/80 px-3 py-2 dark:border-white/[0.06] dark:bg-white/[0.02]">
-                        <button
-                            type="button"
-                            disabled={todayOut}
-                            onClick={() => pick(todayISO)}
-                            className="rounded-lg px-2 py-1 text-xs font-bold text-yellow-700 transition hover:bg-yellow-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-yellow-400 dark:hover:bg-yellow-400/10"
-                        >
-                            Today
-                        </button>
-
-                        <div className="flex items-center gap-1">
-                            {!required && selected && (
-                                <button
-                                    type="button"
-                                    onClick={() => pick("")}
-                                    className="rounded-lg px-2 py-1 text-xs font-semibold text-gray-500 transition hover:bg-gray-200/70 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
-                                >
-                                    Clear
-                                </button>
-                            )}
+                        <div className="flex items-center justify-between gap-2 border-t border-gray-100 bg-gray-50/80 px-3 py-2 dark:border-white/[0.06] dark:bg-white/[0.02]">
                             <button
                                 type="button"
-                                onClick={() => close()}
-                                className="rounded-lg bg-gray-950 px-3 py-1 text-xs font-bold text-white transition hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
+                                disabled={todayOut}
+                                onClick={() => pick(todayISO)}
+                                className="rounded-lg px-2 py-1 text-xs font-bold text-yellow-700 transition hover:bg-yellow-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-yellow-400 dark:hover:bg-yellow-400/10"
                             >
-                                Done
+                                Today
                             </button>
+
+                            <div className="flex items-center gap-1">
+                                {!required && selected && (
+                                    <button
+                                        type="button"
+                                        onClick={() => pick("")}
+                                        className="rounded-lg px-2 py-1 text-xs font-semibold text-gray-500 transition hover:bg-gray-200/70 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => close()}
+                                    className="rounded-lg bg-gray-950 px-3 py-1 text-xs font-bold text-white transition hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
+                                >
+                                    Done
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </motion.div>

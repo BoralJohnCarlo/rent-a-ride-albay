@@ -633,6 +633,12 @@ const Login = () => {
                                     Create Account
                                 </Link>
                             </div>
+                            <Link
+                                to="/verify-email"
+                                className="mt-3 block text-center text-xs text-gray-600 hover:underline dark:text-gray-400"
+                            >
+                                Finish email verification
+                            </Link>
                         </div>
                     </motion.div>
                     </div>

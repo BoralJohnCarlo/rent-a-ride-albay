@@ -1,5 +1,4 @@
 import {
-    useEffect,
     useRef,
     useState,
 } from "react";
@@ -210,15 +209,8 @@ const IdImageUploadRow = ({
     const [error, setError] =
         useState("");
 
-    useEffect(() => {
-        return () => {
-            images.forEach((image) => {
-                if (image?.preview?.startsWith("blob:")) {
-                    URL.revokeObjectURL(image.preview);
-                }
-            });
-        };
-    }, [images]);
+    // The parent retains images between steps, so unmounting this row must
+    // not revoke their previews. Release only images replaced or removed.
 
     const handleSelectFile = (index, file) => {
         const fileError = getImageFileError(file);
@@ -229,6 +221,10 @@ const IdImageUploadRow = ({
         }
 
         setError("");
+
+        if (images[index]?.preview?.startsWith("blob:")) {
+            URL.revokeObjectURL(images[index].preview);
+        }
 
         const newImage = {
             id:

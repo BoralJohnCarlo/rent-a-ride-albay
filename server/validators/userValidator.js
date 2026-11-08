@@ -1,4 +1,5 @@
 import { body, param } from "express-validator";
+import { isPasswordWithinByteLimit, PASSWORD_BYTE_LIMIT_MESSAGE } from "../utils/passwordPolicy.js";
 
 import {
     licenseCodeValidators,
@@ -179,6 +180,8 @@ export const changePasswordValidator = [
     body("newPassword")
         .notEmpty()
         .withMessage("New password is required.")
+        .custom(isPasswordWithinByteLimit)
+        .withMessage(PASSWORD_BYTE_LIMIT_MESSAGE)
         .isLength({ min: 8 })
         .withMessage("Password must be at least 8 characters.")
         .matches(/[A-Z]/)

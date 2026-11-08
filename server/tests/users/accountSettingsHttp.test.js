@@ -19,7 +19,7 @@ import { connectTestDb, disconnectTestDb } from "../helpers/testDb.js";
  */
 
 const PASSWORD = "OldPassw0rd";
-const NEW_PASSWORD = "NewPassw0rd!";
+const NEW_PASSWORD = "$2NewPassw0rd!";
 
 let server;
 let baseUrl;
@@ -56,12 +56,13 @@ const createOperator = () => {
     });
 };
 
-// A session that signed in a minute ago (another device, say).
-const sessionCookie = (user, secondsAgo = 60) =>
+// Include sessions issued immediately before the password change.
+const sessionCookie = (user, secondsAgo = 0) =>
     `token=${jwt.sign(
         {
             id: user._id,
             role: user.role,
+            credentialVersion: user.credentialVersion ?? 0,
             iat: Math.floor(Date.now() / 1000) - secondsAgo,
         },
         process.env.JWT_SECRET
@@ -126,6 +127,15 @@ describe("PATCH /api/users/change-password", () => {
         assert.equal(weak.status, 400);
         assert.equal(weak.body.message, "Validation failed.");
 
+        for (const password of ["Aa1" + "x".repeat(70), "Aa1" + "😀".repeat(18)]) {
+            const oversized = await request("PATCH", "/api/users/change-password", {
+                cookie,
+                json: { currentPassword: PASSWORD, newPassword: password, confirmPassword: password },
+            });
+            assert.equal(oversized.status, 400);
+            assert.ok(oversized.body.errors.some(error => /72 UTF-8 bytes/.test(error.msg)));
+        }
+
         const stored = await User.findById(user._id).select("+password");
         assert.equal(stored.passwordChangedAt, null);
         assert.ok(await stored.comparePassword(PASSWORD));
@@ -151,6 +161,8 @@ describe("PATCH /api/users/change-password", () => {
         assert.equal(changed.status, 200, JSON.stringify(changed.body));
         assert.ok(changed.body.data.passwordChangedAt);
         assert.ok(changed.cookie?.startsWith("token="), "a fresh cookie is issued");
+        const claims = jwt.verify(changed.cookie.slice("token=".length), process.env.JWT_SECRET);
+        assert.equal(claims.credentialVersion, 1);
 
         // Both pre-change sessions are now stale...
         for (const cookie of [thisDevice, otherDevice]) {
