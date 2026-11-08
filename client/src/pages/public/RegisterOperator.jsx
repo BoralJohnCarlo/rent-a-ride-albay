@@ -223,6 +223,8 @@ const RegisterOperator = () => {
     const stepTopRef = useScrollTopOnChange(currentStep);
 
     const registrationFlowRef = useRef(false);
+    const submissionInFlightRef = useRef(false);
+    const verificationRequestRef = useRef(false);
 
     const [validationErrors, setValidationErrors] =
         useState({});
@@ -247,6 +249,19 @@ const RegisterOperator = () => {
 
     const [vehicleImages, setVehicleImages] = useState([]);
     const [vehicleImageUploading, setVehicleImageUploading] = useState(false);
+    const retainedImagesRef = useRef([]);
+
+    useEffect(() => {
+        retainedImagesRef.current = [...idImages, billingImage, ...vehicleImages];
+    }, [idImages, billingImage, vehicleImages]);
+
+    useEffect(() => () => {
+        retainedImagesRef.current.forEach((image) => {
+            if (image?.preview?.startsWith("blob:")) {
+                URL.revokeObjectURL(image.preview);
+            }
+        });
+    }, []);
 
     const [inspectionDate, setInspectionDate] = useState("");
     const [termsAgreed, setTermsAgreed] = useState(false);
@@ -256,8 +271,11 @@ const RegisterOperator = () => {
     // as accepted when the registration is sent.
     const {
         document: termsDocument,
+        loading: termsLoading,
+        error: termsError,
         reload: reloadTerms,
     } = useLegalDocument(LEGAL_DOCUMENT_TYPES.BOOKING_TERMS);
+    const termsReady = Boolean(termsDocument?._id) && !termsLoading && !termsError;
 
     const [customBrand, setCustomBrand] =
         useState("");
@@ -274,6 +292,8 @@ const RegisterOperator = () => {
 
     const [isVerifying, setIsVerifying] =
         useState(false);
+    const [isResending, setIsResending] = useState(false);
+    const [verificationNotice, setVerificationNotice] = useState("");
 
     const [code, setCode] =
         useState(["", "", "", "", "", ""]);
@@ -924,7 +944,7 @@ const RegisterOperator = () => {
                         Number(formData.year);
 
                     if (
-                        Number.isNaN(parsedYear) ||
+                        !Number.isInteger(parsedYear) ||
                         parsedYear < 1900 ||
                         parsedYear >
                             new Date().getFullYear() +
@@ -1014,18 +1034,23 @@ const RegisterOperator = () => {
 
                 if (
                     !formData.specifications.seatingCapacity ||
-                    Number(formData.specifications.seatingCapacity) < 1
+                    !Number.isInteger(Number(formData.specifications.seatingCapacity)) ||
+                    Number(formData.specifications.seatingCapacity) < 1 ||
+                    Number(formData.specifications.seatingCapacity) > 50
                 ) {
                     errors.specifications = {
                         ...(errors.specifications || {}),
                         seatingCapacity:
-                            "Seating capacity is required and must be at least 1.",
+                            "Seating capacity must be a whole number from 1 to 50.",
                     };
                 }
 
                 break;
 
             case 3:
+                if (!termsReady) {
+                    errors.termsAgreed = "Please load the Terms and Conditions before accepting them.";
+                }
                 if (!inspectionDate) {
                     errors.inspectionDate =
                         "Please select an inspection appointment date and time.";
@@ -1116,6 +1141,7 @@ const RegisterOperator = () => {
     };
 
     const handlePrevious = () => {
+        if (currentStep >= 5 || submissionInFlightRef.current || verificationRequestRef.current) return;
         setCurrentStep(
             (previous) =>
                 previous - 1
@@ -1124,19 +1150,20 @@ const RegisterOperator = () => {
 
     const verifyCode = async () => {
         if (
-            isVerifying ||
+            verificationRequestRef.current ||
             code.some((digit) => digit === "")
         ) {
             return;
         }
 
+        verificationRequestRef.current = true;
         setVerificationError(null);
         setResendError(null);
         setIsVerifying(true);
 
         try {
             await verifyUserEmail(
-                formData.email,
+                formData.email.trim(),
                 code.join("")
             );
 
@@ -1148,7 +1175,7 @@ const RegisterOperator = () => {
              */
             try {
                 await loginUser({
-                    email: formData.email,
+                    email: formData.email.trim(),
                     password: formData.password,
                 });
             } catch {
@@ -1156,10 +1183,7 @@ const RegisterOperator = () => {
                 clearError();
             }
 
-            setCurrentStep(
-                (previous) =>
-                    previous + 1
-            );
+            setCurrentStep(6);
         } catch (err) {
             const message =
                 err.response?.data?.message ||
@@ -1168,13 +1192,14 @@ const RegisterOperator = () => {
             // The code was already used (e.g. submitted twice): the account
             // exists, so this is the success step, not an error.
             if (isAlreadyVerifiedError(message)) {
-                setCurrentStep((previous) => previous + 1);
+                setCurrentStep(6);
 
                 return;
             }
 
             setVerificationError(message);
         } finally {
+            verificationRequestRef.current = false;
             setIsVerifying(false);
         }
     };
@@ -1202,17 +1227,22 @@ const RegisterOperator = () => {
     };
 
     const resendCode = async () => {
-        if (resendDisabled) {
+        if (resendDisabled || verificationRequestRef.current) {
             return;
         }
 
+        verificationRequestRef.current = true;
+        setIsResending(true);
         setResendError(null);
         startResendCooldown();
 
         try {
             await resendVerificationEmailApi(
-                formData.email
+                formData.email.trim()
             );
+            setCode(["", "", "", "", "", ""]);
+            setVerificationError(null);
+            codeInputRefs.current[0]?.focus();
         } catch (err) {
             setResendError(
                 err.response?.data?.message ||
@@ -1225,28 +1255,35 @@ const RegisterOperator = () => {
                 resendTimerRef.current = null;
             }
             return;
+        } finally {
+            verificationRequestRef.current = false;
+            setIsResending(false);
         }
     };
 
     const handleSubmit = async () => {
         if (
+            submissionInFlightRef.current ||
             !validateStep() ||
+            !termsReady ||
             !termsAgreed ||
             loading
         ) {
             return;
         }
 
+        submissionInFlightRef.current = true;
         registrationFlowRef.current = true;
 
         /*
          * Every image is uploaded fresh on each attempt and the chosen files
-         * stay in state — never swapped for the uploaded URLs. A failed
-         * attempt deletes its uploads (via discardUploads), so keeping those
+         * stay in state — never swapped for the uploaded URLs. An upload failure
+         * deletes its uploads (via discardUploads), so keeping those
          * URLs around would make the next attempt register images that no
          * longer exist.
          */
         const temporaryUploadIds = [];
+        let registrationSubmitted = false;
 
         const discardUploads = () =>
             Promise.all(
@@ -1418,21 +1455,22 @@ const RegisterOperator = () => {
                     },
                 },
                 inspectionDate: formData.inspectionDate,
-                termsAgreed: formData.termsAgreed,
+                termsAgreed,
                 termsVersionId: termsDocument?._id ?? null,
             };
 
+            registrationSubmitted = true;
             await registerOperator(payload);
 
             startResendCooldown();
 
-            setCurrentStep(
-                (previous) => previous + 1
-            );
+            setCurrentStep(5);
         } catch (err) {
             setIdUploading(false);
             setVehicleImageUploading(false);
-            await discardUploads();
+            // A lost response cannot prove that the server did not save these
+            // images. Unclaimed uploads expire through server cleanup.
+            if (!registrationSubmitted) await discardUploads();
             registrationFlowRef.current = false;
 
             const errorMessage =
@@ -1444,8 +1482,9 @@ const RegisterOperator = () => {
             // a verified account keeps the error ("please log in") shown.
             if (isPendingVerificationError(errorMessage)) {
                 clearError();
+                setVerificationNotice("This email already has a registration awaiting verification. Your original details and password will be used; changes from this attempt were not saved.");
                 startResendCooldown();
-                setCurrentStep((previous) => previous + 1);
+                setCurrentStep(5);
 
                 return;
             }
@@ -1503,6 +1542,10 @@ const RegisterOperator = () => {
                 setValidationErrors({ proofOfBillingImage: errorMessage });
                 setCurrentStep(1);
             }
+        } finally {
+            submissionInFlightRef.current = false;
+            setIdUploading(false);
+            setVehicleImageUploading(false);
         }
     };
 
@@ -1994,7 +2037,10 @@ const RegisterOperator = () => {
 
                                                         {idImages.length > 0 && (
                                                             <button type="button" onClick={() => {
-                                                                idImages.map((image) => image.temporaryUploadId).filter(Boolean).forEach((uploadId) => {
+                                                                idImages.forEach((image) => {
+                                                                    if (image?.preview?.startsWith("blob:")) URL.revokeObjectURL(image.preview);
+                                                                });
+                                                                idImages.map((image) => image?.temporaryUploadId).filter(Boolean).forEach((uploadId) => {
                                                                     removeTemporaryValidId(uploadId).catch(() => undefined);
                                                                 });
                                                                 setIdImages([]);
@@ -2058,7 +2104,7 @@ const RegisterOperator = () => {
                                                     )}
 
                                                     <div className="flex flex-col-reverse gap-2.5 pt-0.5 sm:flex-row sm:items-center sm:justify-between">
-                                                        <Button type="button" variant="outline" onClick={handlePrevious} leftIcon={<ChevronLeft size={16} />} className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800">Back</Button>
+                                                        <Button type="button" variant="outline" onClick={handlePrevious} disabled={idUploading || vehicleImageUploading || loading || isVerifying || isResending} leftIcon={<ChevronLeft size={16} />} className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800">Back</Button>
 
                                                         <Button type="button" onClick={handleNext} disabled={idUploading || loading} rightIcon={<ChevronRight size={16} />} className="!min-w-[112px] !whitespace-nowrap !border-yellow-400 !bg-yellow-400 !px-3 !py-2 !text-[11px] !text-gray-950 dark:!text-gray-900 hover:!bg-yellow-300">
                                                              Continue
@@ -2156,6 +2202,7 @@ const RegisterOperator = () => {
                                                          onChange={handleChange}
                                                          max={new Date().getFullYear() + 1}
                                                          min={1900}
+                                                         step="1"
                                                          error={getFieldError("year")}
                                                          required
                                                      />
@@ -2266,6 +2313,8 @@ const RegisterOperator = () => {
                                                         type="number"
                                                         error={getFieldError("specifications.seatingCapacity")}
                                                         min="1"
+                                                        max="50"
+                                                        step="1"
                                                         value={formData.specifications.seatingCapacity}
                                                         onChange={(event) =>
                                                             handleNestedChange(
@@ -2292,11 +2341,12 @@ const RegisterOperator = () => {
                                                         </div>
 
                                                         <ImageUploadZone
+                                                            revokePreviewsOnUnmount={false}
                                                             images={vehicleImages}
                                                             onChange={handleVehicleImagesChange}
                                                             maxFiles={5}
                                                             canSetPrimary={false}
-                                                            canDelete={false}
+                                                            canDelete={true}
                                                             disabled={vehicleImageUploading || loading}
                                                             title="Upload Vehicle Images"
                                                             helperText="At least one vehicle image is required."
@@ -2310,7 +2360,7 @@ const RegisterOperator = () => {
                                                     </div>
 
                                                     <div className="flex flex-col-reverse gap-2.5 pt-0.5 sm:flex-row sm:items-center sm:justify-between">
-                                                        <Button type="button" variant="outline" onClick={handlePrevious} leftIcon={<ChevronLeft size={16} />} className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800">Back</Button>
+                                                        <Button type="button" variant="outline" onClick={handlePrevious} disabled={idUploading || vehicleImageUploading || loading || isVerifying || isResending} leftIcon={<ChevronLeft size={16} />} className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800">Back</Button>
 
                                                         <Button type="button" onClick={handleNext} rightIcon={<ChevronRight size={16} />} className="!min-w-[112px] !whitespace-nowrap !border-yellow-400 !bg-yellow-400 !px-3 !py-2 !text-[11px] !text-gray-950 dark:!text-gray-900 hover:!bg-yellow-300" disabled={vehicleImageUploading || loading}>Continue</Button>
                                                     </div>
@@ -2339,6 +2389,7 @@ const RegisterOperator = () => {
                                                         <label className="flex items-start gap-2.5 cursor-pointer">
                                                             <input
                                                                 type="checkbox"
+                                                                disabled={!termsReady}
                                                                 checked={termsAgreed}
                                                                 onChange={(e) => {
                                                                     setTermsAgreed(e.target.checked);
@@ -2374,6 +2425,18 @@ const RegisterOperator = () => {
                                                             View full Terms &amp; Conditions
                                                         </button>
 
+                                                        {!termsReady && (
+                                                            <div className="mt-2 space-y-2 text-xs break-words" role="status">
+                                                                <p>{termsError || (termsLoading ? "Loading Terms and Conditions?" : "The Terms and Conditions could not be loaded.")}</p>
+                                                                {!termsLoading && (
+                                                                    <button type="button" onClick={() => {
+                                                                        setTermsAgreed(false);
+                                                                        setFormData(previous => ({ ...previous, termsAgreed: false }));
+                                                                        reloadTerms();
+                                                                    }} className="font-medium text-yellow-700 underline dark:text-yellow-400">Retry loading terms</button>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                         {getFieldError("termsAgreed") && (
                                                             <p className="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">
                                                                 {getFieldError("termsAgreed")}
@@ -2382,7 +2445,7 @@ const RegisterOperator = () => {
                                                     </div>
 
                                                     <div className="flex flex-col-reverse gap-2.5 pt-0.5 sm:flex-row sm:items-center sm:justify-between">
-                                                        <Button type="button" variant="outline" onClick={handlePrevious} leftIcon={<ChevronLeft size={16} />} className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800">Back</Button>
+                                                        <Button type="button" variant="outline" onClick={handlePrevious} disabled={idUploading || vehicleImageUploading || loading || isVerifying || isResending} leftIcon={<ChevronLeft size={16} />} className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800">Back</Button>
 
                                                         <Button type="button" onClick={handleNext} rightIcon={<ChevronRight size={16} />} className="!min-w-[112px] !whitespace-nowrap !border-yellow-400 !bg-yellow-400 !px-3 !py-2 !text-[11px] !text-gray-950 dark:!text-gray-900 hover:!bg-yellow-300">
                                                              Continue
@@ -2400,9 +2463,9 @@ const RegisterOperator = () => {
                                                     <Input id="confirmPassword" name="confirmPassword" type="password" label="Confirm Password" placeholder="Repeat your password" value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" leftIcon={<Lock size={17} />} error={getFieldError("confirmPassword")} required />
 
                                                     <div className="flex flex-col-reverse gap-2.5 pt-0.5 sm:flex-row sm:items-center sm:justify-between">
-                                                        <Button type="button" variant="outline" onClick={handlePrevious} leftIcon={<ChevronLeft size={16} />} className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800">Back</Button>
+                                                        <Button type="button" variant="outline" onClick={handlePrevious} disabled={idUploading || vehicleImageUploading || loading || isVerifying || isResending} leftIcon={<ChevronLeft size={16} />} className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800">Back</Button>
 
-                                                        <Button type="button" onClick={handleSubmit} loading={loading} rightIcon={<ChevronRight size={16} />} className="!min-w-[112px] !whitespace-nowrap !border-yellow-400 !bg-yellow-400 !px-3 !py-2 !text-[11px] !text-gray-950 dark:!text-gray-900 hover:!bg-yellow-300">
+                                                        <Button type="button" onClick={handleSubmit} disabled={!termsReady || idUploading || vehicleImageUploading} loading={loading || idUploading || vehicleImageUploading} rightIcon={<ChevronRight size={16} />} className="!min-w-[112px] !whitespace-nowrap !border-yellow-400 !bg-yellow-400 !px-3 !py-2 !text-[11px] !text-gray-950 dark:!text-gray-900 hover:!bg-yellow-300">
                                                              Continue
                                                          </Button>
                                                     </div>
@@ -2422,17 +2485,18 @@ const RegisterOperator = () => {
                                                             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-yellow-100 text-yellow-600">
                                                                 <Mail size={22} />
                                                             </div>
-                                                            <div>
+                                                            <div className="min-w-0 flex-1">
                                                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Verify Your Email</h3>
-                                                                <p className="mt-1 text-sm text-gray-500">We've sent a 6-digit code to <span className="font-medium">{formData.email}</span>.</p>
+                                                                <p className="mt-1 text-sm text-gray-500">We've sent a 6-digit code to <span className="break-all font-medium">{formData.email}</span>.</p>
                                                             </div>
                                                         </div>
 
                                                         <div className="mt-4">
-                                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Verification Code</label>
+                                                            <p className="mb-3 break-words text-sm text-gray-500 dark:text-gray-400">{verificationNotice || "Your registration details are saved. Verify your email to finish. You can update your profile or reset your password afterward."}</p>
+                                                            <label htmlFor="partner-verification-code-1" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Verification Code</label>
                                                             <div className="mt-2 flex flex-wrap justify-center gap-1 sm:gap-2">
                                                                 {code.map((digit, index) => (
-                                                                    <input key={index} ref={(el) => {
+                                                                    <input key={index} id={`partner-verification-code-${index + 1}`} aria-label={`Verification code digit ${index + 1} of ${code.length}`} ref={(el) => {
                                                                         codeInputRefs.current[index] = el;
                                                                     }} type="text" inputMode="numeric" maxLength={1} value={digit} onChange={(e) => {
                                                                         setVerificationError(null);
@@ -2483,7 +2547,7 @@ const RegisterOperator = () => {
                                                             <p className="text-xs text-gray-500 dark:text-gray-400">Didn't receive the code? <br /> {resendCooldown > 0 ? (
                                                                 <span className="font-medium text-gray-700 dark:text-gray-300">Resend in {resendCooldown}s</span>
                                                             ) : (
-                                                                <button type="button" onClick={resendCode} disabled={resendDisabled} className="ml-1 font-medium text-yellow-600 hover:text-yellow-700 disabled:opacity-50 dark:text-yellow-400">
+                                                                <button type="button" onClick={resendCode} disabled={resendDisabled || isVerifying || isResending} className="ml-1 font-medium text-yellow-600 hover:text-yellow-700 disabled:opacity-50 dark:text-yellow-400">
                                                                     Resend Code
                                                                 </button>
                                                             )}
@@ -2491,11 +2555,11 @@ const RegisterOperator = () => {
                                                         </div>
 
                                                         <div className="flex flex-col-reverse gap-2.5 pt-0.5 sm:flex-row sm:items-center sm:justify-between">
-                                                            <Button type="button" variant="outline" onClick={handlePrevious} leftIcon={<ChevronLeft size={16} />} className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800">
-                                                                Back
+                                                            <Button type="button" variant="outline" onClick={() => navigate("/login")} disabled={isVerifying || isResending} leftIcon={<ChevronLeft size={16} />} className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800">
+                                                                Back to login
                                                             </Button>
 
-                                                            <Button type="button" onClick={verifyCode} loading={isVerifying} disabled={isVerifying || code.some((digit) => digit === "")} className="!min-w-[132px] !border-yellow-400 !bg-yellow-400 !px-3 !py-2 !text-xs !text-gray-950 dark:!text-gray-900 hover:!bg-yellow-300">
+                                                            <Button type="button" onClick={verifyCode} loading={isVerifying} disabled={isVerifying || isResending || code.some((digit) => digit === "")} className="!min-w-[132px] !border-yellow-400 !bg-yellow-400 !px-3 !py-2 !text-xs !text-gray-950 dark:!text-gray-900 hover:!bg-yellow-300">
                                                                 Verify &amp; Continue
                                                             </Button>
                                                         </div>
@@ -2550,8 +2614,11 @@ const RegisterOperator = () => {
                 }
             >
                 <TermsAgreement
+                    document={termsDocument}
+                    readOnly={!termsReady}
                     accepted={termsAgreed}
                     onChange={(checked) => {
+                        if (!termsReady) return;
                         setTermsAgreed(checked);
                         setFormData((prev) => ({
                             ...prev,

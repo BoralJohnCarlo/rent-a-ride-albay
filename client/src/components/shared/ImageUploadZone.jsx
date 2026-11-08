@@ -76,6 +76,8 @@ const ImageUploadZone = ({
         DEFAULT_MAX_FILES,
 
     disabled = false,
+    // Multi-step forms retain images after this field unmounts.
+    revokePreviewsOnUnmount = true,
 }) => {
     const inputRef =
         useRef(null);
@@ -94,6 +96,7 @@ const ImageUploadZone = ({
                 ),
             [images]
         );
+    const retainedImagesRef = useRef(imageList);
 
     const canAddMoreImages =
         canUpload &&
@@ -454,12 +457,14 @@ if (
     };
 
     useEffect(() => {
-        return () => {
-            imageList.forEach(
-                revokePreview
-            );
-        };
+        retainedImagesRef.current = imageList;
     }, [imageList]);
+
+    useEffect(() => () => {
+        if (revokePreviewsOnUnmount) {
+            retainedImagesRef.current.forEach(revokePreview);
+        }
+    }, [revokePreviewsOnUnmount]);
 
     return (
         <div className="space-y-6">

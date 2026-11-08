@@ -139,6 +139,8 @@ const InspectionAppointmentCalendar = ({
 
         setSelectedDate(dateString);
         setSelectedTime(null);
+        // A date alone is incomplete; do not retain the previous appointment.
+        onChange?.("");
     };
 
     const handleSelectTime = (time) => {
@@ -194,6 +196,7 @@ const InspectionAppointmentCalendar = ({
                                     onClick={() =>
                                         setCalendarViewDate((prev) => {
                                             const next = new Date(prev);
+                                            next.setDate(1);
                                             next.setMonth(next.getMonth() - 1);
                                             return next;
                                         })
@@ -214,6 +217,7 @@ const InspectionAppointmentCalendar = ({
                                     onClick={() =>
                                         setCalendarViewDate((prev) => {
                                             const next = new Date(prev);
+                                            next.setDate(1);
                                             next.setMonth(next.getMonth() + 1);
                                             return next;
                                         })
