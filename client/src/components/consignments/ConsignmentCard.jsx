@@ -199,6 +199,8 @@ isArchived &&
         },
 
     ["pending", "under review"].includes(status) &&
+        consignment?.application?.inspection?.status === "Pending" &&
+        consignment?.reschedule?.status !== "Pending" &&
         onBookInspection && {
             label: consignment?.application?.inspection
                 ?.scheduledDate

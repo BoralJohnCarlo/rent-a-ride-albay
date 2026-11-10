@@ -7,12 +7,17 @@
 export const PASSWORD_HINT =
     "At least 8 characters, with an uppercase letter, a lowercase letter and a number. Maximum 72 UTF-8 bytes.";
 
+// Match validator.js isLength on the server, including emoji/presentation sequences.
+export const getPasswordCharacterCount = (value = "") => value.length
+    - (value.match(/[^\uFE0F\uFE0E][\uFE0F\uFE0E]/g) || []).length
+    - (value.match(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g) || []).length;
+
 export const getPasswordError = (password = "") => {
     if (!password) return "Password is required.";
     if (new TextEncoder().encode(password).length > 72) {
         return "Password must not exceed 72 UTF-8 bytes. Accented letters and emoji may use more than one byte.";
     }
-    if (password.length < 8) return "Password must be at least 8 characters.";
+    if (getPasswordCharacterCount(password) < 8) return "Password must be at least 8 characters.";
     if (!/[A-Z]/.test(password)) {
         return "Password must contain at least one uppercase letter.";
     }
@@ -25,22 +30,12 @@ export const getPasswordError = (password = "") => {
     return "";
 };
 
-// Digits with optional spaces, dashes, parentheses or a leading "+",
-// holding 10-15 digits in total.
+// Philippine mobile numbers use +63 followed by 9 and nine more digits.
 export const getPhoneError = (phone = "") => {
-    const value = phone.trim();
-
-    if (!value) return "Phone number is required.";
-    if (!/^\+?[\d\s()-]+$/.test(value)) {
-        return "Phone number can only contain digits.";
+    if (!phone) return "Phone number is required.";
+    if (typeof phone !== "string" || phone.length !== 13 || !/^\+639[0-9]{9}$/.test(phone)) {
+        return "Enter a Philippine mobile number in +639XXXXXXXXX format (e.g. +639369875311).";
     }
-
-    const digits = value.replace(/\D/g, "").length;
-
-    if (digits < 10 || digits > 15) {
-        return "Phone number must have 10 to 15 digits.";
-    }
-
     return "";
 };
 
@@ -86,7 +81,8 @@ export const isAlreadyVerifiedError = (message = "") =>
  * send the user back there instead of leaving the error on the last step.
  */
 export const getRegistrationErrorField = (message = "") => {
-    if (/phone number is already used/i.test(message)) return "phoneNumber";
+    if (/alternative contact/i.test(message)) return "alternativeContact";
+    if (/phone number|Philippine mobile/i.test(message)) return "phoneNumber";
     if (/inspection (slot|date|appointment)/i.test(message)) {
         return "inspectionDate";
     }
@@ -99,3 +95,21 @@ export const getRegistrationErrorField = (message = "") => {
     if (/license.*expir|expir.*license/i.test(message)) return "licenseExpirationDate";
     return null;
 };
+
+// Do not resubmit unchanged legacy values when saving unrelated account fields.
+export const getPhoneUpdate = (phone, previousPhone) =>
+    phone === previousPhone ? {} : { phoneNumber: phone };
+
+export const getPhoneUpdateError = (phone, previousPhone) =>
+    phone === previousPhone ? "" : getPhoneError(phone);
+
+export const getAlternativeContactError = (phone = "") =>
+    phone === "" ? "" : getPhoneError(phone)
+        ? "Alternative contact must use +639XXXXXXXXX format (e.g. +639369875311), or be left blank."
+        : "";
+
+export const getAlternativeContactUpdate = (phone, previousPhone) =>
+    phone === previousPhone ? {} : { alternativeContact: phone };
+
+export const getAlternativeContactUpdateError = (phone, previousPhone) =>
+    phone === previousPhone ? "" : getAlternativeContactError(phone);

@@ -61,6 +61,7 @@ const Input = forwardRef(
                 ? "text"
                 : "password"
             : type;
+        const feedbackId = id || name ? `${id || name}-feedback` : undefined;
 
         return (
             <div className="space-y-2">
@@ -151,11 +152,15 @@ const Input = forwardRef(
                             ${className}
                         `}
                         {...props}
+                        aria-describedby={[props["aria-describedby"], error || helperText ? feedbackId : null].filter(Boolean).join(" ") || undefined}
                     />
 
                     {isPassword ? (
                         <button
                             type="button"
+                            aria-label={`${showPassword ? "Hide" : "Show"} ${typeof label === "string" ? label.toLowerCase() : "password"}`}
+                            aria-controls={id || name}
+                            aria-pressed={showPassword}
                             onClick={() =>
                                 setShowPassword(
                                     (previous) =>
@@ -168,7 +173,9 @@ const Input = forwardRef(
                                 right-0
                                 flex
                                 items-center
-                                pr-3
+                                min-w-11
+                                justify-center
+                                px-3
                                 text-gray-500
                                 transition-colors
                                 duration-200
@@ -204,12 +211,12 @@ const Input = forwardRef(
                 </div>
 
                 {error ? (
-                    <p className="text-sm text-red-600 dark:text-red-400">
+                    <p id={feedbackId} className="text-sm text-red-600 dark:text-red-400">
                         {error}
                     </p>
                 ) : (
                     helperText && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <p id={feedbackId} className="text-sm text-gray-500 dark:text-gray-400">
                             {helperText}
                         </p>
                     )

@@ -1,3 +1,4 @@
+import { withInspectionBookingLock } from "./inspectionBookingLock.js";
 import crypto from "crypto";
 
 import createError from "../utils/createError.js";
@@ -619,7 +620,7 @@ export const registerUser = async (
     });
 };
 
-export const registerOperator = async (
+const registerOperatorUnlocked = async (
     userData,
     { ip = "" } = {}
 ) => {
@@ -746,7 +747,7 @@ export const registerOperator = async (
     });
 };
 
-export const verifyEmail = async (
+const verifyEmailUnlocked = async (
     email,
     code
 ) => {
@@ -863,6 +864,7 @@ export const verifyEmail = async (
             );
         }
 
+        await assertInspectionSlotAvailable(pendingRegistration.inspectionSlot?.date, pendingRegistration.inspectionSlot?.time, { excludeRegistrationEmail: email });
         // Re-checked here: another partner may have registered the same
         // plate while this email was waiting to be verified.
         if (await isPlateNumberTaken(vehicleData.plateNumber)) {
@@ -1120,7 +1122,7 @@ export const verifyEmail = async (
     };
 };
 
-export const resendVerificationEmail = async (
+const resendVerificationEmailUnlocked = async (
     email
 ) => {
     const pendingRegistration =
@@ -1209,6 +1211,8 @@ export const resendVerificationEmail = async (
     // locked by wrong guesses doesn't count toward the limit, so someone
     // who knows the email can't use lockouts to exhaust it (they can only
     // make the registrant wait out the cooldown).
+    if (pendingRegistration.role === "operator") await assertInspectionSlotAvailable(pendingRegistration.inspectionSlot?.date, pendingRegistration.inspectionSlot?.time, { excludeRegistrationEmail: email });
+
     // Reserve this resend atomically. A competing request that read the same
     // snapshot must not replace the winner's code or send a second email.
     const reservedRegistration = await PendingRegistration.findOneAndUpdate(
@@ -1440,3 +1444,9 @@ export const loginUser = async ({
         },
     };
 };
+
+export const registerOperator = (...args) => withInspectionBookingLock(() => registerOperatorUnlocked(...args));
+
+export const verifyEmail = (...args) => withInspectionBookingLock(() => verifyEmailUnlocked(...args));
+
+export const resendVerificationEmail = (...args) => withInspectionBookingLock(() => resendVerificationEmailUnlocked(...args));

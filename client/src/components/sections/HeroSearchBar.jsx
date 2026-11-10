@@ -1,3 +1,5 @@
+import Modal from "../common/Modal";
+import useMediaQuery from "../../hooks/ui/useMediaQuery";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -57,7 +59,10 @@ const POPOVER_HEIGHT = { category: 340, dates: 330 };
 const NAVBAR_CLEARANCE = 96;
 
 /* Popover shell: opens above the bar when there's room, else below. */
-const Popover = ({ open, placement = "top", className = "", children, label }) => (
+const Popover = ({ open, placement = "top", className = "", children, label, onClose }) => {
+    const isPhone = useMediaQuery("(width < 40rem)");
+    if (isPhone) return <Modal open={open} onClose={onClose} title={label} size="sm">{children}</Modal>;
+    return (
     <AnimatePresence>
         {open && (
             <motion.div
@@ -77,7 +82,8 @@ const Popover = ({ open, placement = "top", className = "", children, label }) =
             </motion.div>
         )}
     </AnimatePresence>
-);
+    );
+};
 
 /*
  * One pill-shaped segment of the bar: icon + small label + value (or
@@ -98,7 +104,7 @@ const Field = ({
         type="button"
         onClick={onClick}
         aria-expanded={active}
-        className={`group flex min-h-[56px] w-full items-center gap-3 rounded-full py-2 pl-2 pr-4 text-left transition-colors ${
+        className={`hero-search-field group flex min-h-[56px] w-full items-center gap-3 rounded-full py-2 pl-2 pr-4 text-left transition-colors ${
             active
                 ? glass
                     ? "bg-white/15 ring-2 ring-yellow-400"
@@ -160,6 +166,7 @@ const HOLD_SPRING = { stiffness: 260, damping: 32, mass: 0.6 };
  */
 const HeroSearchBar = ({ categories = [], exitProgress }) => {
     const navigate = useNavigate();
+    const isPhone = useMediaQuery("(width < 40rem)");
     const rootRef = useRef(null);
 
     /* Glass over the hero video in every colour theme — the video is
@@ -204,7 +211,7 @@ const HeroSearchBar = ({ categories = [], exitProgress }) => {
 
     /* Close on outside click / Escape. */
     useEffect(() => {
-        if (!openPanel) return undefined;
+        if (!openPanel || isPhone) return undefined;
 
         const onPointerDown = (event) => {
             if (!rootRef.current?.contains(event.target)) {
@@ -222,7 +229,7 @@ const HeroSearchBar = ({ categories = [], exitProgress }) => {
             document.removeEventListener("pointerdown", onPointerDown);
             document.removeEventListener("keydown", onKeyDown);
         };
-    }, [openPanel]);
+    }, [openPanel, isPhone]);
 
     const categoryName =
         categories.find((item) => item._id === category)?.name || "";
@@ -297,7 +304,7 @@ const HeroSearchBar = ({ categories = [], exitProgress }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.35, ease: "easeOut" }}
-            className="relative z-20 mx-auto mt-6 w-full max-w-3xl lg:mt-7 [@media(max-height:820px)]:mt-5"
+            className="hero-search relative z-20 mx-auto mt-6 w-full max-w-3xl lg:mt-7 [@media(max-height:820px)]:mt-5"
         >
         <motion.form
             ref={rootRef}
@@ -307,15 +314,15 @@ const HeroSearchBar = ({ categories = [], exitProgress }) => {
         >
             <motion.div
                 style={{ opacity: exitOpacity }}
-                className={`rounded-[2rem] border p-1.5 shadow-2xl backdrop-blur-xl transition-colors duration-500 sm:rounded-full ${
+                className={`hero-search-surface rounded-[2rem] border p-1.5 shadow-2xl backdrop-blur-xl transition-colors duration-500 sm:rounded-full ${
                     glass
                         ? "border-white/20 bg-gray-950/25 shadow-black/30"
                         : "border-white/30 bg-white/95 shadow-black/30 dark:border-white/10 dark:bg-gray-950/90"
                 }`}
             >
-                <div className="grid grid-cols-1 gap-1 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-center">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-center sm:gap-1">
                     {/* Category */}
-                    <div className="relative">
+                    <div className="relative col-span-2 sm:col-span-1">
                         <Field
                             glass={glass}
                             icon={CarFront}
@@ -324,7 +331,7 @@ const HeroSearchBar = ({ categories = [], exitProgress }) => {
                             value={categoryName}
                             placeholder="All categories"
                             active={openPanel === "category"}
-                            aria-haspopup="listbox"
+                            aria-haspopup={isPhone ? "dialog" : "listbox"}
                             onClick={() =>
                                 openPanel === "category"
                                     ? setOpenPanel(null)
@@ -342,6 +349,7 @@ const HeroSearchBar = ({ categories = [], exitProgress }) => {
 
                         <Popover
                             open={openPanel === "category"}
+                            onClose={() => setOpenPanel(null)}
                             placement={placement}
                             label="Choose a category"
                             className="left-0 w-[min(18rem,calc(100vw-2rem))] rounded-3xl p-2"
@@ -429,10 +437,10 @@ const HeroSearchBar = ({ categories = [], exitProgress }) => {
                     <button
                         type="submit"
                         aria-label="Search available vehicles"
-                        className="flex min-h-[56px] items-center justify-center gap-2 rounded-full bg-yellow-400 px-6 text-sm font-bold text-gray-950 shadow-lg shadow-yellow-500/25 transition hover:bg-yellow-300 active:scale-[0.98]"
+                        className="hero-search-submit col-span-2 flex min-h-[48px] items-center justify-center sm:col-span-1 sm:min-h-[56px] gap-2 rounded-full bg-yellow-400 px-6 text-sm font-bold text-gray-950 shadow-lg shadow-yellow-500/25 transition hover:bg-yellow-300 active:scale-[0.98]"
                     >
                         <Search size={18} strokeWidth={2.5} />
-                        <span className="sm:hidden lg:inline">Search</span>
+                        <span className="sm:hidden">Find a Ride</span><span className="hidden lg:inline">Search</span>
                     </button>
                 </div>
             </motion.div>
@@ -441,7 +449,8 @@ const HeroSearchBar = ({ categories = [], exitProgress }) => {
                 compact. (No transform-based centring: framer owns transform.) */}
             <Popover
                 open={openPanel === "dates"}
-                placement="top"
+                onClose={() => setOpenPanel(null)}
+                placement={placement}
                 label="Choose pickup and return dates"
                 className="inset-x-0 mx-auto w-full max-w-[34rem] rounded-2xl p-3 sm:p-4"
             >

@@ -155,7 +155,8 @@ const CustomerNavbar = () => {
                                 ml-2
                                 whitespace-nowrap
                                 ${isPillNavbar ? "truncate" : ""}
-                                text-lg
+                                text-sm
+                                sm:text-lg
                                 font-extrabold
                                 tracking-tight
                                 text-gray-950

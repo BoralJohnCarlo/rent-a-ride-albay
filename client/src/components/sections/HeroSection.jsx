@@ -1,3 +1,5 @@
+import "../../styles/hero-mobile.css";
+import useMediaQuery from "../../hooks/ui/useMediaQuery";
 import {
     motion,
     useMotionValueEvent,
@@ -183,6 +185,7 @@ const HeroSection = () => {
     const { isAuthenticated } = useAuth();
 
     const reduceMotion = useReducedMotion();
+    const isPhone = useMediaQuery("(width < 40rem)");
     /* 0 → 1 as the hero scrolls up past the top of the viewport. Measured
        on the background layer, which always spans the whole hero. */
     const heroRef = useRef(null);
@@ -264,6 +267,7 @@ const HeroSection = () => {
         <Section
             spacing="NONE"
             className="
+                home-hero
                 relative
                 min-h-screen
                 overflow-x-clip
@@ -437,6 +441,7 @@ const HeroSection = () => {
 
 <PageContainer
     className="
+        home-hero-content
         relative
         z-20
         flex
@@ -452,7 +457,7 @@ const HeroSection = () => {
         [@media(max-height:820px)]:pt-20
     "
 >
-                <div className="w-full">
+                <div className="home-hero-inner w-full">
                 {/* Copy on the left, Explore Albay widget on the right (xl+,
                     where there's room beside the headline). */}
                 <div className="xl:flex xl:items-center xl:justify-between xl:gap-8">
@@ -465,7 +470,7 @@ const HeroSection = () => {
         lg:ml-[16%]
     "
 >
-                        <motion.div variants={itemVariants}>
+                        <motion.div variants={itemVariants} className="hidden sm:block">
                         <ExitLayer
                             {...exitOf("badge")}
                             className="
@@ -499,6 +504,7 @@ const HeroSection = () => {
                         <motion.h1
                             variants={itemVariants}
                             className="
+                                home-hero-title
                                 mt-3
                                 max-w-xl
                                 text-4xl
@@ -511,11 +517,15 @@ const HeroSection = () => {
                                 lg:text-[clamp(2.5rem,7.6vh,3.75rem)]
                             "
                         >
+                            <span className="block sm:hidden">
+                                Explore <span className="text-yellow-400">Albay.</span>
+                                <br />Your ride awaits.
+                            </span>
                             <SwapLayer
                                 as="span"
                                 swap={SWAPS.headline}
                                 hidden={copyHidden}
-                                className="block"
+                                className="hidden sm:block"
                             >
                                 Your Journey
                                 <br />
@@ -531,6 +541,7 @@ const HeroSection = () => {
                         <motion.p
                             variants={itemVariants}
                             className="
+                                home-hero-description
                                 mt-3
                                 max-w-lg
                                 text-[13px]
@@ -542,11 +553,12 @@ const HeroSection = () => {
                             "
                         >
                             {/* Follows the headline: starts as its swap ends. */}
+                            <span className="block sm:hidden">Reliable cars and motorcycles from local owners. Explore Albay at your own pace.</span>
                             <SwapLayer
                                 as="span"
                                 swap={SWAPS.copy}
                                 hidden={copyHidden}
-                                className="block"
+                                className="hidden sm:block"
                             >
                                 Rent reliable cars and
                                 motorcycles with transparent
@@ -562,8 +574,9 @@ const HeroSection = () => {
                             variants={itemVariants}
                             className="
                                 mt-5
-                                flex
+                                hidden
                                 flex-col
+                                sm:flex
                                 gap-2
                                 sm:flex-row
                                 [@media(max-height:820px)]:mt-4
@@ -675,9 +688,14 @@ const HeroSection = () => {
                     <HeroSearchBar
                         categories={activeCategories}
                         exitProgress={
-                            reduceMotion ? undefined : exit.search
+                            reduceMotion || isPhone ? undefined : exit.search
                         }
                     />
+
+                    <p className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] font-medium text-white/80 sm:hidden">
+                        <ShieldCheck size={14} className="text-yellow-400" aria-hidden="true" />
+                        <span>Verified owners</span><span aria-hidden="true">&middot;</span><span>Transparent pricing</span>
+                    </p>
 
                     <motion.div
                         initial={{
@@ -696,7 +714,8 @@ const HeroSection = () => {
                         className="
                             mx-auto
                             mt-5
-                            grid
+                            hidden
+                            sm:grid
                             w-full
                             max-w-xl
                             [@media(max-height:820px)]:mt-4

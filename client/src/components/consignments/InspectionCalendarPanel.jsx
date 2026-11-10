@@ -70,6 +70,9 @@ const InspectionCalendarPanel = () => {
     const [savingInspectionSetting, setSavingInspectionSetting] = useState(false);
     // { "YYYY-MM-DD|HH:mm": { booked, remaining } }
     const [slotBookings, setSlotBookings] = useState({});
+    const [loadError, setLoadError] = useState("");
+    const [loaded, setLoaded] = useState(false);
+    const [retry, setRetry] = useState(0);
 
     const [availableDates, setAvailableDates] = useState([]);
     const [calendarViewDate, setCalendarViewDate] = useState(new Date());
@@ -86,8 +89,10 @@ const InspectionCalendarPanel = () => {
     useEffect(() => {
         const loadInspectionSetting = async () => {
             try {
+                setLoadError("");
                 const { data } = await fetchInspectionSetting();
                 if (data?.data) {
+                    setLoaded(true);
                     setInspectionSetting({
                         inspectionSlots: data.data.inspectionSlots || [],
                         disabledDates: data.data.disabledDates || [],
@@ -102,7 +107,7 @@ const InspectionCalendarPanel = () => {
                     );
                 }
             } catch (error) {
-                console.error("Failed to load inspection setting:", error);
+                setLoadError(error.response?.data?.message || "Unable to load inspection settings. Please retry before editing.");
             }
         };
 
@@ -126,7 +131,7 @@ const InspectionCalendarPanel = () => {
 
         loadInspectionSetting();
         loadSlotBookings();
-    }, []);
+    }, [retry]);
 
     const getDaysInMonth = (date) =>
         new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -251,6 +256,7 @@ const InspectionCalendarPanel = () => {
      * on refresh with no feedback that it never actually persisted.
      */
     const handleToggleDateDisable = async (dateString) => {
+        if (!loaded || loadError) return;
         const wasDisabled =
             inspectionSetting.disabledDates.includes(dateString);
         const nextDisabledDates = wasDisabled
@@ -281,7 +287,7 @@ const InspectionCalendarPanel = () => {
                     : prev.disabledDates.filter((d) => d !== dateString),
             }));
             toast.error(
-                error?.message || "Failed to update date availability."
+                error?.response?.data?.message || error?.message || "Failed to update date availability."
             );
         } finally {
             setTogglingDate(null);
@@ -289,6 +295,7 @@ const InspectionCalendarPanel = () => {
     };
 
     const handleSaveInspectionSetting = async () => {
+        if (!loaded || loadError) return;
         setSavingInspectionSetting(true);
         try {
             await updateInspectionSetting({
@@ -358,6 +365,8 @@ const InspectionCalendarPanel = () => {
         selectedDate &&
             inspectionSetting.disabledDates.includes(selectedDate.date)
     );
+
+    if (loadError) return <div role="alert" className="space-y-3 rounded-xl border border-red-200 p-4 text-sm text-red-700 dark:text-red-300"><p>{loadError}</p><Button className="w-full sm:w-auto" onClick={() => setRetry(value => value + 1)}>Retry calendar</Button></div>;
 
     return (
         <motion.div
@@ -592,7 +601,7 @@ const InspectionCalendarPanel = () => {
                     className="w-full"
                     leftIcon={<Save size={16} />}
                     onClick={handleSaveInspectionSetting}
-                    disabled={savingInspectionSetting}
+                    disabled={savingInspectionSetting || !loaded}
                 >
                     {savingInspectionSetting
                         ? "Saving…"

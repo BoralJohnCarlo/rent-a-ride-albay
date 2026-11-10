@@ -50,7 +50,7 @@ const ProfileInformation = ({
 
                 <Input
                     label="Phone Number"
-                    placeholder="09XXXXXXXXX"
+                    type="tel" placeholder="+639369875311" maxLength={13}
                     error={errors.phoneNumber?.message}
                     {...register("phoneNumber")}
                 />

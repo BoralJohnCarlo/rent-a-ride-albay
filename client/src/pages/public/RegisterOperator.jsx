@@ -40,10 +40,10 @@ import {
 
 import { VEHICLE_BRANDS } from "../../utils/vehicleBrands";
 import {
-    PASSWORD_HINT,
     getNameError,
     getPasswordError,
     getPhoneError,
+    getAlternativeContactError,
     getRegistrationErrorField,
     isAlreadyVerifiedError,
     isPastDate,
@@ -58,6 +58,7 @@ import IdImageUploadRow, {
     SingleImageUpload,
 } from "../../components/shared/IdImageUploadRow";
 import Input from "../../components/common/Input";
+import RegistrationPasswordFields from "../../components/forms/RegistrationPasswordFields";
 import Select from "../../components/common/Select";
 import Switch from "../../components/common/Switch";
 import InspectionAppointmentCalendar from "../../components/consignments/InspectionAppointmentCalendar";
@@ -433,13 +434,15 @@ const RegisterOperator = () => {
     };
 
     const handlePhoneNumberChange = (e) => {
-        const value = e.target.value.replace(/\D/g, "");
+        const field = e.target.name;
+        const value = e.target.value;
+        if (!/^\+?[0-9]*$/.test(value) || value.length > 13) return;
         if (hasValidated) {
-            clearFieldErrors("phoneNumber");
+            clearFieldErrors(field);
         }
         setFormData((previous) => ({
             ...previous,
-            phoneNumber: value,
+            [field]: value,
         }));
     };
 
@@ -821,6 +824,11 @@ const RegisterOperator = () => {
                     if (phoneError) {
                         errors.phoneNumber = phoneError;
                     }
+                }
+
+                {
+                    const contactError = getAlternativeContactError(formData.alternativeContact);
+                    if (contactError) errors.alternativeContact = contactError;
                 }
 
                 // Address validation
@@ -1417,7 +1425,7 @@ const RegisterOperator = () => {
                 email: formData.email.trim(),
                 password: formData.password,
                 phoneNumber: formData.phoneNumber.trim(),
-                alternativeContact: formData.alternativeContact.trim(),
+                alternativeContact: formData.alternativeContact,
                 middleName: formData.middleName.trim(),
                 birthdate: formData.birthdate,
                 validIdType: formData.validIdType,
@@ -1508,9 +1516,9 @@ const RegisterOperator = () => {
             const errorField = getRegistrationErrorField(errorMessage);
 
             // A problem with the phone number is fixed on the first step.
-            if (errorField === "phoneNumber") {
+            if (["phoneNumber", "alternativeContact"].includes(errorField)) {
                 clearError();
-                setValidationErrors({ phoneNumber: errorMessage });
+                setValidationErrors({ [errorField]: errorMessage });
                 setCurrentStep(0);
 
                 return;
@@ -1814,9 +1822,9 @@ const RegisterOperator = () => {
 
                                                         <Input id="birthdate" name="birthdate" type="date" label="Birthdate" value={formData.birthdate} onChange={handleChange} max={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0]} error={getFieldError("birthdate")} required />
 
-                                                        <Input id="phoneNumber" name="phoneNumber" type="tel" label="Phone Number" placeholder="09XXXXXXXXX" value={formData.phoneNumber} onChange={handlePhoneNumberChange} autoComplete="tel" leftIcon={<Phone size={17} />} error={getFieldError("phoneNumber")} required />
+                                                        <Input id="phoneNumber" name="phoneNumber" type="tel" label="Phone Number" placeholder="+639369875311" maxLength={13} pattern="[+]639[0-9]{9}" helperText="Philippine mobile only: +63 followed by your 10-digit mobile number." value={formData.phoneNumber} onChange={handlePhoneNumberChange} autoComplete="tel" leftIcon={<Phone size={17} />} error={getFieldError("phoneNumber")} required />
 
-                                                        <Input id="alternativeContact" name="alternativeContact" label="Alternative Contact" placeholder="" value={formData.alternativeContact} onChange={handleChange} autoComplete="off" leftIcon={<Contact size={17} />} />
+                                                        <Input id="alternativeContact" name="alternativeContact" label="Alternative Contact" type="tel" maxLength={13} pattern="[+]639[0-9]{9}" helperText="Optional. Use +63 followed by your 10-digit mobile number." error={getFieldError("alternativeContact")} placeholder="+639369875311" value={formData.alternativeContact} onChange={handlePhoneNumberChange} autoComplete="off" leftIcon={<Contact size={17} />} />
                                                     </div>
 
                                                     <div className="mt-4">
@@ -2458,9 +2466,7 @@ const RegisterOperator = () => {
                                                 <div className="w-full space-y-1.5">
                                                     <Input id="email" name="email" type="email" label="Email" placeholder="Enter your email" value={formData.email} onChange={handleChange} autoComplete="email" leftIcon={<Mail size={17} />} error={getFieldError("email")} required />
 
-                                                    <Input id="password" name="password" type="password" label="Password" placeholder="Create a password" value={formData.password} onChange={handleChange} autoComplete="new-password" leftIcon={<Lock size={17} />} helperText={PASSWORD_HINT} error={getFieldError("password")} required />
-
-                                                    <Input id="confirmPassword" name="confirmPassword" type="password" label="Confirm Password" placeholder="Repeat your password" value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" leftIcon={<Lock size={17} />} error={getFieldError("confirmPassword")} required />
+                                                    <RegistrationPasswordFields password={formData.password} confirmPassword={formData.confirmPassword} onChange={handleChange} confirmationError={getFieldError("confirmPassword")} />
 
                                                     <div className="flex flex-col-reverse gap-2.5 pt-0.5 sm:flex-row sm:items-center sm:justify-between">
                                                         <Button type="button" variant="outline" onClick={handlePrevious} disabled={idUploading || vehicleImageUploading || loading || isVerifying || isResending} leftIcon={<ChevronLeft size={16} />} className="!border-gray-300 !px-3 !py-1.5 !text-xs !text-gray-700 hover:!bg-gray-50 dark:!border-gray-600 dark:!text-gray-300 dark:hover:!bg-gray-800">Back</Button>

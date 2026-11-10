@@ -1,0 +1,46 @@
+/* Keep the mobile hero viewport-sized while its content can grow on short screens. */
+@media (width < 40rem) {
+    .home-hero,
+    .home-hero .home-hero-content {
+        min-height: calc(100svh - var(--tab-bar-offset, 4rem));
+    }
+    .home-hero .home-hero-content {
+        padding-top: clamp(6rem, 14svh, 8rem);
+        padding-bottom: clamp(3.5rem, 8svh, 5rem);
+    }
+    .home-hero-inner { max-width: 28rem; margin-inline: auto; }
+    .home-hero .home-hero-title {
+        margin-top: 0;
+        font-size: clamp(2rem, 8.5vw, 2.75rem);
+        line-height: 1.12;
+        letter-spacing: -0.045em;
+    }
+    .home-hero .home-hero-description {
+        max-width: 23rem;
+        margin-top: 0.875rem;
+        font-size: 0.875rem;
+        line-height: 1.65;
+        color: rgb(255 255 255 / 0.85);
+    }
+    .home-hero video { object-position: 70% center; }
+    .hero-search { margin-top: 1.5rem; }
+    .hero-search-surface {
+        border-radius: 1.5rem;
+        border-color: rgb(255 255 255 / 0.2);
+        background: rgb(17 24 39 / 0.94);
+        padding: 0.75rem;
+        backdrop-filter: none;
+    }
+    .hero-search-field {
+        min-width: 0;
+        min-height: 4rem;
+        gap: 0.5rem;
+        border-radius: 0.875rem;
+        padding: 0.5rem;
+        background: rgb(255 255 255 / 0.045);
+    }
+    .hero-search-field > span:first-child { width: 2rem; height: 2rem; }
+    .hero-search-field > span:last-child > span:first-child { color: rgb(255 255 255 / 0.65); font-size: 9px; }
+    .hero-search-field > span:last-child > span:last-child { color: rgb(255 255 255 / 0.95); font-size: 0.75rem; }
+    .hero-search-submit { border-radius: 0.875rem; box-shadow: none; }
+}

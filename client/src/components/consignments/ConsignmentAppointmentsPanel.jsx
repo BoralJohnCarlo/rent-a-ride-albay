@@ -52,12 +52,10 @@ const partitionAppointments = (consignments, now) => {
         .map((consignment) => {
             const inspection = consignment.application.inspection;
 
-            const appointmentDate = inspection.scheduledAt
-                ? new Date(inspection.scheduledAt)
-                : new Date(
+            const appointmentDate = new Date(
                       `${inspection.scheduledDate}T${
                           inspection.scheduledTime || "00:00"
-                      }:00`
+                      }:00+08:00`
                   );
 
             return {
@@ -65,6 +63,7 @@ const partitionAppointments = (consignments, now) => {
                 inspection,
                 card: getConsignmentCardData(consignment),
                 appointmentDate,
+                active: consignment.registrationAppointment ? ["pending_review", "under_inspection"].includes(consignment.registrationVehicle.status) : ["Pending", "Under Review"].includes(consignment.application.status) && inspection.status === "Pending",
             };
         })
         .filter(
@@ -72,14 +71,14 @@ const partitionAppointments = (consignments, now) => {
         );
 
     const upcoming = withAppointments
-        .filter((entry) => entry.appointmentDate.getTime() >= now)
+        .filter((entry) => entry.active && entry.appointmentDate.getTime() >= now)
         .sort(
             (a, b) =>
                 a.appointmentDate.getTime() - b.appointmentDate.getTime()
         );
 
     const past = withAppointments
-        .filter((entry) => entry.appointmentDate.getTime() < now)
+        .filter((entry) => !entry.active || entry.appointmentDate.getTime() < now)
         .sort(
             (a, b) =>
                 b.appointmentDate.getTime() - a.appointmentDate.getTime()
@@ -95,6 +94,9 @@ const ConsignmentAppointmentsPanel = ({
     loading = false,
     showApplicant = false,
     onView,
+    onManage,
+    onRegistrationManage,
+    onRegistrationReview,
 }) => {
     const now = useNowTicker(1000);
     const { upcoming, past } = useMemo(
@@ -103,9 +105,10 @@ const ConsignmentAppointmentsPanel = ({
             ...registrationVehicles.map((vehicle) => ({
                 _id: `registration-${vehicle._id}`,
                 registrationAppointment: true,
+                registrationVehicle: vehicle,
                 consignmentCode: "Registration inspection",
                 snapshots: { vehicle },
-                application: { inspection: { ...vehicle.inspection, status: "Scheduled" } },
+                application: { inspection: { ...vehicle.inspection, status: ({ pending_review: "Scheduled", under_inspection: "Under Inspection", approved: "Completed", rejected: "Rejected" })[vehicle.status] || vehicle.status } },
             })),
         ], now),
         [consignments, registrationVehicles, now]
@@ -159,7 +162,7 @@ const ConsignmentAppointmentsPanel = ({
                     {showApplicant && (
                         <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                             <Building2 size={12} />
-                            {card.applicantName}
+                            {consignment.registrationAppointment ? [consignment.registrationVehicle.operator?.firstName, consignment.registrationVehicle.operator?.lastName].filter(Boolean).join(" ") : card.applicantName}
                         </p>
                     )}
                 </div>
@@ -169,7 +172,7 @@ const ConsignmentAppointmentsPanel = ({
                 <div className="text-sm text-gray-700 dark:text-gray-300">
                     <p className="flex items-center gap-1.5 font-medium">
                         <CalendarClock size={14} />
-                        {formatDate(appointmentDate)}
+                        {formatDate(appointmentDate, { timeZone: "Asia/Manila" })}
                     </p>
                     {inspection.scheduledTime && (
                         <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
@@ -194,6 +197,12 @@ const ConsignmentAppointmentsPanel = ({
                         View
                     </Button>
                 )}
+                {!consignment.registrationAppointment && onManage && ["Pending", "Under Review"].includes(consignment.application.status) && inspection.status === "Pending" && consignment.reschedule?.status !== "Pending" && <Button size="sm" variant="outline" className="min-h-11" onClick={() => onManage(consignment)}>Reschedule</Button>}
+                {consignment.registrationAppointment && <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                    {onRegistrationManage && ["pending_review", "under_inspection"].includes(consignment.registrationVehicle.status) && consignment.registrationVehicle.reschedule?.status !== "Pending" && <Button size="sm" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => onRegistrationManage(consignment.registrationVehicle)}>Reschedule</Button>}
+                    {["pending_review", "under_inspection"].includes(consignment.registrationVehicle.status) && consignment.registrationVehicle.reschedule?.status === "Pending" && (onRegistrationReview ? <Button size="sm" className="min-h-11 w-full sm:w-auto" onClick={() => onRegistrationReview(consignment.registrationVehicle)}>Review Reschedule</Button> : <span className="text-sm text-amber-700 dark:text-amber-300">Reschedule awaiting admin approval</span>)}
+                    {consignment.registrationVehicle.reschedule?.status === "Rejected" && consignment.registrationVehicle.reschedule?.reviewRemarks && <p className="w-full break-words text-sm text-red-600 dark:text-red-400">Reschedule declined: {consignment.registrationVehicle.reschedule.reviewRemarks}</p>}
+                </div>}
             </div>
         </motion.div>
     );
@@ -219,7 +228,7 @@ const ConsignmentAppointmentsPanel = ({
             {past.length > 0 && (
                 <div>
                     <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                        Past ({past.length})
+                        Past &amp; Closed ({past.length})
                     </h3>
 
                     <div className="space-y-3 opacity-75">

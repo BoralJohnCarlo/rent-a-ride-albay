@@ -34,7 +34,7 @@ import ConsignmentReview from "../../../components/consignments/ConsignmentRevie
 import VerifyValidIdDialog from "../../../components/admin/VerifyValidIdDialog";
 import OperatorCardGrid from "../../../components/consignments/OperatorCardGrid";
 import InspectionCalendarPanel from "../../../components/consignments/InspectionCalendarPanel";
-import ConsignmentAppointmentsPanel from "../../../components/consignments/ConsignmentAppointmentsPanel";
+import OperatorAppointmentsPanel from "../../../components/consignments/OperatorAppointmentsPanel";
 import PendingVehiclesPanel from "../../../components/consignments/PendingVehiclesPanel";
 
 import ApproveConsignmentDialog from "../../../components/consignments/ApproveConsignmentDialog";
@@ -968,7 +968,9 @@ const Consignments = () => {
                         )}
 
                         {section === "appointments" && (
-                            <ConsignmentAppointmentsPanel
+                            <OperatorAppointmentsPanel
+                                admin
+                                onRefresh={refreshList}
                                 consignments={consignments}
                                 loading={loading}
                                 showApplicant

@@ -18,6 +18,9 @@ import {
     getSettingsWithDefaults,
 } from "./payoutService.js";
 
+import { inspectionInstant } from "../utils/inspectionTime.js";
+import PendingVehicle from "../models/PendingVehicle.js";
+import { withInspectionBookingLock } from "./inspectionBookingLock.js";
 import { assertInspectionSlotAvailable } from "./inspectionSlotService.js";
 import { resolveAcceptedLegalVersion } from "./legalDocumentService.js";
 import {
@@ -670,6 +673,11 @@ const submitConsignment = async (
                 : previous.termsVersion ?? null,
     };
 
+    // Revision requests release their slot; resubmission must not resurrect it.
+    consignment.application.inspection.scheduledDate = "";
+    consignment.application.inspection.scheduledTime = "";
+    consignment.application.inspection.scheduledAt = null;
+    if (consignment.reschedule?.status === "Pending") consignment.reschedule.status = "Rejected";
     consignment.application.status =
         CONSIGNMENT_STATUS.PENDING;
 
@@ -707,7 +715,7 @@ const submitConsignment = async (
     return submitted;
 };
 
-const reviewConsignment = async (
+const reviewConsignmentUnlocked = async (
     consignmentId,
     reviewData,
     currentUserId
@@ -842,7 +850,7 @@ const reviewConsignment = async (
     return reviewed;
 };
 
-const inspectConsignment = async (
+const inspectConsignmentUnlocked = async (
     consignmentId,
     inspectionData,
     currentUserId
@@ -942,7 +950,7 @@ const inspectConsignment = async (
     return inspected;
 };
 
-const approveConsignment = async (
+const approveConsignmentUnlocked = async (
     consignmentId,
     approvalData,
     currentUserId
@@ -1138,19 +1146,19 @@ consignment.snapshots.vehicle.pricing = {
     return approved;
 };
 
-const withdrawConsignment = async (
+const withdrawConsignmentUnlocked = async (
     consignmentId,
     remarks,
     currentUserId
 ) => {
-    await ensureUserExists(
-        currentUserId
-    );
+    const user = await ensureUserExists(currentUserId);
 
     const consignment =
         await findConsignmentById(
             consignmentId
         );
+
+    assertConsignmentWriteAccess(consignment, user);
 
     validateWorkflowTransition(
         consignment.application.status,
@@ -1207,7 +1215,7 @@ const withdrawConsignment = async (
     return withdrawn;
 };
 
-const archiveConsignment = async (
+const archiveConsignmentUnlocked = async (
     consignmentId,
     remarks,
     currentUserId
@@ -1281,7 +1289,7 @@ if (user.role !== "admin") {
     );
 };
 
-const restoreConsignment = async (
+const restoreConsignmentUnlocked = async (
     consignmentId,
     currentUserId
 ) => {
@@ -1360,8 +1368,11 @@ export const bookInspectionAppointment = async (
     { date, time },
     currentUserId
 ) => {
-    await ensureUserExists(currentUserId);
+    const user = await ensureUserExists(currentUserId);
     const consignment = await findConsignmentById(consignmentId);
+    assertConsignmentWriteAccess(consignment, user);
+    if (consignment.archive?.isArchived || consignment.application.inspection.status !== INSPECTION_STATUS.PENDING) throw createError("This inspection can no longer be scheduled.", 400);
+    if (user.role === "operator" && consignment.application.inspection.scheduledDate) throw createError("Please submit a reschedule request for this appointment.", 400);
 
     if (
         ![
@@ -1375,78 +1386,87 @@ export const bookInspectionAppointment = async (
         );
     }
 
-    await assertInspectionSlotAvailable(date, time, {
-        excludeConsignmentId: consignment._id,
-    });
+    return withInspectionBookingLock(async () => {
+        const current = await findConsignmentById(consignmentId);
+        if (current.updatedAt?.getTime() !== consignment.updatedAt?.getTime()) throw createError("This application changed. Please refresh and try again.", 409);
+        await assertInspectionSlotAvailable(date, time, {
+            excludeConsignmentId: consignment._id,
+        });
 
-    const isReschedule = Boolean(
-        consignment.application.inspection.scheduledDate
-    );
-
-    consignment.application.inspection = {
-        ...consignment.application.inspection.toObject(),
-        scheduledDate: date,
-        scheduledTime: time,
-        scheduledAt: new Date(),
-    };
-
-    appendTimelineEvent(consignment, {
-        event: isReschedule
-            ? "Inspection Rescheduled"
-            : "Inspection Scheduled",
-        title: isReschedule
-            ? "Inspection Rescheduled"
-            : "Inspection Scheduled",
-        description: `Inspection appointment set for ${date} at ${time}.`,
-        performedBy: currentUserId,
-    });
-
-    updateAudit(consignment, currentUserId);
-    const saved = await saveConsignment(consignment);
-
-    await notifyAdminsOfConsignmentEvent(consignment, {
-        type: "Consignment Inspection Scheduled",
-        title: isReschedule
-            ? "Inspection Rescheduled"
-            : "Inspection Scheduled",
-        message: `The inspection for consignment ${consignment.consignmentCode} (${consignment.snapshots?.vehicle?.brand} ${consignment.snapshots?.vehicle?.model}) is set for ${date} at ${time}.`,
-        variant: "consignment",
-    });
-
-    /*
-     * The operator only heard back from admins before (via the
-     * notification above) - never a confirmation of their own booking.
-     * This route also allows an admin to book on the operator's behalf,
-     * so notify whoever actually submitted the application rather than
-     * assuming currentUserId is the operator.
-     */
-    const applicantId = consignment.application?.submitted?.submittedBy;
-
-    if (applicantId) {
-        try {
-            await notifyUser(applicantId, {
-                type: "Consignment Inspection Scheduled",
-                title: isReschedule
-                    ? "Inspection Rescheduled"
-                    : "Inspection Appointment Confirmed",
-                message: `Your inspection appointment for ${consignment.snapshots?.vehicle?.brand} ${consignment.snapshots?.vehicle?.model} (${consignment.consignmentCode}) is set for ${date} at ${time}. This appointment covers discussing partnership terms and commission rates, plus inspecting and setting up your vehicle.`,
-                variant: "consignment",
-                category: "Consignment",
-                metadata: {
-                    reference: consignment.consignmentCode,
-                    relatedId: consignment._id,
-                    relatedModel: "Consignment",
-                },
-            });
-        } catch (notificationError) {
-            console.error(
-                "Failed to notify applicant of inspection appointment:",
-                notificationError
-            );
+        if (consignment.reschedule?.status === "Pending") {
+            consignment.reschedule.status = "Rejected";
+            consignment.reschedule.reviewRemarks = "Administrator moved the appointment directly.";
+            consignment.reschedule.reviewedAt = new Date();
         }
-    }
+        const isReschedule = Boolean(
+            consignment.application.inspection.scheduledDate
+        );
 
-    return saved;
+        consignment.application.inspection = {
+            ...consignment.application.inspection.toObject(),
+            scheduledDate: date,
+            scheduledTime: time,
+            scheduledAt: inspectionInstant(date, time),
+        };
+
+        appendTimelineEvent(consignment, {
+            event: isReschedule
+                ? "Inspection Rescheduled"
+                : "Inspection Scheduled",
+            title: isReschedule
+                ? "Inspection Rescheduled"
+                : "Inspection Scheduled",
+            description: `Inspection appointment set for ${date} at ${time}.`,
+            performedBy: currentUserId,
+        });
+
+        updateAudit(consignment, currentUserId);
+        const saved = await saveConsignment(consignment);
+
+        await notifyAdminsOfConsignmentEvent(consignment, {
+            type: "Consignment Inspection Scheduled",
+            title: isReschedule
+                ? "Inspection Rescheduled"
+                : "Inspection Scheduled",
+            message: `The inspection for consignment ${consignment.consignmentCode} (${consignment.snapshots?.vehicle?.brand} ${consignment.snapshots?.vehicle?.model}) is set for ${date} at ${time}.`,
+            variant: "consignment",
+        });
+
+        /*
+         * The operator only heard back from admins before (via the
+         * notification above) - never a confirmation of their own booking.
+         * This route also allows an admin to book on the operator's behalf,
+         * so notify whoever actually submitted the application rather than
+         * assuming currentUserId is the operator.
+         */
+        const applicantId = consignment.application?.submitted?.submittedBy;
+
+        if (applicantId) {
+            try {
+                await notifyUser(applicantId, {
+                    type: "Consignment Inspection Scheduled",
+                    title: isReschedule
+                        ? "Inspection Rescheduled"
+                        : "Inspection Appointment Confirmed",
+                    message: `Your inspection appointment for ${consignment.snapshots?.vehicle?.brand} ${consignment.snapshots?.vehicle?.model} (${consignment.consignmentCode}) is set for ${date} at ${time}. This appointment covers discussing partnership terms and commission rates, plus inspecting and setting up your vehicle.`,
+                    variant: "consignment",
+                    category: "Consignment",
+                    metadata: {
+                        reference: consignment.consignmentCode,
+                        relatedId: consignment._id,
+                        relatedModel: "Consignment",
+                    },
+                });
+            } catch (notificationError) {
+                console.error(
+                    "Failed to notify applicant of inspection appointment:",
+                    notificationError
+                );
+            }
+        }
+
+        return saved;
+    });
 };
 
 /*
@@ -1480,13 +1500,7 @@ export const sendInspectionAppointmentReminders = async () => {
         try {
             const inspection = consignment.application.inspection;
 
-            const appointmentAt = inspection.scheduledAt
-                ? new Date(inspection.scheduledAt)
-                : new Date(
-                      `${inspection.scheduledDate}T${
-                          inspection.scheduledTime || "00:00"
-                      }:00`
-                  );
+            const appointmentAt = inspectionInstant(inspection.scheduledDate, inspection.scheduledTime);
 
             if (Number.isNaN(appointmentAt.getTime())) {
                 continue;
@@ -1528,7 +1542,7 @@ export const sendInspectionAppointmentReminders = async () => {
 
             await notifyUser(applicantId, {
                 type: "Inspection Appointment Reminder",
-                title: "Inspection Appointment Tomorrow",
+                title: "Inspection Appointment Reminder",
                 message: `Reminder: your inspection appointment for ${vehicleLabel} (${consignment.consignmentCode}) is on ${inspection.scheduledDate} at ${inspection.scheduledTime}. We'll discuss partnership terms and commission rates, and inspect and set up your vehicle then.`,
                 variant: "consignment",
                 category: "Consignment",
@@ -1545,15 +1559,33 @@ export const sendInspectionAppointmentReminders = async () => {
             );
         }
     }
+    const vehicles = await PendingVehicle.find({ status: { $in: ["pending_review", "under_inspection"] }, "inspection.scheduledDate": { $nin: [null, ""] } });
+    for (const vehicle of vehicles) {
+        try {
+            const at = inspectionInstant(vehicle.inspection?.scheduledDate, vehicle.inspection?.scheduledTime);
+            if (!(at >= now && at <= reminderCutoff) || !vehicle.operator) continue;
+            if (await hasRecentNotification({ recipient: vehicle.operator, type: "Inspection Appointment Reminder", relatedId: vehicle._id, since: startOfDay })) continue;
+            await notifyUser(vehicle.operator, {
+                type: "Inspection Appointment Reminder", title: "Inspection Appointment Reminder",
+                message: "Your registration inspection for " + vehicle.brand + " " + vehicle.model + " (" + vehicle.plateNumber + ") is on " + vehicle.inspection.scheduledDate + " at " + vehicle.inspection.scheduledTime + ".",
+                variant: "consignment", category: "Consignment",
+                metadata: { reference: vehicle.plateNumber, relatedId: vehicle._id, relatedModel: "PendingVehicle" },
+            });
+        } catch (error) { console.error("Registration inspection reminder failed:", error.message); }
+    }
+
 };
 
-export const requestReschedule = async (
+const requestRescheduleUnlocked = async (
     consignmentId,
     rescheduleData,
     requestedById
 ) => {
-    await ensureUserExists(requestedById);
+    const user = await ensureUserExists(requestedById);
     const consignment = await findConsignmentById(consignmentId);
+    assertConsignmentWriteAccess(consignment, user);
+    if (consignment.archive?.isArchived || !consignment.application.inspection.scheduledDate || consignment.application.inspection.status !== INSPECTION_STATUS.PENDING) throw createError("Only an active scheduled inspection can be rescheduled.", 400);
+    await assertInspectionSlotAvailable(rescheduleData.proposedDate, rescheduleData.proposedTime, { excludeConsignmentId: consignment._id });
 
     if (
         ![
@@ -1633,52 +1665,59 @@ export const approveReschedule = async (
         );
     }
 
-    consignment.reschedule.status = "Approved";
-    consignment.reschedule.reviewedBy = approvedById;
-    consignment.reschedule.reviewedAt = new Date();
-    consignment.reschedule.reviewRemarks = approveData.remarks || "";
+    if (consignment.archive?.isArchived || ![CONSIGNMENT_STATUS.PENDING, CONSIGNMENT_STATUS.UNDER_REVIEW].includes(consignment.application.status) || consignment.application.inspection.status !== INSPECTION_STATUS.PENDING) throw createError("This inspection can no longer be rescheduled.", 400);
+    return withInspectionBookingLock(async () => {
+        const current = await findConsignmentById(consignmentId);
+        if (current.updatedAt?.getTime() !== consignment.updatedAt?.getTime()) throw createError("This application changed. Please refresh and try again.", 409);
+        const proposedDate = new Date(consignment.reschedule.proposedDate).toISOString().slice(0, 10);
+        await assertInspectionSlotAvailable(proposedDate, consignment.reschedule.proposedTime, { excludeConsignmentId: consignment._id });
+        consignment.reschedule.status = "Approved";
+        consignment.reschedule.reviewedBy = approvedById;
+        consignment.reschedule.reviewedAt = new Date();
+        consignment.reschedule.reviewRemarks = approveData.remarks || "";
 
-    // Apply the operator's proposed slot as the actual inspection appointment.
-    const proposed = consignment.reschedule.proposedDate;
-    const proposedDateStr = proposed
-        ? new Date(proposed).toISOString().slice(0, 10)
-        : "";
+        // Apply the operator's proposed slot as the actual inspection appointment.
+        const proposed = consignment.reschedule.proposedDate;
+        const proposedDateStr = proposed
+            ? new Date(proposed).toISOString().slice(0, 10)
+            : "";
 
-    if (proposedDateStr) {
-        consignment.application.inspection = {
-            ...consignment.application.inspection.toObject(),
-            scheduledDate: proposedDateStr,
-            scheduledTime: consignment.reschedule.proposedTime || "",
-            scheduledAt: new Date(),
-        };
-    }
-
-    await appendTimelineEvent(
-        consignment,
-        {
-            event: "Reschedule Approved",
-            title: "Reschedule Approved",
-            description: `Admin approved the reschedule to ${proposedDateStr} ${consignment.reschedule.proposedTime || ""}. Remarks: ${approveData.remarks || ""}`,
-            performedBy: approvedById,
+        if (proposedDateStr) {
+            consignment.application.inspection = {
+                ...consignment.application.inspection.toObject(),
+                scheduledDate: proposedDateStr,
+                scheduledTime: consignment.reschedule.proposedTime || "",
+                scheduledAt: inspectionInstant(proposedDateStr, consignment.reschedule.proposedTime),
+            };
         }
-    );
 
-    await updateAudit(consignment, approvedById);
-    const rescheduleApproved = await saveConsignment(consignment);
+        await appendTimelineEvent(
+            consignment,
+            {
+                event: "Reschedule Approved",
+                title: "Reschedule Approved",
+                description: `Admin approved the reschedule to ${proposedDateStr} ${consignment.reschedule.proposedTime || ""}. Remarks: ${approveData.remarks || ""}`,
+                performedBy: approvedById,
+            }
+        );
 
-    await notifyOperatorOfConsignmentEvent(consignment, {
-        type: "Consignment Reschedule Approved",
-        title: "Inspection Reschedule Approved",
-        message: `Your request to reschedule the inspection for consignment ${consignment.consignmentCode} was approved.${
-            approveData.remarks ? ` Remarks: ${String(approveData.remarks).slice(0, 300)}` : ""
-        }`,
-        variant: "success",
+        await updateAudit(consignment, approvedById);
+        const rescheduleApproved = await saveConsignment(consignment);
+
+        await notifyOperatorOfConsignmentEvent(consignment, {
+            type: "Consignment Reschedule Approved",
+            title: "Inspection Reschedule Approved",
+            message: `Your request to reschedule the inspection for consignment ${consignment.consignmentCode} was approved.${
+                approveData.remarks ? ` Remarks: ${String(approveData.remarks).slice(0, 300)}` : ""
+            }`,
+            variant: "success",
+        });
+
+        return rescheduleApproved;
     });
-
-    return rescheduleApproved;
 };
 
-export const rejectReschedule = async (
+const rejectRescheduleUnlocked = async (
     consignmentId,
     rejectData,
     rejectedById
@@ -1748,3 +1787,19 @@ export {
     archiveConsignment,
     restoreConsignment,
 };
+
+const reviewConsignment = (...args) => withInspectionBookingLock(() => reviewConsignmentUnlocked(...args));
+
+const inspectConsignment = (...args) => withInspectionBookingLock(() => inspectConsignmentUnlocked(...args));
+
+const approveConsignment = (...args) => withInspectionBookingLock(() => approveConsignmentUnlocked(...args));
+
+const withdrawConsignment = (...args) => withInspectionBookingLock(() => withdrawConsignmentUnlocked(...args));
+
+const archiveConsignment = (...args) => withInspectionBookingLock(() => archiveConsignmentUnlocked(...args));
+
+const restoreConsignment = (...args) => withInspectionBookingLock(() => restoreConsignmentUnlocked(...args));
+
+export const requestReschedule = (...args) => withInspectionBookingLock(() => requestRescheduleUnlocked(...args));
+
+export const rejectReschedule = (...args) => withInspectionBookingLock(() => rejectRescheduleUnlocked(...args));

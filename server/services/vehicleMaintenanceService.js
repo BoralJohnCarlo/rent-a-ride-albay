@@ -1,4 +1,5 @@
 import createError from "../utils/createError.js";
+import { withBookingCreationTransaction } from "./bookingCreationTransaction.js";
 
 import Booking from "../models/Booking.js";
 import Vehicle from "../models/Vehicle.js";
@@ -419,81 +420,88 @@ export const applyVehicleMaintenance = async (
     },
     actorId = null
 ) => {
-    const vehicle = await Vehicle.findById(vehicleId);
+    // Share the vehicle guard with booking creation and replacement choices.
+    const { vehicle, window, previousStatus } = await withBookingCreationTransaction(
+        [`vehicle:${vehicleId}`],
+        async (session) => {
+            const vehicle = await Vehicle.findById(vehicleId).session(session);
 
-    if (!vehicle) {
-        throw createError("Vehicle not found.", 404);
-    }
+            if (!vehicle) {
+                throw createError("Vehicle not found.", 404);
+            }
 
-    if (vehicle.status === VEHICLE_STATUS.ARCHIVED) {
-        throw createError(
-            "Archived vehicles can't be put under maintenance.",
-            400
-        );
-    }
+            if (vehicle.status === VEHICLE_STATUS.ARCHIVED) {
+                throw createError(
+                    "Archived vehicles can't be put under maintenance.",
+                    400
+                );
+            }
 
-    if (
-        setStatus &&
-        !rentalId &&
-        (await isOutOnRental("vehicle", vehicle._id))
-    ) {
-        throw createError(
-            "This vehicle is out on a rental right now. Set its maintenance when it comes back, from the rental's return outcome.",
-            409
-        );
-    }
+            if (
+                setStatus &&
+                !rentalId &&
+                (await isOutOnRental("vehicle", vehicle._id, { session }))
+            ) {
+                throw createError(
+                    "This vehicle is out on a rental right now. Set its maintenance when it comes back, from the rental's return outcome.",
+                    409
+                );
+            }
 
-    const startedAt = resolveStartAt(from);
-    const count =
-        mode === VEHICLE_MAINTENANCE_MODE.EXTENDED ? Number(days) : null;
+            const startedAt = resolveStartAt(from);
+            const count =
+                mode === VEHICLE_MAINTENANCE_MODE.EXTENDED ? Number(days) : null;
 
-    const until = computeMaintenanceUntil(mode, startedAt, {
-        days: count,
-        bufferMs: await getTurnaroundBufferMs(),
-    });
+            const until = computeMaintenanceUntil(mode, startedAt, {
+                days: count,
+                bufferMs: await getTurnaroundBufferMs(),
+            });
 
-    const previousStatus = vehicle.status;
+            const previousStatus = vehicle.status;
 
-    const maintenance = {
-        mode,
-        startedAt,
-        until,
-        days: count,
-        reason: String(reason || "").slice(0, 500),
-        setBy: actorId,
-        setAt: new Date(),
-        rental: rentalId,
-    };
+            const maintenance = {
+                mode,
+                startedAt,
+                until,
+                days: count,
+                reason: String(reason || "").slice(0, 500),
+                setBy: actorId,
+                setAt: new Date(),
+                rental: rentalId,
+            };
 
-    const window = getMaintenanceWindow({ ...vehicle.toObject(), maintenance });
+            const window = getMaintenanceWindow({ ...vehicle.toObject(), maintenance });
 
-    const changes = {};
+            const changes = {};
 
-    if (!window) {
-        // Already over (e.g. a turnaround counted from a return long ago).
-        changes.maintenance = { ...EMPTY_MAINTENANCE };
+            if (!window) {
+                // Already over (e.g. a turnaround counted from a return long ago).
+                changes.maintenance = { ...EMPTY_MAINTENANCE };
 
-        if (vehicle.status === VEHICLE_STATUS.MAINTENANCE) {
-            changes.status = await resolveInServiceStatus(vehicle);
+                if (vehicle.status === VEHICLE_STATUS.MAINTENANCE) {
+                    changes.status = await resolveInServiceStatus(vehicle);
+                }
+            } else {
+                changes.maintenance = maintenance;
+
+                if (
+                    setStatus &&
+                    ![
+                        VEHICLE_STATUS.RENTED,
+                        VEHICLE_STATUS.PICKUP_IN_PROGRESS,
+                    ].includes(vehicle.status)
+                ) {
+                    changes.status = VEHICLE_STATUS.MAINTENANCE;
+                }
+            }
+
+            // A targeted update: the rest of the listing isn't re-validated.
+            await Vehicle.updateOne({ _id: vehicle._id }, { $set: changes }, { session });
+
+            vehicle.set(changes);
+            return { vehicle, window, previousStatus };
         }
-    } else {
-        changes.maintenance = maintenance;
-
-        if (
-            setStatus &&
-            ![
-                VEHICLE_STATUS.RENTED,
-                VEHICLE_STATUS.PICKUP_IN_PROGRESS,
-            ].includes(vehicle.status)
-        ) {
-            changes.status = VEHICLE_STATUS.MAINTENANCE;
-        }
-    }
-
-    // A targeted update: the rest of the listing isn't re-validated.
-    await Vehicle.updateOne({ _id: vehicle._id }, { $set: changes });
-
-    vehicle.set(changes);
+    );
 
     const conflicts = await flagMaintenanceConflicts(vehicle, actorId);
 

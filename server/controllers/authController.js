@@ -231,14 +231,7 @@ export const login = async (req, res) => {
     }
 };
 
-export const logout = (req, res) => {
-    clearAuthCookie(res);
-
-    return successResponse(
-        res,
-        "Logout successful."
-    );
-};
+export { logout } from "./logoutController.js";
 
 /*
  * Forgot password. Validation errors answer with the first field's message,

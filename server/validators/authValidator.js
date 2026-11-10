@@ -1,3 +1,4 @@
+import { isPhilippineMobile, PH_MOBILE_MESSAGE, ALTERNATIVE_CONTACT_MESSAGE } from "../utils/philippineMobile.js";
 import { body } from "express-validator";
 import { isPasswordWithinByteLimit, PASSWORD_BYTE_LIMIT_MESSAGE } from "../utils/passwordPolicy.js";
 
@@ -42,26 +43,14 @@ const passwordRule = () =>
             "Password must contain at least one number"
         );
 
-// Digits with optional spaces, dashes, parentheses or a leading "+",
-// holding 10-15 digits in total.
+// Require canonical Philippine mobile numbers before storing registration data.
 const phoneRule = () =>
     body("phoneNumber")
-        .trim()
         .notEmpty()
         .withMessage("Phone number is required")
-        .matches(/^\+?[\d\s()-]+$/)
-        .withMessage("Phone number can only contain digits.")
-        .custom((value) => {
-            const digits = value.replace(/\D/g, "").length;
-
-            if (digits < 10 || digits > 15) {
-                throw new Error(
-                    "Phone number must have 10 to 15 digits."
-                );
-            }
-
-            return true;
-        });
+        .bail()
+        .custom(isPhilippineMobile)
+        .withMessage(PH_MOBILE_MESSAGE);
 
 /*
  * Letters (any language, e.g. "Ñ", "é"), spaces, periods, apostrophes and
@@ -264,12 +253,9 @@ export const registerValidator = [
     phoneRule(),
 
     body("alternativeContact")
-        .optional({ nullable: true })
-        .isString()
-        .withMessage(
-            "Alternative contact must be a string."
-        )
-        .trim(),
+        .optional()
+        .custom((value) => value === "" || isPhilippineMobile(value))
+        .withMessage(ALTERNATIVE_CONTACT_MESSAGE),
 
     nameRule("middleName", "Middle name", { required: false }),
 
@@ -522,12 +508,9 @@ export const registerOperatorValidator = [
     phoneRule(),
 
     body("alternativeContact")
-        .optional({ nullable: true })
-        .isString()
-        .withMessage(
-            "Alternative contact must be a string."
-        )
-        .trim(),
+        .optional()
+        .custom((value) => value === "" || isPhilippineMobile(value))
+        .withMessage(ALTERNATIVE_CONTACT_MESSAGE),
 
     nameRule("middleName", "Middle name", { required: false }),
 

@@ -141,7 +141,9 @@ const RescheduleReviewDialog = ({
                 </div>
 
                 <Textarea
+                    id="inspection-review-remarks"
                     label="Admin remarks"
+                    className="text-base"
                     value={remarks}
                     onChange={(event) =>
                         setRemarks(event.target.value)

@@ -24,6 +24,7 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import Pagination from "../../components/common/Pagination";
 
 import NotificationItem from "../../components/notification/NotificationItem";
+import BrowserNotificationSettings from "../../components/settings/BrowserNotificationSettings";
 import {
     CATEGORY_META,
     ROLE_CATEGORIES,
@@ -338,6 +339,10 @@ const NotificationPage = ({ role }) => {
 
     return (
         <div className="mx-auto w-full max-w-4xl">
+            <details className="mb-6 rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
+                <summary className="cursor-pointer font-semibold">Browser notification settings</summary>
+                <div className="mt-4"><BrowserNotificationSettings key={role} /></div>
+            </details>
             {/* Header */}
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex items-start gap-4">

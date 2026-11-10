@@ -1,5 +1,6 @@
 # Dependencies & Build Files
 node_modules/
+.npm-cache/
 .next/
 dist/
 build/

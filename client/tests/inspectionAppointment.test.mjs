@@ -3,6 +3,24 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const source = readFileSync(new URL('../src/components/consignments/InspectionAppointmentCalendar.jsx', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
+const listSource = readFileSync(new URL('../src/components/consignments/ConsignmentAppointmentsPanel.jsx', import.meta.url), 'utf8');
+const partition = new Function('getConsignmentCardData', `${listSource.slice(listSource.indexOf('const partitionAppointments ='), listSource.indexOf('// Shared appointment list'))}; return partitionAppointments;`)(() => ({}));
+
+test('future appointments use their Albay date/time even when legacy scheduledAt is the booking timestamp', () => {
+    const record = { application: { status: 'Pending', inspection: { status: 'Pending', scheduledDate: '2099-12-10', scheduledTime: '09:00', scheduledAt: '2020-01-01T00:00:00Z' } } };
+    const result = partition([record], Date.parse('2099-12-10T00:00:00Z'));
+    assert.equal(result.upcoming.length, 1);
+    assert.equal(result.upcoming[0].appointmentDate.toISOString(), '2099-12-10T01:00:00.000Z');
+    record.application.status = 'Withdrawn';
+    assert.equal(partition([record], Date.parse('2099-12-10T00:00:00Z')).past.length, 1);
+});
+
+test('closed registration inspections are history even when their booked date is in the future', () => {
+    const record = { registrationAppointment: true, registrationVehicle: { status: 'rejected' }, application: { inspection: { scheduledDate: '2099-12-10', scheduledTime: '09:00' } } };
+    assert.equal(partition([record], Date.now()).past.length, 1);
+    record.registrationVehicle.status = 'under_inspection';
+    assert.equal(partition([record], Date.now()).upcoming.length, 1);
+});
 const start = source.indexOf('    const handleSelectDate =');
 const handlers = source.slice(start, source.indexOf('    const timeSlotsForSelectedDate =', start));
 

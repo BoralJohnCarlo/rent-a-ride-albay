@@ -15,6 +15,7 @@ import { useSearchParams } from "react-router-dom";
 
 import ChangePasswordForm from "../forms/ChangePasswordForm";
 import NotificationSoundSettings from "./NotificationSoundSettings";
+import BrowserNotificationSettings from "./BrowserNotificationSettings";
 
 import useAuth from "../../hooks/auth/useAuth";
 import { DEFAULT_SOUND_PREFERENCES } from "../../utils/notificationSound";
@@ -27,6 +28,14 @@ import { formatRelative } from "../../utils/relativeTime";
  * a section can be linked to directly.
  */
 const SECTIONS = [
+    {
+        key: "browser-notifications",
+        title: "Browser Notifications",
+        description: "Enable important alerts on this browser for your account.",
+        icon: BellRing,
+        component: BrowserNotificationSettings,
+        status: () => ({ label: "Manage on this browser", muted: true }),
+    },
     {
         key: "sounds",
         title: "Notification Sounds",

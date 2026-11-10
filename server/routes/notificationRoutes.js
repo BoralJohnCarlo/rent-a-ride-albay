@@ -1,4 +1,5 @@
 import express from "express";
+import pushRoutes from "./pushRoutes.js";
 
 import {
     getNotifications,
@@ -13,6 +14,7 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+router.use("/push", pushRoutes);
 router.use(protect);
 
 router.get("/", getNotifications);

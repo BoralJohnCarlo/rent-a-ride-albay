@@ -1,4 +1,8 @@
 import api from "../lib/axios";
+export const updateRegistrationAppointment = async (id, input) => {
+    const { data } = await api.patch(`/pending-vehicles/${id}/inspection-appointment`, input);
+    return data;
+};
 
 export const getPendingVehicles = async (params = {}) => {
     const { data } = await api.get("/pending-vehicles", { params });

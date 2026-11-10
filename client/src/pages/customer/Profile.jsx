@@ -1,3 +1,4 @@
+import { getPhoneUpdate, getPhoneUpdateError, getAlternativeContactUpdate, getAlternativeContactUpdateError } from "../../utils/registrationRules";
 import {
     CheckCircle2,
     Loader2,
@@ -1017,6 +1018,11 @@ const Profile = () => {
             ...getAddressFieldErrors(),
         };
 
+        const phoneError = getPhoneUpdateError(formData.phoneNumber, profile?.phoneNumber || "");
+        if (phoneError) fieldErrors.phoneNumber = phoneError;
+        const contactError = getAlternativeContactUpdateError(formData.alternativeContact, profile?.alternativeContact || "");
+        if (contactError) fieldErrors.alternativeContact = contactError;
+
         setValidationErrors(fieldErrors);
 
         if (Object.keys(fieldErrors).length > 0) {
@@ -1055,6 +1061,11 @@ const Profile = () => {
                     profile?.profileImage ??
                     "",
             };
+
+            delete payload.alternativeContact;
+            Object.assign(payload, getAlternativeContactUpdate(formData.alternativeContact, profile?.alternativeContact || ""));
+            delete payload.phoneNumber;
+            Object.assign(payload, getPhoneUpdate(formData.phoneNumber, profile?.phoneNumber || ""));
 
             const saveResult =
                 await saveProfile(payload);
@@ -1487,6 +1498,12 @@ const Profile = () => {
                             {editing ? (
                                 <Input
                                     label="Phone Number"
+                                    error={getFieldError("phoneNumber")}
+                                    type="tel"
+                                    placeholder="+639369875311"
+                                    maxLength={13}
+                                    pattern="[+]639[0-9]{9}"
+                                    helperText="Use +63 followed by your 10-digit mobile number."
                                     value={
                                         formData.phoneNumber
                                     }
@@ -1517,6 +1534,11 @@ const Profile = () => {
                             {editing ? (
                                 <Input
                                     label="Alternative Contact"
+                                    type="tel"
+                                    placeholder="+639369875311"
+                                    maxLength={13}
+                                    error={getFieldError("alternativeContact")}
+                                    helperText="Optional. Use +63 followed by your 10-digit mobile number."
                                     value={
                                         formData.alternativeContact
                                     }

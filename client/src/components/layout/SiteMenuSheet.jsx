@@ -1,3 +1,4 @@
+import AlbayMenuCard from "../explore/AlbayMenuCard";
 import {
     AnimatePresence,
     motion,
@@ -276,6 +277,9 @@ const SiteMenuSheet = ({
                                             Create account
                                         </button>
                                     </div>
+                                    <button type="button" onClick={() => goTo("/register-operator")} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800">
+                                        Become a Partner <ArrowRight size={15} />
+                                    </button>
                                 </div>
                             )}
 
@@ -304,6 +308,8 @@ const SiteMenuSheet = ({
                                     </div>
                                 </div>
                             )}
+
+                            <AlbayMenuCard onNavigate={close} />
 
                             {/* Already open — no extra tap to change it. */}
                             <div>

@@ -69,6 +69,10 @@ const notificationSchema = new mongoose.Schema(
             default: false,
             index: true,
         },
+        dedupeKey: { type: String, maxlength: 200 },
+        dismissed: { type: Boolean, default: false },
+        // Saved with the notification so a crash cannot lose the enqueue intent.
+        pushPending: { type: Boolean, default: false },
         metadata: {
             reference: {
                 type: String,
@@ -89,6 +93,11 @@ const notificationSchema = new mongoose.Schema(
 );
 
 notificationSchema.index({ recipient: 1, read: 1, createdAt: -1 });
+notificationSchema.index({ pushPending: 1, createdAt: 1 });
+notificationSchema.index({ recipient: 1, dedupeKey: 1 }, {
+    unique: true,
+    partialFilterExpression: { dedupeKey: { $type: "string" } },
+});
 
 const Notification = mongoose.model("Notification", notificationSchema);
 

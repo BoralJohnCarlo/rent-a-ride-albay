@@ -9419,6 +9419,14 @@ const changeVehicleForMaintenanceConflict = async (
     // Atomic: a cancel, pickup or second choice racing this can't also win.
     const updated = await withBookingChangeTransaction(
         booking, { vehicle: newVehicle._id }, async (session) => {
+            // The preflight may predate an admin's maintenance update. Read
+            // again after taking the shared vehicle guard, on this snapshot.
+            const freshVehicle = await Vehicle.findById(newVehicle._id).session(session);
+            if (!freshVehicle) throw createError("Vehicle not found.", 404);
+            validateVehicleBookingEligibility(freshVehicle);
+            await validateVehicleDateAvailability(
+                freshVehicle, booking.startDate, booking.endDate
+            );
             await assertNoPendingVehicleChangePayment(booking._id, session);
             if (reservationUnpaid && !coveredAmount) {
                 await syncReservationPaymentAmount(booking, {

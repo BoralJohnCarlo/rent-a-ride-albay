@@ -1,4 +1,6 @@
 import cron from "node-cron";
+import { sendPickupReminders } from "../services/pickupReminderService.js";
+import { processPushDeliveries } from "../services/webPushService.js";
 
 import { cleanupExpiredTemporaryValidIdUploads } from "../services/temporaryValidIdUploadService.js";
 import { checkAllValidIdExpirations } from "../services/userService.js";
@@ -32,6 +34,16 @@ import { startAikaPoller } from "../services/aika/aikaPoller.js";
  * a failure in one never blocks or delays another.
  */
 const SWEEPS = [
+    {
+        label: "Browser push retry sweep",
+        task: processPushDeliveries,
+        cronExpression: "* * * * *",
+    },
+    {
+        label: "Customer pickup reminder sweep",
+        task: sendPickupReminders,
+        cronExpression: "35 * * * *",
+    },
     {
         label: "Temporary valid ID cleanup",
         task: cleanupExpiredTemporaryValidIdUploads,

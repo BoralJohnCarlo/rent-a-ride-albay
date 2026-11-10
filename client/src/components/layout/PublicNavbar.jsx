@@ -158,7 +158,8 @@ const PublicNavbar = () => {
                                 ml-2
                                 whitespace-nowrap
                                 ${isPillNavbar ? "truncate" : ""}
-                                text-lg
+                                text-sm
+                                sm:text-lg
                                 font-extrabold
                                 tracking-tight
                                 text-gray-950
@@ -204,7 +205,7 @@ const PublicNavbar = () => {
                     <MenuSheetButton
                         isOpen={isMobileMenuOpen}
                         onOpen={() => setIsMobileMenuOpen(true)}
-                        className={`ml-auto ${
+                        className={`ml-auto ${shouldShowWhiteText ? "!text-white" : ""} ${
                             isPillNavbar
                                 ? `h-12 w-12 ${getPillSurfaceClasses({
                                       overHero: shouldShowWhiteText,

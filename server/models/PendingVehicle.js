@@ -247,8 +247,16 @@ const pendingVehicleSchema = new mongoose.Schema(
             default: true,
         },
 
-        // The inspection slot the partner booked at registration
-        // ("YYYY-MM-DD" / "HH:mm", same shape as Consignment's).
+        reschedule: {
+            status: { type: String, enum: ["None", "Pending", "Approved", "Rejected"], default: "None" },
+            proposedDate: { type: Date, default: null },
+            proposedTime: { type: String, default: "" },
+            reason: { type: String, default: "" },
+            requestedAt: Date,
+            reviewedAt: Date,
+            reviewRemarks: { type: String, default: "" },
+        },
+        // Albay local date and time, matching consignment appointments.
         inspection: {
             scheduledDate: { type: String, default: "" },
             scheduledTime: { type: String, default: "" },

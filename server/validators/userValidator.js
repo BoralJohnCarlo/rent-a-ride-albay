@@ -1,3 +1,4 @@
+import { isPhilippineMobile, PH_MOBILE_MESSAGE, ALTERNATIVE_CONTACT_MESSAGE } from "../utils/philippineMobile.js";
 import { body, param } from "express-validator";
 import { isPasswordWithinByteLimit, PASSWORD_BYTE_LIMIT_MESSAGE } from "../utils/passwordPolicy.js";
 
@@ -21,17 +22,13 @@ export const updateProfileValidator = [
 
     body("phoneNumber")
         .optional()
-        .trim()
-        .if((value) => value && String(value).trim() !== "")
-        .isMobilePhone("any")
-        .withMessage("Invalid phone number."),
+        .custom(isPhilippineMobile)
+        .withMessage(PH_MOBILE_MESSAGE),
 
     body("alternativeContact")
         .optional()
-        .trim()
-        .if((value) => value && String(value).trim() !== "")
-        .isMobilePhone("any")
-        .withMessage("Invalid alternative contact number."),
+        .custom((value) => value === "" || isPhilippineMobile(value))
+        .withMessage(ALTERNATIVE_CONTACT_MESSAGE),
 
     body("address.region")
         .optional()
@@ -234,15 +231,13 @@ export const updateUserValidator = [
 
     body("phoneNumber")
         .optional()
-        .trim()
-        .isMobilePhone("any")
-        .withMessage("Invalid phone number."),
+        .custom(isPhilippineMobile)
+        .withMessage(PH_MOBILE_MESSAGE),
 
     body("alternativeContact")
         .optional()
-        .trim()
-        .isMobilePhone("any")
-        .withMessage("Invalid alternative contact number."),
+        .custom((value) => value === "" || isPhilippineMobile(value))
+        .withMessage(ALTERNATIVE_CONTACT_MESSAGE),
 
     body("role")
         .optional()
@@ -352,17 +347,13 @@ export const createUserValidator = [
         ),
 
     body("phoneNumber")
-        .trim()
-        .isMobilePhone("any")
-        .withMessage("Invalid phone number."),
+        .custom(isPhilippineMobile)
+        .withMessage(PH_MOBILE_MESSAGE),
 
     body("alternativeContact")
         .optional()
-        .trim()
-        .isMobilePhone("any")
-        .withMessage(
-            "Invalid alternative contact number."
-        ),
+        .custom((value) => value === "" || isPhilippineMobile(value))
+        .withMessage(ALTERNATIVE_CONTACT_MESSAGE),
 
     body("role")
         .optional()

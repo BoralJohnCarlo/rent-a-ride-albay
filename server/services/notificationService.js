@@ -1,5 +1,7 @@
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
+import { sendBrowserPush } from "./webPushService.js";
+import { persistNotification, removeNotificationRecord, removeAllNotificationRecords } from "./notificationStore.js";
 
 import { BOOKING_CODE_PREFIX } from "../constants/bookingConstants.js";
 import { RENTAL_CODE_PREFIX } from "../constants/rentalConstants.js";
@@ -44,7 +46,7 @@ export const stripReferenceCodes = (text) =>
         : text;
 
 const findRecipient = (userId) =>
-    User.findById(userId).select("role email firstName").lean();
+    User.findById(userId).select("role email firstName credentialVersion passwordChangedAt isSuspended");
 
 /*
  * Where a customer's email button points when the caller didn't pick one:
@@ -118,12 +120,14 @@ export const createNotification = async ({
     category,
     metadata = {},
     email = null,
+    dedupeKey,
 }) => {
     try {
         const recipientUser = await findRecipient(recipient);
         const forCustomer = recipientUser?.role === "customer";
 
-        const notification = await Notification.create({
+        const notification = await persistNotification({
+            dedupeKey,
             recipient,
             type,
             title: forCustomer ? stripReferenceCodes(title) : title,
@@ -143,12 +147,20 @@ export const createNotification = async ({
                 : metadata,
         });
 
+        if (!notification) return null;
+
         sendNotificationEmail(
             recipientUser,
             { title, message, metadata, email },
             forCustomer
         );
 
+        // Delivery must never block or roll back a business operation.
+        try {
+            await sendBrowserPush(recipientUser, notification);
+        } catch {
+            console.warn("Browser push queue unavailable; in-app notification preserved");
+        }
         return notification;
     } catch (error) {
         console.error("Failed to create notification:", error);
@@ -158,7 +170,7 @@ export const createNotification = async ({
 };
 
 export const getNotificationsByUser = async (userId, { read, category, search, limit = 20, skip = 0 } = {}) => {
-    const query = { recipient: userId };
+    const query = { recipient: userId, dismissed: { $ne: true } };
 
     if (read !== undefined) {
         query.read = read;
@@ -190,13 +202,14 @@ export const getNotificationsByUser = async (userId, { read, category, search, l
 };
 
 export const getUnreadCount = async (userId) => {
-    return Notification.countDocuments({ recipient: userId, read: false });
+    return Notification.countDocuments({ recipient: userId, read: false, dismissed: { $ne: true } });
 };
 
 export const markAsRead = async (notificationId, userId) => {
     const notification = await Notification.findOne({
         _id: notificationId,
         recipient: userId,
+        dismissed: { $ne: true },
     });
 
     if (!notification) {
@@ -220,24 +233,11 @@ export const markAllAsRead = async (userId) => {
 };
 
 export const deleteNotification = async (notificationId, userId) => {
-    const notification = await Notification.findOne({
-        _id: notificationId,
-        recipient: userId,
-    });
-
-    if (!notification) {
-        return null;
-    }
-
-    await notification.deleteOne();
-
-    return notification;
+    return removeNotificationRecord(notificationId, userId);
 };
 
 export const deleteAllNotifications = async (userId) => {
-    const result = await Notification.deleteMany({ recipient: userId });
-
-    return result;
+    return removeAllNotificationRecords(userId);
 };
 
 const buildAdminNotification = async (data) => {

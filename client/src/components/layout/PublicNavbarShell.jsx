@@ -18,7 +18,7 @@ const HEADER_ENTRANCE = {
 };
 
 const GRID_CLASSES =
-    "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center";
+    "flex flex-row items-center justify-between lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]";
 
 // Hidden (display:none) children don't take grid cells, so on mobile the
 // grid would drop the menu button into the centre column. The pill uses a

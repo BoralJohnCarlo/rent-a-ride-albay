@@ -62,6 +62,7 @@ const Consignments = () => {
         withdrawConsignment,
         getMyConsignments,
         bookInspectionAppointment,
+        requestReschedule,
     } = useConsignments();
 
     const toast = useToast();
@@ -296,20 +297,21 @@ const Consignments = () => {
         };
 
     const handleBookInspection =
-        async ({ date, time }) => {
+        async ({ date, time, reason }) => {
             if (!selectedConsignment) {
                 return;
             }
 
             try {
-                await bookInspectionAppointment({
+                const rescheduling = Boolean(selectedConsignment.application?.inspection?.scheduledDate);
+                await (rescheduling ? requestReschedule : bookInspectionAppointment)({
                     consignmentId:
                         selectedConsignment._id,
-                    data: { date, time },
+                    data: rescheduling ? { proposedDate: date, proposedTime: time, reason } : { date, time },
                 }).unwrap();
 
                 toast.success(
-                    "Inspection appointment scheduled."
+                    rescheduling ? "Reschedule request sent. Your current appointment remains confirmed." : "Inspection appointment scheduled."
                 );
 
                 handleCloseBookInspection();
@@ -395,6 +397,7 @@ const Consignments = () => {
 
                 {listError ? null : section === "appointments" ? (
                     <OperatorAppointmentsPanel
+                        onManage={handleOpenBookInspection}
                         consignments={consignments}
                         loading={loading}
                         onView={handleOpenReview}
@@ -506,6 +509,7 @@ const Consignments = () => {
             />
 
             <BookInspectionDialog
+                requestMode={Boolean(selectedConsignment?.application?.inspection?.scheduledDate)}
                 open={bookInspectionDialogOpen}
                 consignment={selectedConsignment}
                 loading={loading}

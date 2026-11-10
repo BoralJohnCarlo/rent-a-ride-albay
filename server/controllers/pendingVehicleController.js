@@ -1,3 +1,5 @@
+import { withInspectionBookingLock } from "../services/inspectionBookingLock.js";
+import { assertInspectionSlotAvailable } from "../services/inspectionSlotService.js";
 import PendingVehicle from "../models/PendingVehicle.js";
 import Vehicle from "../models/Vehicle.js";
 import User from "../models/User.js";
@@ -178,7 +180,7 @@ export const getPendingVehicleById = async (req, res, next) => {
     }
 };
 
-export const updatePendingVehicleStatus = async (req, res, next) => {
+const updatePendingVehicleStatusUnlocked = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { status, rejectionReason, rejectionDetails, pricing } = req.body;
@@ -215,6 +217,10 @@ export const updatePendingVehicleStatus = async (req, res, next) => {
         }
 
         // If setting status to approved, create the bookable vehicle
+        if (["pending_review", "under_inspection"].includes(status) && !["pending_review", "under_inspection"].includes(pendingVehicle.status) && pendingVehicle.inspection?.scheduledDate) {
+            await assertInspectionSlotAvailable(pendingVehicle.inspection.scheduledDate, pendingVehicle.inspection.scheduledTime, { excludePendingVehicleId: pendingVehicle._id });
+        }
+
         if (status === "approved") {
             /*
              * PendingVehicle.pricing.dailyRate/reservationFee are never set
@@ -380,6 +386,9 @@ export const updatePendingVehicle = async (req, res, next) => {
     try {
         const { id } = req.params;
         const updateData = req.body;
+        if (updateData.inspection !== undefined || updateData.reschedule !== undefined || updateData.status !== undefined) {
+            return res.status(400).json({ success: false, message: "Use the appointment or status action to update inspection details." });
+        }
 
         const pendingVehicle = await PendingVehicle.findById(id);
 
@@ -437,3 +446,5 @@ export const getPendingVehicleCounts = async (req, res, next) => {
         next(error);
     }
 };
+
+export const updatePendingVehicleStatus = (req, res, next) => withInspectionBookingLock(() => updatePendingVehicleStatusUnlocked(req, res, next)).catch(next);

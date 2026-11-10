@@ -12,7 +12,7 @@ import { isTabBarHidden } from "./customerTabs";
 const MenuSheetButton = ({ isOpen, onOpen, className = "" }) => {
     const { pathname } = useLocation();
 
-    if (!isTabBarHidden(pathname)) {
+    if (!isTabBarHidden(pathname) && pathname !== "/" && pathname !== "/customer/home") {
         return null;
     }
 

@@ -208,6 +208,24 @@ beforeEach(async () => {
 });
 
 describe("partner registration", () => {
+    it("does not revive an expired appointment hold when resending a code for a now-full slot", async () => {
+        const email = "expired-inspection-hold@test.com";
+        await registerOperator(await operatorPayload(email));
+        await PendingRegistration.updateOne({ email }, { emailVerificationExpires: new Date(Date.now() - 1000), lastCodeSentAt: new Date(Date.now() - 120000) });
+        await PendingVehicle.collection.insertOne({ status: "pending_review", inspection: { scheduledDate: SLOT_DATE, scheduledTime: SLOT_TIME } });
+        await assert.rejects(resendVerificationEmail(email), /fully booked/);
+        assert.ok((await PendingRegistration.findOne({ email }).select("+emailVerificationExpires")).emailVerificationExpires < new Date());
+    });
+
+    it("rechecks that the inspection slot is still offered before finishing verification", async () => {
+        const email = "removed-inspection-slot@test.com";
+        await registerOperator(await operatorPayload(email));
+        await InspectionSetting.updateOne({}, { inspectionSlots: [] });
+        await assert.rejects(verifyEmail(email, lastCodeFor(email)), /no longer offered/);
+        assert.equal(await User.countDocuments({ email }), 0);
+        assert.equal(await PendingRegistration.countDocuments({ email }), 1);
+    });
+
     it("keeps admin-only vehicle fields out of the submitted vehicle", async () => {
         await registerOperator(await operatorPayload("p1@test.com"));
 

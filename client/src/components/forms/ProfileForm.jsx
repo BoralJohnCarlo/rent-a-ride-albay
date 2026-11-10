@@ -1,3 +1,4 @@
+import { getPhoneUpdate, getPhoneUpdateError, getAlternativeContactUpdate, getAlternativeContactUpdateError } from "../../utils/registrationRules";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
@@ -23,6 +24,7 @@ const ProfileForm = () => {
     } = useUser();
 
     const {
+        setError,
         register,
         handleSubmit,
         reset,
@@ -92,9 +94,19 @@ const ProfileForm = () => {
 
     const onSubmit = async (data) => {
         clearError();
-
+        const phoneError = getPhoneUpdateError(data.phoneNumber, profile?.phoneNumber ?? "");
+        if (phoneError) {
+            setError("phoneNumber", { type: "validate", message: phoneError });
+            return;
+        }
+        const contactError = getAlternativeContactUpdateError(data.alternativeContact, profile?.alternativeContact ?? "");
+        if (contactError) {
+            setError("alternativeContact", { type: "validate", message: contactError });
+            return;
+        }
+        const { phoneNumber, alternativeContact, ...otherData } = data;
         try {
-            await updateProfile(data);
+            await updateProfile({ ...otherData, ...getPhoneUpdate(phoneNumber, profile?.phoneNumber ?? ""), ...getAlternativeContactUpdate(alternativeContact, profile?.alternativeContact ?? "") });
         } catch {
             // Error handled by Redux.
         }

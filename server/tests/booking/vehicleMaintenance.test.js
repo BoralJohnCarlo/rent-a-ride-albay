@@ -695,6 +695,80 @@ describe("maintenance conflicts", () => {
         );
     });
 
+    it("rejects a replacement put into maintenance after preflight and before the switch transaction", async () => {
+        const { booking } = await conflictedBooking();
+        const replacement = await insertVehicle();
+        const originalStartSession = mongoose.startSession.bind(mongoose);
+        let maintenanceApplied = false;
+
+        // Interleave the admin update precisely after the customer's checks.
+        mongoose.startSession = async (...args) => {
+            if (!maintenanceApplied) {
+                maintenanceApplied = true;
+                await applyVehicleMaintenance(
+                    replacement,
+                    { mode: VEHICLE_MAINTENANCE_MODE.OFF_ROAD },
+                    adminId
+                );
+            }
+            return originalStartSession(...args);
+        };
+        try {
+            await assert.rejects(
+                changeVehicleForMaintenanceConflict(
+                    booking._id, replacement, booking.customer, "customer"
+                ),
+                /maintenance|off.road|unavailable/i
+            );
+        } finally {
+            mongoose.startSession = originalStartSession;
+        }
+
+        assert.equal(maintenanceApplied, true);
+        const unchanged = await Booking.findById(booking._id).lean();
+        assert.equal(String(unchanged.vehicle), String(booking.vehicle));
+        assert.equal(unchanged.pricing.totalAmount, booking.pricing.totalAmount);
+        assert.equal(unchanged.maintenanceConflict.status, BOOKING_MAINTENANCE_CONFLICT_STATUS.AWAITING_CUSTOMER);
+        assert.equal(await Payment.countDocuments({ booking: booking._id }), 0);
+        const options = await getMaintenanceConflictOptions(booking._id, booking.customer, "customer");
+        assert.ok(!options.alternatives.some(option => String(option._id) === String(replacement)));
+    });
+
+    it("flags the switched booking when maintenance starts while its vehicle guard is held", async () => {
+        const { booking } = await conflictedBooking();
+        const replacement = await insertVehicle();
+        const originalUpdate = Booking.findOneAndUpdate;
+        let maintenance;
+        let maintenanceFailure;
+
+        Booking.findOneAndUpdate = function (filter, update, options) {
+            if (!maintenance && String(update?.$set?.vehicle) === String(replacement)) {
+                // The switch already holds the target vehicle's transaction
+                // guard. Maintenance must wait, then find the moved booking.
+                maintenance = applyVehicleMaintenance(
+                    replacement,
+                    { mode: VEHICLE_MAINTENANCE_MODE.OFF_ROAD },
+                    adminId
+                ).catch(error => { maintenanceFailure = error; });
+            }
+            return originalUpdate.call(this, filter, update, options);
+        };
+        try {
+            await changeVehicleForMaintenanceConflict(
+                booking._id, replacement, booking.customer, "customer"
+            );
+        } finally {
+            Booking.findOneAndUpdate = originalUpdate;
+            await maintenance;
+        }
+        assert.ok(maintenance);
+        if (maintenanceFailure) throw maintenanceFailure;
+        const moved = await Booking.findById(booking._id).lean();
+        assert.equal(String(moved.vehicle), String(replacement));
+        assert.equal(String(moved.maintenanceConflict.vehicle), String(replacement));
+        assert.equal(moved.maintenanceConflict.status, BOOKING_MAINTENANCE_CONFLICT_STATUS.DETECTED);
+    });
+
     it("still accepts a paid-in-full payment after switching vehicles", async () => {
         const { booking } = await conflictedBooking();
         await payFor(booking, 5300);

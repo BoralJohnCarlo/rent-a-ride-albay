@@ -115,11 +115,13 @@ const SlidingSummary = ({ items }) => {
  * set (count, dates, changed filters). Tap it or drag it down to open the
  * full card again.
  */
-const FilterSummaryPill = ({ items, onExpand }) => {
+const FilterSummaryPill = ({ items, onExpand, ref }) => {
     const summary = items.join(", ");
+    const reduceMotion = useReducedMotion();
 
     return (
         <motion.button
+            ref={ref}
             type="button"
             onClick={onExpand}
             aria-expanded={false}
@@ -136,12 +138,12 @@ const FilterSummaryPill = ({ items, onExpand }) => {
                     onExpand();
                 }
             }}
-            initial={{ opacity: 0, scale: 0.94, y: -6 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.94, y: -6 }}
-            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+            initial={reduceMotion ? false : { width: "100%", opacity: 0, scale: 0.98, y: -6 }}
+            animate={{ width: "88%", opacity: 1, scale: 1, y: 0 }}
+            exit={{ width: "100%", opacity: 0, scale: 0.98, y: -6 }}
+            transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 32 }}
             style={{ touchAction: "none" }}
-            className="flex h-12 w-full items-center gap-2 rounded-full bg-gray-950 py-1.5 pl-1.5 pr-2 text-left shadow-xl shadow-gray-950/30 ring-1 ring-white/10 dark:bg-black dark:ring-white/15"
+            className="mx-auto flex h-12 min-w-0 items-center gap-2 rounded-full bg-gray-950 py-1.5 pl-1.5 pr-2 text-left shadow-xl shadow-gray-950/30 ring-1 ring-white/10 dark:bg-black dark:ring-white/15"
         >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-gray-950">
                 <SlidersHorizontal size={16} strokeWidth={2.4} />

@@ -41,15 +41,16 @@ import IdImageUploadRow, {
     SingleImageUpload,
 } from "../../components/shared/IdImageUploadRow";
 import Input from "../../components/common/Input";
+import RegistrationPasswordFields from "../../components/forms/RegistrationPasswordFields";
 import Modal from "../../components/common/Modal";
 import Select from "../../components/common/Select";
 import TermsAgreement from "../../components/booking/TermsAgreement";
 
 import {
-    PASSWORD_HINT,
     getNameError,
     getPasswordError,
     getPhoneError,
+    getAlternativeContactError,
     getRegistrationErrorField,
     isAlreadyVerifiedError,
     isPastDate,
@@ -443,17 +444,19 @@ const Register = ({ verificationOnly = false }) => {
     };
 
     const handlePhoneNumberChange = (e) => {
-        const value = e.target.value.replace(/\D/g, "");
-        if (validationErrors.phoneNumber) {
+        const field = e.target.name;
+        const value = e.target.value;
+        if (!/^\+?[0-9]*$/.test(value) || value.length > 13) return;
+        if (validationErrors[field]) {
             setValidationErrors((previous) => {
                 const updated = { ...previous };
-                delete updated.phoneNumber;
+                delete updated[field];
                 return updated;
             });
         }
         setFormData((previous) => ({
             ...previous,
-            phoneNumber: value,
+            [field]: value,
         }));
     };
 
@@ -706,6 +709,11 @@ const Register = ({ verificationOnly = false }) => {
                     if (phoneError) {
                         errors.phoneNumber = phoneError;
                     }
+                }
+
+                {
+                    const contactError = getAlternativeContactError(formData.alternativeContact);
+                    if (contactError) errors.alternativeContact = contactError;
                 }
 
                 // Address validation
@@ -1161,7 +1169,7 @@ const Register = ({ verificationOnly = false }) => {
                 email: formData.email.trim(),
                 password: formData.password,
                 phoneNumber: formData.phoneNumber.trim(),
-                alternativeContact: formData.alternativeContact.trim(),
+                alternativeContact: formData.alternativeContact,
                 middleName: formData.middleName.trim(),
                 birthdate: formData.birthdate,
                 validIdType: formData.validIdType,
@@ -1229,9 +1237,9 @@ const Register = ({ verificationOnly = false }) => {
             }
 
             // A problem with the phone number is fixed on the first step.
-            if (getRegistrationErrorField(errorMessage) === "phoneNumber") {
+            if (["phoneNumber", "alternativeContact"].includes(getRegistrationErrorField(errorMessage))) {
                 clearError();
-                setValidationErrors({ phoneNumber: errorMessage });
+                setValidationErrors({ [getRegistrationErrorField(errorMessage)]: errorMessage });
                 setCurrentStep(0);
             }
 
@@ -1566,7 +1574,7 @@ const Register = ({ verificationOnly = false }) => {
                                                              name="phoneNumber"
                                                              type="tel"
                                                              label="Phone Number"
-                                                             placeholder="09XXXXXXXXX"
+                                                             placeholder="+639369875311" maxLength={13} pattern="[+]639[0-9]{9}" helperText="Philippine mobile only: +63 followed by your 10-digit mobile number."
                                                              value={formData.phoneNumber}
                                                              onChange={handlePhoneNumberChange}
                                                              autoComplete="tel"
@@ -1578,10 +1586,10 @@ const Register = ({ verificationOnly = false }) => {
                                                                <Input
                                                             id="alternativeContact"
                                                             name="alternativeContact"
-                                                            label="Alternative Contact"
-                                                            placeholder=""
+                                                            label="Alternative Contact" type="tel" maxLength={13} pattern="[+]639[0-9]{9}" helperText="Optional. Use +63 followed by your 10-digit mobile number." error={getFieldError("alternativeContact")}
+                                                            placeholder="+639369875311"
                                                             value={formData.alternativeContact}
-                                                            onChange={handleChange}
+                                                            onChange={handlePhoneNumberChange}
                                                             autoComplete="off"
                                                             leftIcon={<Contact size={17} />}
                                                         />
@@ -2271,33 +2279,11 @@ ${isCarTransmissionSelected("manual")
                                                         required
                                                     />
 
-                                                    <Input
-                                                        id="password"
-                                                        name="password"
-                                                        type="password"
-                                                        label="Password"
-                                                        placeholder="Create a password"
-                                                        value={formData.password}
+                                                    <RegistrationPasswordFields
+                                                        password={formData.password}
+                                                        confirmPassword={formData.confirmPassword}
                                                         onChange={handleChange}
-                                                        autoComplete="new-password"
-                                                        leftIcon={<Lock size={17} />}
-                                                        helperText={PASSWORD_HINT}
-                                                        error={getFieldError("password")}
-                                                        required
-                                                    />
-
-                                                    <Input
-                                                        id="confirmPassword"
-                                                        name="confirmPassword"
-                                                        type="password"
-                                                        label="Confirm Password"
-                                                        placeholder="Repeat your password"
-                                                        value={formData.confirmPassword}
-                                                        onChange={handleChange}
-                                                        autoComplete="new-password"
-                                                        leftIcon={<Lock size={17} />}
-                                                        error={getFieldError("confirmPassword")}
-                                                        required
+                                                        confirmationError={getFieldError("confirmPassword")}
                                                     />
 
                                                     <div className="rounded-lg border border-gray-200 bg-gray-50/70 p-3 dark:border-gray-700 dark:bg-gray-800/60">

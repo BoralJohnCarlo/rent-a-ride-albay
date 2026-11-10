@@ -236,7 +236,8 @@ const FeaturedVehicleCarousel = ({
                     min-w-0
                     grid-cols-1
                     items-center
-                    gap-8
+                    gap-3
+                    sm:gap-5
                     lg:grid-cols-[210px_minmax(0,1fr)_190px]
                     lg:gap-6
                 "
@@ -334,7 +335,9 @@ const FeaturedVehicleCarousel = ({
                         className="
                             mx-auto
                             mt-3
-                            max-w-[220px]
+                            max-w-full
+                            whitespace-nowrap
+                            lg:whitespace-normal
                             text-sm
                             leading-6
                             text-gray-500
@@ -343,41 +346,51 @@ const FeaturedVehicleCarousel = ({
                             lg:max-w-none
                         "
                     >
-                        {item.vehicleType}. {item.transmission}.{" "}
-                        Ready for your next trip.
+                        <span className="lg:hidden">Ready for your next trip.</span>
+                        <span className="hidden lg:inline">
+                            {item.vehicleType}. {item.transmission}. Ready for your next trip.
+                        </span>
                     </SwapLayer>
 
                     <SwapLayer
+                        as="ul"
                         swap={SLIDE_LEFT_SWAP}
                         hidden={hidden}
                         delay={0.12}
                         className="
-                            mt-4
+                            featured-vehicle-specs
+                            mt-3
                             flex
-                            flex-col
+                            flex-wrap
+                            justify-center
                             items-center
-                            gap-1.5
-                            text-sm
+                            gap-x-4
+                            gap-y-1.5
+                            text-xs
+                            sm:text-sm
+                            lg:mt-4
+                            lg:flex-col
+                            lg:justify-start
                             font-medium
                             text-gray-700
                             dark:text-gray-300
                             lg:items-start
                         "
                     >
-                        <span className="flex items-center gap-2">
-                            <Users size={16} />
+                        <li className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap lg:gap-2">
+                            <Users size={14} className="shrink-0 sm:size-4" aria-hidden="true" />
                             {item.seats} Seats
-                        </span>
+                        </li>
 
-                        <span className="flex items-center gap-2">
-                            <Settings2 size={16} />
+                        <li className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap lg:gap-2">
+                            <Settings2 size={14} className="shrink-0 sm:size-4" aria-hidden="true" />
                             {item.transmission}
-                        </span>
+                        </li>
 
-                        <span className="flex items-center gap-2">
-                            <Fuel size={16} />
+                        <li className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap lg:gap-2">
+                            <Fuel size={14} className="shrink-0 sm:size-4" aria-hidden="true" />
                             {item.fuelType}
-                        </span>
+                        </li>
                     </SwapLayer>
 
                     {item.featured && (

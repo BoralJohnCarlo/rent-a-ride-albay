@@ -18,7 +18,10 @@ const AlternativeContactForm = ({
 
             <Input
                 label="Alternative Contact Number"
-                placeholder="09XXXXXXXXX"
+                type="tel"
+                placeholder="+639369875311"
+                maxLength={13}
+                helperText="Optional. Use +63 followed by your 10-digit mobile number."
                 error={
                     errors.alternativeContact?.message
                 }

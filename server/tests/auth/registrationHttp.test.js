@@ -1,3 +1,4 @@
+import { getUserById } from "../../services/userService.js";
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 
@@ -192,7 +193,7 @@ describe("customer sign-up over HTTP", () => {
                 lastName: "Santos",
                 email,
                 password: "weakpass",
-                phoneNumber: "09181112222",
+                phoneNumber: "+639181112222",
                 birthdate: "1995-05-05",
                 validIdType: "Philippine Passport",
                 validIdImage: "https://example.com/a.jpg",
@@ -226,8 +227,8 @@ describe("customer sign-up over HTTP", () => {
                 email: "Maria.Santos@Example.com",
                 password: "Password123",
                 confirmPassword: "Password123",
-                phoneNumber: "0918 111 2222",
-                alternativeContact: "",
+                phoneNumber: "+639181112222",
+                alternativeContact: "+639369875311",
                 birthdate: "1995-05-05",
                 validIdType: "Driver's License",
                 validIdImage: front.url,
@@ -263,6 +264,8 @@ describe("customer sign-up over HTTP", () => {
         const pending = await PendingRegistration.findOne({ email }).lean();
         assert.deepEqual(pending.motorcycleTransmission, ["manual", "automatic"]);
         assert.deepEqual(pending.carTransmission, ["automatic"]);
+        assert.equal(pending.phoneNumber, "+639181112222");
+        assert.equal(pending.alternativeContact, "+639369875311");
 
         // Uploads are held for the registration, not yet kept for good.
         assert.equal(await TemporaryValidIdUpload.countDocuments(), 3);
@@ -295,6 +298,10 @@ describe("customer sign-up over HTTP", () => {
         });
         assert.equal(login.status, 200, JSON.stringify(login.body));
         assert.ok(login.cookie, "a session cookie was set");
+        const profile = await request("GET", "/api/users/profile", { cookie: login.cookie });
+        assert.equal(profile.status, 200, JSON.stringify(profile.body));
+        assert.equal(profile.body.data.phoneNumber, "+639181112222");
+        assert.equal(profile.body.data.alternativeContact, "+639369875311");
 
         const me = await request("GET", "/api/auth/me", {
             cookie: login.cookie,
@@ -303,12 +310,17 @@ describe("customer sign-up over HTTP", () => {
 
         const user = await User.findOne({ email }).lean();
         assert.equal(user.role, "customer");
+        const adminDetails = await getUserById(user._id);
+        assert.equal(adminDetails.phoneNumber, "+639181112222");
+        assert.equal(adminDetails.alternativeContact, "+639369875311");
+        assert.equal(user.alternativeContact, "+639369875311");
         assert.deepEqual(user.licenseCodes, ["A", "B"]);
         assert.deepEqual(user.motorcycleTransmission, ["manual", "automatic"]);
         assert.deepEqual(user.carTransmission, ["automatic"]);
         assert.equal(user.firstName, "María");
         assert.equal(user.validIdImage, front.url);
         assert.equal(user.proofOfBillingImage, billing.url);
+        assert.equal(user.phoneNumber, "+639181112222");
         assert.ok(user.termsAcceptedAt);
         assert.equal(user.isVerified, false, "ID still awaits admin review");
     });
@@ -323,7 +335,7 @@ describe("customer sign-up over HTTP", () => {
                 lastName: "Santos",
                 email,
                 password: "Password123",
-                phoneNumber: "09189990000",
+                phoneNumber: "+639189990000",
                 currentAddress: {
                     barangay: "Bitano", cityMunicipality: "Legazpi City",
                     province: "Albay", region: "Region V", postalCode: "4500",
@@ -370,8 +382,8 @@ describe("partner sign-up over HTTP", () => {
                     email,
                     password: "Partner123",
                     confirmPassword: "Partner123",
-                    phoneNumber: "+63 919 222 3333",
-                    alternativeContact: "",
+                    phoneNumber: "+639192223333",
+                    alternativeContact: "+639369875311",
                     middleName: "",
                     birthdate: "1988-06-19",
                     validIdType: "Philippine Passport",
@@ -440,6 +452,11 @@ describe("partner sign-up over HTTP", () => {
         });
         assert.equal(login.status, 200, JSON.stringify(login.body));
 
+        const profile = await request("GET", "/api/users/profile", { cookie: login.cookie });
+        assert.equal(profile.status, 200, JSON.stringify(profile.body));
+        assert.equal(profile.body.data.phoneNumber, "+639192223333");
+        assert.equal(profile.body.data.alternativeContact, "+639369875311");
+
         const mine = await request("GET", "/api/pending-vehicles/mine", {
             cookie: login.cookie,
         });
@@ -461,6 +478,11 @@ describe("partner sign-up over HTTP", () => {
 
         const user = await User.findOne({ email }).lean();
         assert.equal(user.role, "operator");
+        const adminDetails = await getUserById(user._id);
+        assert.equal(adminDetails.phoneNumber, "+639192223333");
+        assert.equal(adminDetails.alternativeContact, "+639369875311");
+        assert.equal(user.phoneNumber, "+639192223333");
+        assert.equal(user.alternativeContact, "+639369875311");
         assert.equal(user.proofOfBillingImage, billing.url);
     });
 
@@ -479,7 +501,7 @@ describe("partner sign-up over HTTP", () => {
                 province: "Albay", region: "Region V", postalCode: "4500",
             },
             password: "Partner123",
-            phoneNumber: "09194445555",
+            phoneNumber: "+639194445555",
             birthdate: "1990-11-30",
             validIdType: "Philippine Passport",
             validIdImage: front.url,
@@ -520,7 +542,7 @@ describe("partner sign-up over HTTP", () => {
         const samePhone = await request(
             "POST",
             "/api/auth/register-operator",
-            { json: payload({ phoneNumber: "0919-222-3333" }) }
+            { json: payload({ phoneNumber: "+639192223333" }) }
         );
         assert.equal(samePhone.status, 409);
         assert.match(samePhone.body.message, /phone number is already used/);
@@ -557,7 +579,7 @@ describe("proof of billing address over HTTP", () => {
         [front, back] = [await uploadIdImage(), await uploadIdImage()];
 
         const { status, body } = await request("POST", "/api/auth/register", {
-            json: customer("gabriela@example.com", "09170001111", {
+            json: customer("gabriela@example.com", "+639170001111", {
                 validIdImage: front.url,
                 validIdBack: back.url,
                 temporaryUploadIds: [front.uploadId, back.uploadId],
@@ -618,7 +640,7 @@ describe("proof of billing address over HTTP", () => {
         // The rejected attempt above left its ID uploads unclaimed.
 
         const register = await request("POST", "/api/auth/register", {
-            json: customer("gabriela@example.com", "09170001111", {
+            json: customer("gabriela@example.com", "+639170001111", {
                 validIdImage: front.url,
                 validIdBack: back.url,
                 temporaryUploadIds: [front.uploadId, back.uploadId],
@@ -639,4 +661,52 @@ describe("proof of billing address over HTTP", () => {
         }).lean();
         assert.equal(user.proofOfBillingImage, "");
     });
+});
+
+
+describe("contact edits over HTTP", () => {
+    for (const [role, email, password] of [
+        ["customer", "maria.santos@example.com", "Password123"],
+        ["operator", "jose.partner@example.com", "Partner123"],
+    ]) {
+        it(role + " preserves legacy contacts, rejects invalid edits, and allows clearing the alternative contact", async () => {
+            const user = await User.findOne({ email }).lean();
+            const original = { phoneNumber: user.phoneNumber, alternativeContact: user.alternativeContact };
+            const legacy = { phoneNumber: "09181112222", alternativeContact: "09369875311" };
+            await User.updateOne({ _id: user._id }, { $set: legacy });
+            try {
+                const login = await request("POST", "/api/auth/login", { json: { email, password } });
+                assert.equal(login.status, 200, JSON.stringify(login.body));
+                const cookie = login.cookie;
+                const unrelated = await request("PATCH", "/api/users/profile", { cookie, json: { middleName: "Updated" } });
+                assert.equal(unrelated.status, 200, JSON.stringify(unrelated.body));
+                let saved = await User.findById(user._id).lean();
+                assert.equal(saved.phoneNumber, legacy.phoneNumber);
+                assert.equal(saved.alternativeContact, legacy.alternativeContact);
+                for (const field of ["phoneNumber", "alternativeContact"]) {
+                    const invalid = await request("PATCH", "/api/users/profile", { cookie, json: { [field]: "+639369875311extra" } });
+                    assert.equal(invalid.status, 400, JSON.stringify(invalid.body));
+                    assert.ok(invalid.body.errors.some(error => error.path === field));
+                }
+                saved = await User.findById(user._id).lean();
+                assert.equal(saved.phoneNumber, legacy.phoneNumber);
+                assert.equal(saved.alternativeContact, legacy.alternativeContact);
+                const updated = await request("PATCH", "/api/users/profile", { cookie, json: original });
+                assert.equal(updated.status, 200, JSON.stringify(updated.body));
+                const profile = await request("GET", "/api/users/profile", { cookie });
+                assert.equal(profile.body.data.phoneNumber, original.phoneNumber);
+                assert.equal(profile.body.data.alternativeContact, original.alternativeContact);
+                const admin = await getUserById(user._id);
+                assert.equal(admin.phoneNumber, original.phoneNumber);
+                assert.equal(admin.alternativeContact, original.alternativeContact);
+                const cleared = await request("PATCH", "/api/users/profile", { cookie, json: { alternativeContact: "" } });
+                assert.equal(cleared.status, 200, JSON.stringify(cleared.body));
+                saved = await User.findById(user._id).lean();
+                assert.equal(saved.alternativeContact, "");
+                assert.equal(saved.phoneNumber, original.phoneNumber);
+            } finally {
+                await User.updateOne({ _id: user._id }, { $set: original });
+            }
+        });
+    }
 });

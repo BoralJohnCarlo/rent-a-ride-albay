@@ -1,4 +1,5 @@
 import createError from "../utils/createError.js";
+import { inspectionInstant } from "../utils/inspectionTime.js";
 
 import Consignment from "../models/Consignment.js";
 import InspectionSetting from "../models/InspectionSetting.js";
@@ -31,7 +32,7 @@ const consignmentHolds = (extra = {}) => ({
 
 const pendingVehicleHolds = (extra = {}) => ({
     "inspection.scheduledDate": { $nin: ["", null] },
-    status: "pending_review",
+    status: { $in: ["pending_review", "under_inspection"] },
     ...extra,
 });
 
@@ -101,7 +102,7 @@ export const getBookedInspectionCounts = async () => {
 export const assertInspectionSlotAvailable = async (
     date,
     time,
-    { excludeConsignmentId, excludeRegistrationEmail } = {}
+    { excludeConsignmentId, excludeRegistrationEmail, excludePendingVehicleId } = {}
 ) => {
     if (!date || !time) {
         throw createError(
@@ -110,12 +111,10 @@ export const assertInspectionSlotAvailable = async (
         );
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (new Date(`${date}T00:00:00`) < today) {
+    const instant = inspectionInstant(date, time);
+    if (Number.isNaN(instant.getTime()) || instant <= new Date()) {
         throw createError(
-            "The selected inspection date is in the past.",
+            "Please choose a valid inspection date and time in the future.",
             400
         );
     }
@@ -158,6 +157,7 @@ export const assertInspectionSlotAvailable = async (
             pendingVehicleHolds({
                 "inspection.scheduledDate": date,
                 "inspection.scheduledTime": time,
+                ...(excludePendingVehicleId && { _id: { $ne: excludePendingVehicleId } }),
             })
         ),
         PendingRegistration.countDocuments(

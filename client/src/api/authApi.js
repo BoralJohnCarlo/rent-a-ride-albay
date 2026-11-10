@@ -1,4 +1,5 @@
 import api from "../lib/axios";
+import { stopBrowserPushOnLogout } from "../utils/pushCleanup";
 
 export const register = async (userData) => {
     const { data } = await api.post(
@@ -28,6 +29,7 @@ export const login = async (credentials) => {
 };
 
 export const logout = async () => {
+    await stopBrowserPushOnLogout();
     const { data } = await api.post(
         "/auth/logout"
     );

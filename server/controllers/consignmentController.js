@@ -432,7 +432,7 @@ export const requestRescheduleCtrl = async (req, res) => {
 
         return successResponse(res, "Reschedule requested successfully.", consignment);
     } catch (error) {
-        return errorResponse(res, error.message, 400);
+        return errorResponse(res, error.message, error.statusCode || 400);
     }
 };
 
@@ -451,7 +451,7 @@ export const approveRescheduleCtrl = async (req, res) => {
 
         return successResponse(res, "Reschedule approved successfully.", consignment);
     } catch (error) {
-        return errorResponse(res, error.message, 400);
+        return errorResponse(res, error.message, error.statusCode || 400);
     }
 };
 
@@ -470,7 +470,7 @@ export const rejectRescheduleCtrl = async (req, res) => {
 
         return successResponse(res, "Reschedule rejected successfully.", consignment);
     } catch (error) {
-        return errorResponse(res, error.message, 400);
+        return errorResponse(res, error.message, error.statusCode || 400);
     }
 };
 

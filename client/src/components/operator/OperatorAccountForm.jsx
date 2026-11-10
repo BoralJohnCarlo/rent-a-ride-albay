@@ -1,3 +1,4 @@
+import { getPhoneError, getPhoneUpdate, getPhoneUpdateError, getAlternativeContactError, getAlternativeContactUpdate, getAlternativeContactUpdateError } from "../../utils/registrationRules";
 import {
     User,
     Mail,
@@ -258,11 +259,9 @@ const buildPayload = () => ({
     password:
         formData.password,
 
-    phoneNumber:
-        formData.phoneNumber.trim(),
+    ...getPhoneUpdate(formData.phoneNumber, isEditMode ? operator?.phoneNumber : undefined),
 
-    alternativeContact:
-        formData.alternativeContact.trim(),
+    ...getAlternativeContactUpdate(formData.alternativeContact, isEditMode ? operator?.alternativeContact ?? "" : undefined),
 
     profileImage:
         formData.profileImage,
@@ -325,12 +324,10 @@ if (
     if (
         currentStep === 1
     ) {
-        if (
-            !formData.phoneNumber.trim()
-        ) {
-            errors.phoneNumber =
-                "Phone number is required.";
-        }
+        const phoneError = getPhoneError(formData.phoneNumber);
+        if (phoneError) errors.phoneNumber = phoneError;
+        const contactError = getAlternativeContactError(formData.alternativeContact);
+        if (contactError) errors.alternativeContact = contactError;
     }
 
     setValidationErrors(
@@ -365,6 +362,22 @@ const handlePrevious =
 
 const handleSubmit = (event) => {
     event.preventDefault();
+
+    const phoneError = isEditMode
+        ? getPhoneUpdateError(formData.phoneNumber, operator?.phoneNumber)
+        : getPhoneError(formData.phoneNumber);
+    if (phoneError) {
+        setValidationErrors((previous) => ({ ...previous, phoneNumber: phoneError }));
+        return;
+    }
+
+    const contactError = isEditMode
+        ? getAlternativeContactUpdateError(formData.alternativeContact, operator?.alternativeContact ?? "")
+        : getAlternativeContactError(formData.alternativeContact);
+    if (contactError) {
+        setValidationErrors((previous) => ({ ...previous, alternativeContact: contactError }));
+        return;
+    }
 
     const payload =
         buildPayload();
@@ -599,6 +612,11 @@ const handleSubmit = (event) => {
                 <Input
                     ref={phoneNumberRef}
                     label="Phone Number"
+                                    type="tel"
+                                    placeholder="+639369875311"
+                                    maxLength={13}
+                                    pattern={isEditMode && formData.phoneNumber === operator?.phoneNumber ? undefined : "[+]639[0-9]{9}"}
+                                    helperText="Use +63 followed by your 10-digit mobile number."
                     value={
                         formData.phoneNumber
                     }
@@ -617,6 +635,10 @@ const handleSubmit = (event) => {
 
                 <Input
                     label="Alternative Contact"
+                    type="tel"
+                    placeholder="+639369875311"
+                    maxLength={13}
+                    helperText="Optional. Use +63 followed by your 10-digit mobile number."
                     value={
                         formData.alternativeContact
                     }

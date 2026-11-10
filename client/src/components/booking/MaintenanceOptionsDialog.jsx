@@ -141,6 +141,15 @@ const MaintenanceOptionsDialog = ({
                 error?.response?.data?.message ||
                     "Something went wrong. Please try again."
             );
+            // Another booking or maintenance update may have taken a choice.
+            // Refresh alternatives while keeping the action's error visible.
+            setSelectedId(null);
+            try {
+                const response = await getMaintenanceConflictOptions(bookingId);
+                setOptions(response?.data ?? null);
+            } catch {
+                // Keep the original error if the refresh is unavailable.
+            }
         } finally {
             setSubmitting(false);
         }

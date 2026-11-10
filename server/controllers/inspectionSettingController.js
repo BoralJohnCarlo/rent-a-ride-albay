@@ -2,6 +2,9 @@ import InspectionSetting from '../models/InspectionSetting.js';
 import { getBookedInspectionCounts } from '../services/inspectionSlotService.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import { validationResult } from 'express-validator';
+import { inspectionInstant } from '../utils/inspectionTime.js';
+import { withInspectionBookingLock } from '../services/inspectionBookingLock.js';
+import createError from '../utils/createError.js';
 
 /*
  * Inspection slots with live booking capacity — used by operators to pick an
@@ -15,17 +18,15 @@ export const getInspectionAvailability = async (req, res) => {
         // Consignments plus partner registrations/vehicles awaiting inspection.
         const bookedMap = await getBookedInspectionCounts();
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const now = new Date();
 
         const disabled = new Set(setting.disabledDates || []);
 
         const slots = (setting.inspectionSlots || [])
             .filter((slot) => slot.enabled !== false && !disabled.has(slot.date))
-            .filter((slot) => new Date(`${slot.date}T00:00:00`) >= today)
             .map((slot) => ({
                 date: slot.date,
-                timeSlots: (slot.timeSlots || []).map((ts) => {
+                timeSlots: (slot.timeSlots || []).filter(ts => inspectionInstant(slot.date, ts.time) > now).map((ts) => {
                     const booked = bookedMap.get(`${slot.date}|${ts.time}`) || 0;
                     const max = ts.maxAppointments || 1;
                     return {
@@ -38,6 +39,7 @@ export const getInspectionAvailability = async (req, res) => {
                     };
                 }),
             }))
+            .filter(slot => slot.timeSlots.length > 0)
             .sort((a, b) => a.date.localeCompare(b.date));
 
         return successResponse(
@@ -72,19 +74,41 @@ export const updateInspectionSetting = async (req, res) => {
         }
 
         const { inspectionSlots, disabledDates } = req.body;
-        const setting = await InspectionSetting.getInstance();
+        return await withInspectionBookingLock(async () => {
+            const setting = await InspectionSetting.getInstance();
+            const nextSlots = inspectionSlots ?? setting.inspectionSlots;
+            const nextDisabled = disabledDates ?? setting.disabledDates;
+            const dates = new Set();
+            for (const day of nextSlots) {
+                if (dates.has(day.date) || Number.isNaN(inspectionInstant(day.date, '00:00').getTime())) throw createError('Each inspection date must be valid and unique.', 400);
+                dates.add(day.date);
+                const times = new Set();
+                for (const slot of day.timeSlots || []) {
+                    if (times.has(slot.time) || Number.isNaN(inspectionInstant(day.date, slot.time).getTime())) throw createError('Each inspection time must be valid and unique.', 400);
+                    if (slot.endTime && (Number.isNaN(inspectionInstant(day.date, slot.endTime).getTime()) || slot.endTime <= slot.time)) throw createError('Inspection end time must be after the start time.', 400);
+                    times.add(slot.time);
+                }
+            }
+            const booked = await getBookedInspectionCounts();
+            for (const [key, count] of booked) {
+                const [date, time] = key.split('|');
+                if (!(inspectionInstant(date, time) > new Date())) continue;
+                const day = nextSlots.find(slot => slot.date === date && slot.enabled !== false);
+                const slot = day?.timeSlots?.find(slot => slot.time === time);
+                if (nextDisabled.includes(date) || !slot || (slot.maxAppointments || 1) < count) throw createError('Move existing appointments before removing, disabling, or reducing a booked slot.', 409);
+            }
+            setting.inspectionSlots = nextSlots;
+            setting.disabledDates = nextDisabled;
 
-        setting.inspectionSlots = inspectionSlots || [];
-        setting.disabledDates = disabledDates || [];
+            await setting.save();
 
-        await setting.save();
-
-        return successResponse(
-            res,
-            'Inspection setting updated successfully.',
-            setting
-        );
+            return successResponse(
+                res,
+                'Inspection setting updated successfully.',
+                setting
+            );
+        });
     } catch (error) {
-        return errorResponse(res, error.message, 500);
+        return errorResponse(res, error.message, error.statusCode || 500);
     }
 };

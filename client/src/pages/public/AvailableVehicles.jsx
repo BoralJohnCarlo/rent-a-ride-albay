@@ -882,7 +882,9 @@ const AvailableVehicles = () => {
                 transition={{ duration: 0.45, ease: "easeOut" }}
                 className="sticky top-[4.75rem] z-40 mx-auto -mt-10 w-full max-w-7xl px-4 sm:-mt-14 sm:px-6 lg:-mt-16 lg:px-8"
             >
-                <AnimatePresence mode="wait" initial={false}>
+                {/* Swap in the next layout immediately; an empty frame makes
+                    the height compensation scroll past the current vehicle. */}
+                <AnimatePresence mode="popLayout" initial={false}>
                 {showPill ? (
                     <FilterSummaryPill
                         key="filter-pill"

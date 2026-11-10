@@ -4,6 +4,7 @@ import { CalendarCheck } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
+import Textarea from "../common/Textarea";
 
 import ConsignmentSummaryCard from "./ConsignmentSummaryCard";
 
@@ -16,12 +17,14 @@ const BookInspectionDialog = ({
     loading = false,
     onClose,
     onSubmit,
+    requestMode = false,
 }) => {
     const [slots, setSlots] = useState([]);
     const [fetching, setFetching] = useState(false);
     const [loadError, setLoadError] = useState("");
     const [selected, setSelected] = useState(null);
     const [retryCount, setRetryCount] = useState(0);
+    const [reason, setReason] = useState("");
 
     const currentAppointment =
         consignment?.application?.inspection?.scheduledDate
@@ -34,6 +37,7 @@ const BookInspectionDialog = ({
     useEffect(() => {
         if (!open) {
             setSelected(null);
+            setReason("");
             setLoadError("");
             return;
         }
@@ -80,8 +84,8 @@ const BookInspectionDialog = ({
     );
 
     const handleSubmit = async () => {
-        if (!selected || loading || fetching || loadError) return;
-        await onSubmit?.(selected);
+        if (!selected || loading || fetching || loadError || (requestMode && !reason.trim())) return;
+        await onSubmit?.({ ...selected, reason: reason.trim() });
     };
 
     return (
@@ -105,10 +109,10 @@ const BookInspectionDialog = ({
                     </Button>
                     <Button
                         loading={loading}
-                        disabled={!selected || loading || fetching || !!loadError}
+                        disabled={!selected || loading || fetching || !!loadError || (requestMode && !reason.trim())}
                         onClick={handleSubmit}
                     >
-                        {currentAppointment
+                        {requestMode ? "Request Reschedule" : currentAppointment
                             ? "Move Appointment"
                             : "Confirm Appointment"}
                     </Button>
@@ -117,6 +121,10 @@ const BookInspectionDialog = ({
         >
             <div className="space-y-6">
                 <ConsignmentSummaryCard consignment={consignment} />
+                {requestMode && <div className="space-y-3">
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Your current appointment stays confirmed until an administrator approves the new time.</p>
+                    <Textarea id="inspection-reschedule-reason" label="Reason for rescheduling" value={reason} onChange={event => setReason(event.target.value)} maxLength={500} rows={3} disabled={loading} required className="text-base" />
+                </div>}
 
                 {currentAppointment && (
                     <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-200">
@@ -171,7 +179,7 @@ const BookInspectionDialog = ({
                                                         time: ts.time,
                                                     })
                                                 }
-                                                className={`rounded-lg border px-3 py-2 text-sm transition ${
+                                                className={`min-h-11 rounded-lg border px-3 py-2 text-sm transition ${
                                                     isSelected
                                                         ? "border-blue-600 bg-blue-600 text-white"
                                                         : "border-gray-300 bg-white text-gray-700 hover:border-blue-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
