@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import useSocket from "../shared/useSocket";
 import { getCurrentVehicleTracking } from "../../api/telemetryApi";
+import { acquireGpsSubscription } from "../../utils/gpsSubscription";
 import {
     telemetryReceived,
     heartbeatReceived,
@@ -55,7 +56,6 @@ const useGPS = (vehicleId, { seed = true } = {}) => {
     } = useSocket();
 
     const telemetry = useSelector(selectVehicleTelemetry(vehicleId));
-    const subscribedRef = useRef(false);
     const [initializing, setInitializing] = useState(
         Boolean(vehicleId) && seed
     );
@@ -129,23 +129,8 @@ const useGPS = (vehicleId, { seed = true } = {}) => {
             return undefined;
         }
 
-        let cancelled = false;
-
-        subscribeToVehicle(vehicleId).then((result) => {
-            if (!cancelled) {
-                subscribedRef.current = Boolean(result?.success);
-            }
-        });
-
-        return () => {
-            cancelled = true;
-
-            if (subscribedRef.current) {
-                unsubscribeFromVehicle(vehicleId);
-                subscribedRef.current = false;
-            }
-        };
-    }, [vehicleId, connected, subscribeToVehicle, unsubscribeFromVehicle]);
+        return acquireGpsSubscription(socket, vehicleId, subscribeToVehicle, unsubscribeFromVehicle);
+    }, [socket, vehicleId, connected, subscribeToVehicle, unsubscribeFromVehicle]);
 
     const resubscribe = useCallback(() => {
         if (!vehicleId) {

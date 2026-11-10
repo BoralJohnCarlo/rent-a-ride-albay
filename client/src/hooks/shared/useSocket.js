@@ -101,9 +101,9 @@ const useSocket = () => {
 
     const emitWithAck = useCallback((event, payload) => {
         return new Promise((resolve) => {
-            getSocket().emit(event, payload, (result) => {
+            getSocket().timeout(10_000).emit(event, payload, (error, result) => {
                 resolve(
-                    result ?? {
+                    error ? { success: false, message: "GPS subscription request timed out." } : result ?? {
                         success: false,
                         message: "No response from server.",
                     }

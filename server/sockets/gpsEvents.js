@@ -15,6 +15,7 @@ const respond = (ack, result) => {
  * can never join an arbitrary room name directly.
  */
 export const registerGpsEvents = (socket) => {
+    const pendingSubscriptions = new Map();
     socket.on("gps:subscribe", async (payload, ack) => {
         const vehicleId = payload?.vehicleId;
 
@@ -25,10 +26,22 @@ export const registerGpsEvents = (socket) => {
             });
         }
 
-        const authorized = await canAccessVehicle(
-            socket.user,
-            vehicleId
-        );
+        const request = {};
+        pendingSubscriptions.set(vehicleId, request);
+        let authorized;
+        try {
+            authorized = await canAccessVehicle(socket.user, vehicleId);
+        } catch {
+            if (pendingSubscriptions.get(vehicleId) === request) pendingSubscriptions.delete(vehicleId);
+            return respond(ack, { success: false, message: "Unable to authorize GPS subscription." });
+        }
+
+        // An unsubscribe/new subscribe can arrive while ownership is being
+        // checked. Never join later on behalf of that superseded request.
+        if (pendingSubscriptions.get(vehicleId) !== request) {
+            return respond(ack, { success: false, message: "GPS subscription was cancelled." });
+        }
+        pendingSubscriptions.delete(vehicleId);
 
         if (!authorized) {
             return respond(ack, {
@@ -52,6 +65,7 @@ export const registerGpsEvents = (socket) => {
             });
         }
 
+        pendingSubscriptions.delete(vehicleId);
         socket.leave(vehicleRoom(vehicleId));
 
         return respond(ack, { success: true, vehicleId });

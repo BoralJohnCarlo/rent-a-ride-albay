@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
     byVehicleId: {},
+    sessionEnded: false,
 };
 
 /*
@@ -16,28 +17,37 @@ const gpsSlice = createSlice({
 
     reducers: {
         telemetryReceived: (state, action) => {
+            if (state.sessionEnded) return;
             const payload = action.payload;
 
             if (!payload?.vehicleId) {
                 return;
             }
 
-            // Keep any heartbeat-only lastSeenAt that is newer than this
-            // position (e.g. a REST seed landing after a live heartbeat).
-            const previousLastSeenAt =
-                state.byVehicleId[payload.vehicleId]?.lastSeenAt;
+            const incomingTime = Date.parse(payload.recordedAt);
+            if (!Number.isFinite(incomingTime)) return;
 
-            state.byVehicleId[payload.vehicleId] = previousLastSeenAt
-                ? { ...payload, lastSeenAt: previousLastSeenAt }
-                : payload;
+            const previous = state.byVehicleId[payload.vehicleId];
+            const previousTime = Date.parse(previous?.recordedAt);
+            const lastSeenAt = [previous?.lastSeenAt, previous?.receivedAt, payload.lastSeenAt, payload.receivedAt]
+                .filter(value => Number.isFinite(Date.parse(value)))
+                .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+
+            // REST seeds and socket events can arrive in either order. Equal
+            // timestamps retain the first position, matching the server.
+            const position = previous && Number.isFinite(previousTime) && incomingTime <= previousTime
+                ? previous : payload;
+            state.byVehicleId[payload.vehicleId] = lastSeenAt
+                ? { ...position, lastSeenAt } : position;
         },
 
         // Communication without a new position (gps:heartbeat) - updates
         // only when the tracker was last heard from, never the coordinates.
         heartbeatReceived: (state, action) => {
+            if (state.sessionEnded) return;
             const { vehicleId, lastSeenAt } = action.payload || {};
 
-            if (!vehicleId || !lastSeenAt) {
+            if (!vehicleId || !Number.isFinite(Date.parse(lastSeenAt))) {
                 return;
             }
 
@@ -59,6 +69,16 @@ const gpsSlice = createSlice({
         vehicleTrackingCleared: (state, action) => {
             delete state.byVehicleId[action.payload];
         },
+    },
+    extraReducers: (builder) => {
+        for (const type of ["auth/logout/fulfilled", "auth/sessionEnded", "auth/getCurrentUser/rejected"]) {
+            builder.addCase(type, () => ({ ...initialState, sessionEnded: true }));
+        }
+        builder.addCase("auth/login/fulfilled", () => initialState);
+        builder.addCase("auth/getCurrentUser/fulfilled", (state, action) => {
+            if (!action.payload?.data) return { ...initialState, sessionEnded: true };
+            state.sessionEnded = false;
+        });
     },
 });
 

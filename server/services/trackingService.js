@@ -340,8 +340,17 @@ export const getVehicleTelemetryHistory = async (
             "latitude longitude speed heading ignition batteryLevel gpsFix recordedAt receivedAt -_id"
         )
         .sort({ recordedAt: 1 })
-        .limit(TELEMETRY_HISTORY_QUERY_LIMIT)
+        .limit(TELEMETRY_HISTORY_QUERY_LIMIT + 1)
         .lean();
+
+    // Never present the first part of a dense route as the complete range.
+    // One extra reading detects overflow without an unbounded fetch/count.
+    if (rawPoints.length > TELEMETRY_HISTORY_QUERY_LIMIT) {
+        throw createError(
+            `This range contains more than ${TELEMETRY_HISTORY_QUERY_LIMIT.toLocaleString("en-US")} GPS readings. Choose a shorter range to load the full route.`,
+            400
+        );
+    }
 
     const points = sampleEvenly(rawPoints, TELEMETRY_HISTORY_MAX_POINTS);
 
