@@ -71,6 +71,7 @@ const OperatorLayout = () => {
                 {isDesktop && <OperatorSidebar />}
 
                 <DashboardShell
+                    compactMobile
                     navbar={
                         <OperatorNavbar
                             title={getPageTitle(location.pathname)}

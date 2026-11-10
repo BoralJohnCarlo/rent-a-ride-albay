@@ -74,14 +74,14 @@ const KpiCard = ({ label, value, hint, icon: Icon, tone, onClick }) => (
     <button
         type="button"
         onClick={onClick}
-        className="group flex w-full flex-col rounded-2xl border border-gray-200/80 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
+        className="group flex w-full flex-col rounded-2xl border border-gray-200/80 bg-white p-3 sm:p-4 min-w-0 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
     >
         <span className="flex items-center justify-between gap-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">
                 {label}
             </span>
             <span
-                className={`flex h-9 w-9 items-center justify-center rounded-xl ${KPI_TONES[tone]}`}
+                className={`hidden sm:flex h-9 w-9 items-center justify-center rounded-xl ${KPI_TONES[tone]}`}
             >
                 <Icon size={17} />
             </span>
@@ -89,7 +89,7 @@ const KpiCard = ({ label, value, hint, icon: Icon, tone, onClick }) => (
         <span className="mt-2 text-2xl font-black tracking-tight text-gray-900 dark:text-white">
             {value}
         </span>
-        <span className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+        <span className="mt-0.5 hidden sm:block text-xs text-gray-500 dark:text-gray-400">
             {hint}
         </span>
     </button>
@@ -365,7 +365,7 @@ const Bookings = () => {
                 />
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {kpis.map(({ key, ...kpi }) => (
                     <KpiCard key={key} {...kpi} onClick={() => setTab(key)} />
                 ))}
@@ -389,7 +389,7 @@ const Bookings = () => {
 
             <section className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
                 {/* Column labels (desktop) */}
-                <div className="hidden grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_auto_auto] gap-x-4 border-b border-gray-100 bg-gray-50/70 px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-400 lg:grid dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-500">
+                <div className="hidden grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_auto_auto] gap-x-4 border-b border-gray-100 bg-gray-50/70 px-5 py-2.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-gray-400 lg:grid dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-500">
                     <span />
                     <span>Vehicle</span>
                     <span>Dates</span>

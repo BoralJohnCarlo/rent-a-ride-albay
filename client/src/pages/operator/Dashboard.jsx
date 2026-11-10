@@ -189,14 +189,14 @@ const KpiCard = ({ label, value, format, hint, icon: Icon, tone, loading, onClic
         whileHover={{ y: -3 }}
         whileTap={{ scale: 0.98 }}
         onClick={onClick}
-        className="group flex w-full flex-col rounded-2xl border border-gray-200/80 bg-white p-5 text-left shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
+        className="group flex w-full flex-col rounded-2xl border border-gray-200/80 bg-white p-3 sm:p-5 min-w-0 text-left shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
     >
         <div className="flex items-center justify-between gap-3">
             <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                 {label}
             </span>
             <span
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${KPI_TONES[tone]}`}
+                className={`hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${KPI_TONES[tone]}`}
             >
                 <Icon size={17} />
             </span>
@@ -208,11 +208,11 @@ const KpiCard = ({ label, value, format, hint, icon: Icon, tone, loading, onClic
             <AnimatedCounter
                 value={Number(value) || 0}
                 format={format}
-                className="mt-3 text-2xl font-black tracking-tight text-gray-900 dark:text-white"
+                className="mt-2 break-words text-xl sm:mt-3 sm:text-2xl font-black tracking-tight text-gray-900 dark:text-white"
             />
         )}
 
-        <span className="mt-1 flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+        <span className="mt-1 hidden sm:flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
             <span className="truncate">{hint}</span>
             <ArrowRight
                 size={13}
@@ -483,28 +483,28 @@ const Dashboard = () => {
                     className="operator-hero-float pointer-events-none absolute -right-16 top-6 h-52 w-52 rounded-full bg-blue-400/20 blur-3xl dark:bg-blue-600/20"
                 />
 
-                <div className="relative px-5 py-10 sm:px-8 lg:px-10">
-                    <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-                        <div className="max-w-170">
-                            <span className="inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+                <div className="relative px-4 py-5 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+                    <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-end lg:justify-between">
+                        <div className="min-w-0 max-w-170">
+                            <span className="hidden items-center gap-2 rounded-full sm:inline-flex bg-blue-600/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
                                 <Sparkles size={13} />
                                 Rent-A-Ride Albay Partner
                             </span>
 
-                            <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-[#0b1b41] sm:text-4xl lg:text-[42px] dark:text-white">
+                            <h1 className="mt-0 break-words text-2xl sm:mt-3 font-extrabold tracking-tight text-[#0b1b41] sm:text-4xl lg:text-[42px] dark:text-white">
                                 {greeting()}
                                 {firstName ? `, ${firstName}` : ""}!
                             </h1>
 
-                            <p className="mt-2 text-base text-[#38527e] sm:text-lg dark:text-gray-300">
+                            <p className="mt-2 text-sm text-[#38527e] sm:text-lg dark:text-gray-300">
                                 Here's how your vehicles are doing.
                             </p>
 
-                            <p className="mt-4 text-sm font-medium italic text-[#405b89] dark:text-gray-400">
+                            <p className="mt-4 hidden text-sm font-medium italic sm:block text-[#405b89] dark:text-gray-400">
                                 "More Journeys. Brighter Destinations."
                             </p>
 
-                            <div className="mt-6 flex flex-wrap gap-3">
+                            <div className="mt-4 flex flex-wrap gap-2 sm:mt-6 sm:gap-3">
                                 <button
                                     type="button"
                                     onClick={() => navigate("/operator/vehicles")}
@@ -535,10 +535,10 @@ const Dashboard = () => {
                         </div>
 
                         {/* Control panel */}
-                        <div className="w-full max-w-sm rounded-2xl border border-white/70 bg-white/85 p-4 shadow-xl shadow-blue-900/10 backdrop-blur-md dark:border-gray-700/70 dark:bg-gray-900/85">
+                        <div className="w-full lg:max-w-sm sm:rounded-2xl sm:border sm:border-white/70 sm:bg-white/85 sm:p-4 sm:shadow-xl sm:shadow-blue-900/10 sm:backdrop-blur-md sm:dark:border-gray-700/70 sm:dark:bg-gray-900/85">
                             <label
                                 htmlFor="operator-dashboard-period"
-                                className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500"
+                                className="sr-only text-[11px] font-bold uppercase tracking-wider text-gray-400 sm:not-sr-only dark:text-gray-500"
                             >
                                 Reporting Period
                             </label>
@@ -546,7 +546,7 @@ const Dashboard = () => {
                             <Select
                                 bare
                                 id="operator-dashboard-period"
-                                wrapperClassName="mt-2"
+                                wrapperClassName="sm:mt-2"
                                 value={period}
                                 onChange={(event) => setPeriod(event.target.value)}
                                 options={PERIOD_OPTIONS}
@@ -605,7 +605,7 @@ const Dashboard = () => {
             )}
 
             {/* KPIs */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                 {kpis.map(({ key, to, ...kpi }) => (
                     <KpiCard
                         key={key}

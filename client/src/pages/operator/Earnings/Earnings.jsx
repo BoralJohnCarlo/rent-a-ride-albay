@@ -271,23 +271,23 @@ const Earnings = () => {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                <h2 className="break-words text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                     My Earnings
                 </h2>
             </div>
 
             {/* Wallet */}
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
+                    <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
                             <Wallet className="h-6 w-6" />
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
                                 Wallet Balance
                             </p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                            <p className="break-words text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                                 {walletError || !wallet
                                     ? walletLoading ? "Loading..." : "Unavailable"
                                     : `${(wallet?.balance ?? 0).toFixed(2)} ${wallet?.currency || "PHP"}`}
@@ -362,7 +362,7 @@ const Earnings = () => {
 
             {/* Withdrawal History */}
             <section aria-busy={historyLoading}>
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         Withdrawal History
                     </h3>
@@ -430,42 +430,42 @@ const Earnings = () => {
                 </div>
             )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                    <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                    <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
                             <Wallet className="h-6 w-6" />
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Total Earned</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                            <p className="break-words text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                                 {summaryValue(summary?.totalEarned)}
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                    <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                    <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
                             <CheckCircle className="h-6 w-6" />
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Total Paid</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                            <p className="break-words text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                                 {summaryValue(summary?.totalPaid)}
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                    <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+                <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                    <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
                             <TrendingUp className="h-6 w-6" />
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Scheduled</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                            <p className="break-words text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                                 {summaryValue(summary?.totalScheduled)}
                             </p>
                             <p className="text-xs text-gray-400">
@@ -514,7 +514,7 @@ const Earnings = () => {
                                     setPayoutPage(1);
                                     setStatusFilter(filter.value);
                                 }}
-                                className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                                className={`min-h-11 shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                                     statusFilter === filter.value
                                         ? "bg-blue-600 text-white"
                                         : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400"
@@ -661,7 +661,7 @@ const Earnings = () => {
                                     )
                                 }
                                 placeholder="0.00"
-                                className="w-full rounded-2xl border-2 border-gray-200 bg-gray-50 py-4 pl-10 pr-4 text-2xl font-bold text-gray-900 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:border-indigo-400"
+                                className="w-full rounded-2xl border-2 border-gray-200 bg-gray-50 py-4 pl-10 pr-4 break-words text-xl sm:text-2xl font-bold text-gray-900 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:border-indigo-400"
                             />
                         </div>
 

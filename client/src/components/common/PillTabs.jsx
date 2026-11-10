@@ -66,7 +66,7 @@ const PillTabs = ({
                         role="tab"
                         aria-selected={active}
                         onClick={() => onChange(option.value)}
-                        className={`relative inline-flex shrink-0 items-center whitespace-nowrap rounded-full font-semibold transition-colors ${sz.button} ${
+                        className={`relative inline-flex min-h-11 sm:min-h-0 shrink-0 items-center whitespace-nowrap rounded-full font-semibold transition-colors ${sz.button} ${
                             active
                                 ? tn.activeText
                                 : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"

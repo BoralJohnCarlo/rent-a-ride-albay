@@ -1,0 +1,362 @@
+[
+  {
+    "label": "dashboard-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 3185
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Partner Dashboard\n3\nAD\nRENT-A-RIDE ALBAY PARTNER\nGood evening, Alexandra!\n\nHere's how your vehicles are doing.\n\n\"More Journeys. Brighter Destinations.\"\n\nMy Vehicles\nBookings\nConsignments\nREPORTING PERIOD\nLast 30 Days\nWALLET BALANCE\n₱1,250,000\nAvailab",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 839
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Bookings & Rentals\n3\nAD\nActive\n2\nUpcoming\n2\nOn the road\n0\nCompleted\n0\nCancelled\n0\nAll\n2\nON THE ROAD\n0\nVehicles out with a renter now\nUPCOMING\n2\nBooked, not yet picked up\nCOMPLETED\n0\nFinished rentals\nToyota Innova 2.8 Automatic\nBK-000003 · ABC1234\nDec",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 800
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Vehicles\n3\nAD\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nVH-000002\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n/DAY\n\n7 Seats\n\nDiesel\n\nNo Image\n\nUpload later\n\nMitsubishi Montero Sport\n\nVH-000008\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 692
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Consignments\n3\nAD\nAll statuses\nApplications\nAppointments\nNew Application\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nCON-000004\n\nPending\nCar\n\nJuan Miguel Dela Cruz\n\nAutomatic\nDiesel\n₱4,000.00\n/DAY\n\nSubmitted\n\nNov 9, 2026\n\nDashboard\n3\nCon",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "earnings-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 1370
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Earnings\n3\nAD\nMy Earnings\n\nWallet Balance\n\n1250000.00 PHP\n\nWithdraw to GCash\nWithdrawal History\n\nNo withdrawals on this page.\n\nPage 1 of 1\n\nPrevious\nNext\n\nTotal Earned\n\n1850000.00 PHP\n\nTotal Paid\n\n600000.00 PHP\n\nScheduled\n\n0.00 PHP\n\nHeld before re",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "tracking-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375,
+      "height": 542,
+      "content": 542
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Live Tracking\n3\nAD\nMap\nAlerts\nLive\nHistory\nConnecting...\n\nVehicles are tracked for security. Renter details are never shown here.\n\nNo Vehicles Yet\n\nOnce your consigned vehicles are live on the platform, they'll appear here.\n\nDashboard\n3\nConsignments\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "profile-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 2495
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Profile\n3\nAD\nMy Profile\n\nManage your personal information and account details.\n\nAlexandra Dela Cruz\nPARTNER\n\ncustomer@example.test\n\nRent-A-Ride Albay\n\nEdit Profile\n\nPERSONAL DETAILS\n\nPersonal Information\n\nYour basic personal and contact informatio",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "settings-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 651
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Settings\n3\nAD\nSettings\n\nManage your notification sounds and account security.\n\nBrowser Notifications\nEnable important alerts on this browser for your account.\nManage on this browser\nNotification Sounds\nTurn alert sounds up, down or off for new notifi",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "notifications-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 887
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Notifications\n3\nAD\nBrowser notification settings\n3\nNotifications\n\nUpdates on your vehicles, bookings, consignments and earnings.\n\nMark all read\nClear all\nAll\nUnread\n3\nBookings\nRentals\nPayouts\nConsignments\nVehicles\nReviews\nDocuments\nAccount\nNo notific",
+    "errors": [],
+    "wide": []
+  }
+]

@@ -51,14 +51,14 @@ const PillSearch = ({
                 onChange={(event) => onChange(event.target.value)}
                 placeholder={placeholder}
                 aria-label={label}
-                className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white dark:placeholder:text-gray-500"
+                className="h-full min-w-0 flex-1 bg-transparent px-3 text-base sm:text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white dark:placeholder:text-gray-500"
             />
             {value && (
                 <button
                     type="button"
                     onClick={() => onChange("")}
                     aria-label="Clear search"
-                    className="mr-1 shrink-0 rounded-full p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                    className="mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
                 >
                     <X size={15} />
                 </button>
@@ -86,7 +86,7 @@ const PillSearch = ({
                         key={filter.label}
                         filter={filter}
                         withIcon={index === 0}
-                        className="h-9 border border-gray-200/80 bg-white/80 shadow-sm dark:border-gray-800 dark:bg-gray-900/80"
+                        className="h-11 border border-gray-200/80 bg-white/80 shadow-sm dark:border-gray-800 dark:bg-gray-900/80"
                     />
                 ))}
             </div>
