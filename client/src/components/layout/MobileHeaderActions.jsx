@@ -20,7 +20,7 @@ const MobileHeaderActions = ({
 
     return (
         <div className="flex items-center gap-2">
-            <NotificationBell navigateTo={notificationPath} />
+            <NotificationBell navigateTo={notificationPath} sizeClassName="h-11 w-11" />
 
             <motion.button
                 type="button"
@@ -30,8 +30,8 @@ const MobileHeaderActions = ({
                 aria-expanded={isMenuOpen}
                 className="
                     flex
-                    h-10
-                    w-10
+                    h-11
+                    w-11
                     shrink-0
                     items-center
                     justify-center

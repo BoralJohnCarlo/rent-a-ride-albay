@@ -46,17 +46,17 @@ const QuickStats = ({
     stats = defaultStats,
     loading = false,
     onCardClick,
+    compactMobile = false,
 }) => {
     return (
         <section>
             <div
-                className="
+                className={`
                     grid
-                    grid-cols-1
-                    gap-4
                     sm:grid-cols-2
                     xl:grid-cols-4
-                "
+                    ${compactMobile ? "grid-cols-2 gap-3" : "grid-cols-1 gap-4"}
+                `}
             >
                 {stats.map((stat) => (
                     <StatCard
@@ -68,6 +68,7 @@ const QuickStats = ({
                         color={stat.color}
                         trend={stat.trend}
                         loading={loading}
+                        compactMobile={compactMobile}
                         onClick={() =>
                             onCardClick?.(stat)
                         }

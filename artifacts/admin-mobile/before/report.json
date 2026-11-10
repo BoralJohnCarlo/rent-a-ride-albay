@@ -1,0 +1,92 @@
+[
+  {
+    "label": "dashboard-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 534,
+      "content": 6096
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375
+    },
+    "text": "Dashboard\n3\nAD\nRENT-A-RIDE ALBAY\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\n\"More Journeys. Brighter Destinations.\"\n\nManage Fleet\nReview Bookings\nUpdated just now\nREPORTING PERIOD\nLast 30 Days\n\n128\n\n24\n\n34",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 534,
+      "content": 1477
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\n\nACTIVE NOW\n\n0\n\nVehicles currently out\n\nCANCELLED\n\n0\n\nCancelled bookings\n\nREJECTED\n\n0\n\nRejected bookings\n\nEXPIRED\n\n0\n\nExpired bookings\n\nNO-SHOWS\n\n0\n\nApproved but never picked up\n\nCONFIRMED VALUE\n\n₱0\n\nApproved, ong",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 534,
+      "content": 701
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 534,
+      "content": 1350
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375
+    },
+    "text": "Fleet Management\n3\nAD\nAdd Vehicle\n\nTOTAL FLEET\n\n3\n\nAll vehicles\n\nACTIVE\n\n3\n\nCurrently listed\n\nARCHIVED\n\n0\n\nHidden from booking\n\nCOMPANY-OWNED\n\n0\n\nOwned by us\n\nCONSIGNED\n\n0\n\nPartner-owned\n\nCATEGORIES\n\n0\n\nManage categories\n\nNo Image\n\nUpload later\n\nToyo",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 534,
+      "content": 1331
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375
+    },
+    "text": "Consignment Management\n3\nAD\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Requested\n\n0\n\nA",
+    "errors": [],
+    "wide": []
+  }
+]

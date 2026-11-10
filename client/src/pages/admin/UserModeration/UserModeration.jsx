@@ -615,7 +615,7 @@ const UserModeration = () => {
                 <div
                     role="tablist"
                     aria-label="User groups"
-                    className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-gray-200/80 bg-white/80 p-1 shadow-sm backdrop-blur-xl [scrollbar-width:none] dark:border-gray-800 dark:bg-gray-900/80 [&::-webkit-scrollbar]:hidden"
+                    className="grid w-full max-w-full grid-cols-3 gap-1 overflow-x-auto rounded-full sm:flex sm:w-auto border border-gray-200/80 bg-white/80 p-1 shadow-sm backdrop-blur-xl [scrollbar-width:none] dark:border-gray-800 dark:bg-gray-900/80 [&::-webkit-scrollbar]:hidden"
                 >
                     {[
                         {
@@ -651,7 +651,7 @@ const UserModeration = () => {
                                 role="tab"
                                 aria-selected={active}
                                 onClick={() => handleTabChange(tab.value)}
-                                className={`relative flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                                className={`relative flex min-h-11 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full px-2 py-2 text-xs font-semibold sm:gap-2 sm:px-4 sm:text-sm transition-colors ${
                                     active
                                         ? "text-white"
                                         : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
@@ -665,7 +665,7 @@ const UserModeration = () => {
                                     />
                                 )}
 
-                                <Icon className="relative h-4 w-4" />
+                                <Icon className="relative hidden h-4 w-4 sm:block" />
 
                                 <span className="relative">{tab.label}</span>
 
@@ -729,7 +729,7 @@ const UserModeration = () => {
                             />
 
                             <div className="min-w-0">
-                                <h2 className="truncate text-xl font-bold text-gray-900 dark:text-white">
+                                <h2 className="break-words text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                                     {fmtFullName(selectedUser)}
                                 </h2>
 

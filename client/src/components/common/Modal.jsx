@@ -258,8 +258,8 @@ const Modal = ({
                                 onClick={onClose}
                                 className="
                                     flex
-                                    h-10
-                                    w-10
+                                    h-11
+                                    w-11
                                     shrink-0
                                     items-center
                                     justify-center

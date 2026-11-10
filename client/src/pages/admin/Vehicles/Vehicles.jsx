@@ -128,7 +128,7 @@ const FleetStatCard = ({
         <Tag
             type={onClick ? "button" : undefined}
             onClick={onClick}
-            className={`w-full rounded-2xl border p-4 text-left shadow-sm transition-all ${
+            className={`w-full rounded-2xl border p-3 text-left shadow-sm sm:p-4 transition-all ${
                 onClick
                     ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-md"
                     : ""
@@ -150,11 +150,11 @@ const FleetStatCard = ({
                     <Icon size={17} />
                 </span>
             </div>
-            <p className="mt-3 text-2xl font-black tracking-tight text-gray-900 dark:text-white">
+            <p className="mt-1 text-2xl font-black tracking-tight sm:mt-3 text-gray-900 dark:text-white">
                 {value}
             </p>
             {hint && (
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-1 hidden text-xs text-gray-500 sm:block dark:text-gray-400">
                     {hint}
                 </p>
             )}
@@ -1395,7 +1395,7 @@ const Vehicles = () => {
                             }
                             placeholder="Search by code, brand, model or plate..."
                             aria-label="Search vehicles"
-                            className="h-10 w-full rounded-full bg-transparent pl-11 pr-9 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-gray-100/80 dark:text-white dark:placeholder:text-gray-500 dark:focus:bg-gray-800/60"
+                            className="h-10 w-full rounded-full bg-transparent pl-11 pr-9 text-base sm:text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-gray-100/80 dark:text-white dark:placeholder:text-gray-500 dark:focus:bg-gray-800/60"
                         />
                         {search && (
                             <button
@@ -1419,6 +1419,7 @@ const Vehicles = () => {
                         onClick={() =>
                             setShowFilters((previous) => !previous)
                         }
+                        aria-label="Filter vehicles"
                         aria-pressed={showFilters}
                         className={`${PILL_BUTTON} h-10 ${
                             showFilters
@@ -1541,9 +1542,9 @@ const Vehicles = () => {
                 animate="animate"
                 className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
             >
-                {fleetStats.map((stat) => (
+                {fleetStats.map(({ key, ...stat }) => (
                     <motion.div
-                        key={stat.key}
+                        key={key}
                         variants={STAGGER_ITEM}
                     >
                         <FleetStatCard {...stat} />
@@ -1762,7 +1763,7 @@ const Vehicles = () => {
                                 }
                                 placeholder="Search vehicle categories..."
                                 aria-label="Search vehicle categories"
-                                className="h-10 w-full rounded-full bg-transparent pl-11 pr-9 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-gray-100/80 dark:text-white dark:placeholder:text-gray-500 dark:focus:bg-gray-800/60"
+                                className="h-10 w-full rounded-full bg-transparent pl-11 pr-9 text-base sm:text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-gray-100/80 dark:text-white dark:placeholder:text-gray-500 dark:focus:bg-gray-800/60"
                             />
                             {categoryFilters.search && (
                                 <button

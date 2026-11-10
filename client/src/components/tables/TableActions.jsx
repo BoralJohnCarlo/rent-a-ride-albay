@@ -59,7 +59,7 @@ const TableActions = ({
     }
 
     // "xs" shrinks the icon buttons; any other size keeps the default.
-    const iconBox = size === "xs" ? "h-7 w-7" : "h-8 w-8";
+    const iconBox = size === "xs" ? "h-11 w-11 sm:h-7 sm:w-7" : "h-11 w-11 sm:h-8 sm:w-8";
     const iconSize = size === "xs" ? 15 : 18;
 
     return (

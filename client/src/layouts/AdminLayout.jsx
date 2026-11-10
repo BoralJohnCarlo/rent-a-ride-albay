@@ -67,6 +67,7 @@ const AdminLayout = () => {
                 {isDesktop && <AdminSidebar />}
 
                 <DashboardShell
+                    compactMobile
                     navbar={
                         <AdminNavbar
                             title={getPageTitle(location.pathname)}

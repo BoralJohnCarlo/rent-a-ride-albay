@@ -736,7 +736,7 @@ const Consignments = () => {
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Search code, partner, vehicle, plate…"
                                 aria-label="Search applications"
-                                className="h-10 w-full rounded-full bg-transparent pl-11 pr-9 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-gray-100/80 dark:text-white dark:placeholder:text-gray-500 dark:focus:bg-gray-800/60"
+                                className="h-10 w-full rounded-full bg-transparent pl-11 pr-9 text-base sm:text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-gray-100/80 dark:text-white dark:placeholder:text-gray-500 dark:focus:bg-gray-800/60"
                             />
                             {search && (
                                 <button

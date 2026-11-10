@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { MoreVertical } from "lucide-react";
 import {
     useEffect,
+    useCallback,
     useLayoutEffect,
     useRef,
     useState,
@@ -28,7 +29,7 @@ const CardActionMenu = ({
     const triggerRef = useRef(null);
     const menuRef = useRef(null);
 
-    const updatePosition = () => {
+    const updatePosition = useCallback(() => {
         if (!triggerRef.current) {
             return;
         }
@@ -46,17 +47,26 @@ const CardActionMenu = ({
             )
         );
 
-        setPosition({
-            top: rect.bottom + 6,
-            left,
-        });
-    };
+        const menuHeight = Math.min(menuRef.current?.offsetHeight || actions.length * 44 + 12, window.innerHeight - VIEWPORT_MARGIN * 2);
+        const below = rect.bottom + 6;
+        const above = rect.top - menuHeight - 6;
+        const top = Math.max(VIEWPORT_MARGIN, below + menuHeight <= window.innerHeight - VIEWPORT_MARGIN ? below : above >= VIEWPORT_MARGIN ? above : window.innerHeight - menuHeight - VIEWPORT_MARGIN);
+        setPosition(previous => previous?.top === top && previous?.left === left ? previous : { top, left });
+    }, [actions.length]);
 
     useLayoutEffect(() => {
         if (open) {
             updatePosition();
         }
-    }, [open]);
+    }, [open, updatePosition]);
+
+    const menuPositioned = Boolean(position);
+    useLayoutEffect(() => {
+        if (!open || !menuPositioned || !menuRef.current) return;
+        const observer = new ResizeObserver(updatePosition);
+        observer.observe(menuRef.current);
+        return () => observer.disconnect();
+    }, [open, menuPositioned, updatePosition]);
 
     useEffect(() => {
         if (!open) {
@@ -87,7 +97,7 @@ const CardActionMenu = ({
                 handleReposition
             );
         };
-    }, [open]);
+    }, [open, updatePosition]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -154,8 +164,8 @@ const CardActionMenu = ({
                 }}
                 className="
                     flex
-                    h-8
-                    w-8
+                    h-11
+                    w-11
                     items-center
                     justify-center
                     rounded-full
@@ -214,10 +224,11 @@ const CardActionMenu = ({
                                 top: position.top,
                                 left: position.left,
                                 width: MENU_WIDTH,
+                                maxHeight: "calc(100dvh - 16px)",
                             }}
                             className="
                                 z-[100]
-                                overflow-hidden
+                                overflow-y-auto
                                 rounded-xl
                                 border
                                 border-gray-200
@@ -248,6 +259,7 @@ const CardActionMenu = ({
                                     const itemClass = [
                                         "flex",
                                         "w-full",
+                                        "min-h-11",
                                         "items-center",
                                         "gap-2.5",
                                         "px-3",
@@ -314,6 +326,7 @@ const CardActionMenu = ({
                                             className={[
                                                 "flex",
                                                 "w-full",
+                                                "min-h-11",
                                                 "items-center",
                                                 "gap-2.5",
                                                 "px-3",

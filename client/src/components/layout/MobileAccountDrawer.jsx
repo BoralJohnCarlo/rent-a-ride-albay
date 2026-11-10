@@ -62,8 +62,8 @@ const ROW_CHEVRON = (
 
 const ROUND_BUTTON_CLASSES = `
     flex
-    h-10
-    w-10
+    h-11
+    w-11
     shrink-0
     items-center
     justify-center

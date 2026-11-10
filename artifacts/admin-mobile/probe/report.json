@@ -1,0 +1,202 @@
+[
+  {
+    "label": "dashboard-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 5332
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\nFleet\nBookings\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n128\n\nVehicles\n\n24\n\nBookings\n\n346\n\nRevenue\n\n₱1,250,000\n128\nCustomers\nAll time\n346\nBookings\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 1449
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\n\nACTIVE NOW\n\n0\n\nCANCELLED\n\n0\n\nREJECTED\n\n0\n\nEXPIRED\n\n0\n\nNO-SHOWS\n\n0\n\nCONFIRMED VALUE\n\n₱0\n\nBOOKINGS TO MANAGE\n\nPending, paid, and approved bookings plus open requests\n\n2\n\nCOMPLETED\n\nFinished rentals\n\n0\n\nVEHICLE CONF",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 701
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 1238
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nAdd Vehicle\n\nTOTAL FLEET\n\n3\n\nACTIVE\n\n3\n\nARCHIVED\n\n0\n\nCOMPANY-OWNED\n\n0\n\nCONSIGNED\n\n0\n\nCATEGORIES\n\n0\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nVH-000002\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n/DAY\n\n7 Seats\n\nDiesel\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 809
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Requested\n\n0\n\nA",
+    "errors": [],
+    "wide": []
+  }
+]

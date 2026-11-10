@@ -11,6 +11,7 @@ const DashboardShell = ({
     breadcrumb,
     // Docked under the content (the phone page switcher).
     bottomBar,
+    compactMobile = false,
     children,
 }) => {
     const location = useLocation();
@@ -79,15 +80,15 @@ const DashboardShell = ({
 
                 <main
                     ref={mainRef}
-                    className="
+                    className={`
                         min-h-0
                         min-w-0
                         flex-1
                         overflow-x-auto
                         overflow-y-auto
-                        p-4
+                        ${compactMobile ? "p-3" : "p-4"}
                         sm:p-6
-                    "
+                    `}
                 >
                     {children}
                 </main>

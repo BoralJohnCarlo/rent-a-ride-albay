@@ -12,7 +12,7 @@ const BaseNavbar = ({
 }) => {
     return (
         <header className="relative flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 transition-colors duration-200 dark:border-gray-800 dark:bg-gray-950 sm:px-6">
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                 {onMenuClick && (
                     <motion.button
                         type="button"
@@ -64,7 +64,7 @@ const BaseNavbar = ({
                                 duration: 0.18,
                                 ease: "easeOut",
                             }}
-                            className="truncate text-lg font-semibold tracking-tight text-gray-900 dark:text-white"
+                            className="line-clamp-2 break-words text-base font-semibold leading-tight tracking-tight text-gray-900 dark:text-white sm:line-clamp-none sm:truncate sm:text-lg"
                         >
                             {title}
                         </motion.h1>
@@ -79,7 +79,7 @@ const BaseNavbar = ({
             </div>
 
             {actions && (
-                <div className="ml-4 flex shrink-0 items-center">
+                <div className="ml-2 flex shrink-0 items-center sm:ml-4">
                     {actions}
                 </div>
             )}

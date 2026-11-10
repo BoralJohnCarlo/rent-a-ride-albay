@@ -172,8 +172,8 @@ const ArrowButton = ({
             className="
                 relative
                 flex
-                h-9
-                w-9
+                h-11
+                w-11
                 shrink-0
                 items-center
                 justify-center
@@ -501,7 +501,7 @@ const DashboardDock = ({ items, counts = {} }) => {
                 dark:shadow-black/40
             "
         >
-            <div className="mx-auto flex h-[68px] max-w-2xl items-center gap-2 px-3">
+            <div className="mx-auto flex h-[60px] max-w-2xl items-center gap-2 px-3 sm:h-[68px] [@media(max-height:500px)]:h-14">
                 <ArrowButton
                     direction="left"
                     disabled={settledIndex <= 0}

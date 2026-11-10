@@ -45,7 +45,7 @@ const ConsignmentStatsRow = ({ items = [] }) => {
             variants={STAGGER_CONTAINER}
             initial="initial"
             animate="animate"
-            className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9"
+            className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 xl:grid-cols-9"
         >
             {items.map((item) => {
                 const Icon = item.icon;
@@ -67,7 +67,7 @@ const ConsignmentStatsRow = ({ items = [] }) => {
                             onClick={item.onClick}
                             aria-pressed={item.onClick ? Boolean(item.active) : undefined}
                             title={item.label}
-                            className={`group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border p-3.5 text-left shadow-sm transition-all duration-200 ${
+                            className={`group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border p-2.5 text-left sm:p-3.5 shadow-sm transition-all duration-200 ${
                                 item.onClick
                                     ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-md"
                                     : ""
@@ -77,7 +77,7 @@ const ConsignmentStatsRow = ({ items = [] }) => {
                                     : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
                             }`}
                         >
-                            <div className="flex items-start justify-between gap-2">
+                            <div className="hidden items-start justify-between gap-2 sm:flex">
                                 <span
                                     className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${tone}`}
                                 >
@@ -93,11 +93,11 @@ const ConsignmentStatsRow = ({ items = [] }) => {
                                 )}
                             </div>
 
-                            <p className="mt-3 text-2xl font-black leading-none tabular-nums tracking-tight text-gray-900 dark:text-white">
+                            <p className="mt-0 text-xl sm:mt-3 sm:text-2xl font-black leading-none tabular-nums tracking-tight text-gray-900 dark:text-white">
                                 {item.value}
                             </p>
 
-                            <p className="mt-1.5 line-clamp-2 min-h-[2rem] text-[11px] font-semibold leading-4 text-gray-500 dark:text-gray-400">
+                            <p className="mt-1 line-clamp-2 min-h-[2rem] sm:mt-1.5 text-[11px] font-semibold leading-4 text-gray-500 dark:text-gray-400">
                                 {item.label}
                             </p>
 

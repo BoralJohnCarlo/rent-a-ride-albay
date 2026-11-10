@@ -65,7 +65,8 @@ const SearchBar = ({
                     bg-white
                     pl-12
                     pr-12
-                    text-sm
+                    text-base
+                    sm:text-sm
                     text-gray-900
                     placeholder:text-gray-400
                     shadow-sm

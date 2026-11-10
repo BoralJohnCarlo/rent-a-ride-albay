@@ -273,7 +273,7 @@ const KpiCard = ({
         >
             <div
                 style={{ "--notch-x": `calc(${stubWidth} + 2px)` }}
-                className={`kpi-ticket flex h-21 overflow-hidden rounded-2xl border ${
+                className={`kpi-ticket flex h-20 overflow-hidden sm:h-21 rounded-2xl border ${
                     active
                         ? colors.active
                         : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
@@ -303,7 +303,7 @@ const KpiCard = ({
                 >
                     <div className="min-w-0 flex-1">
                         <p
-                            className={`truncate text-[10px] font-bold uppercase tracking-[0.14em] ${
+                            className={`line-clamp-2 text-[10px] font-bold uppercase tracking-wide sm:truncate sm:tracking-[0.14em] ${
                                 active
                                     ? colors.label
                                     : "text-gray-400 dark:text-gray-500"
@@ -321,7 +321,7 @@ const KpiCard = ({
                                 className={`text-[11px] text-gray-500 dark:text-gray-400 ${
                                     featured
                                         ? "mt-1 line-clamp-2 leading-snug"
-                                        : "truncate"
+                                        : "hidden truncate sm:block"
                                 }`}
                             >
                                 {hint}
@@ -1943,7 +1943,7 @@ const Bookings = () => {
                                     setSearch(event.target.value)
                                 }
                                 placeholder="Search bookings..."
-                                className="h-10 w-full rounded-full bg-transparent pl-11 pr-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-gray-100/80 dark:text-white dark:placeholder:text-gray-500 dark:focus:bg-gray-800/60"
+                                className="h-10 w-full rounded-full bg-transparent pl-11 pr-3 text-base sm:text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-gray-100/80 dark:text-white dark:placeholder:text-gray-500 dark:focus:bg-gray-800/60"
                             />
                         </div>
 
@@ -1974,6 +1974,7 @@ const Bookings = () => {
                         <button
                             type="button"
                             onClick={() => setFilterModalOpen(true)}
+                            aria-label="Filter bookings"
                             className={`relative inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition ${
                                 filterCount > 0
                                     ? "bg-blue-600 text-white shadow-md shadow-blue-600/25 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"

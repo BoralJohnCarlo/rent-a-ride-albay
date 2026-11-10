@@ -709,8 +709,8 @@ const Dashboard = () => {
                     aria-hidden="true"
                 />
 
-                <div className="relative mx-auto max-w-[1600px] px-5 py-10 sm:px-8 lg:px-10">
-                    <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+                <div className="relative mx-auto max-w-[1600px] px-4 py-5 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+                    <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-end lg:justify-between">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -719,14 +719,14 @@ const Dashboard = () => {
                                 ease: EASE_OUT,
                                 delay: 0.05,
                             }}
-                            className="max-w-[680px]"
+                            className="min-w-0 max-w-[680px]"
                         >
-                            <span className="inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+                            <span className="hidden items-center gap-2 rounded-full bg-blue-600/10 sm:inline-flex px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
                                 <Sparkles size={13} />
                                 Rent-A-Ride Albay
                             </span>
 
-                            <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-[#0b1b41] sm:text-4xl lg:text-[42px] dark:text-white">
+                            <h1 className="mt-0 break-words text-2xl font-extrabold sm:mt-3 tracking-tight text-[#0b1b41] sm:text-4xl lg:text-[42px] dark:text-white">
                                 Welcome back
                                 {user?.firstName
                                     ? `, ${user.firstName}`
@@ -734,16 +734,16 @@ const Dashboard = () => {
                                 !
                             </h1>
 
-                            <p className="mt-2 text-base text-[#38527e] sm:text-lg dark:text-gray-300">
+                            <p className="mt-2 text-sm text-[#38527e] sm:text-lg dark:text-gray-300">
                                 Here's what's happening with your car
                                 rental business today.
                             </p>
 
-                            <p className="mt-4 text-sm font-medium italic text-[#405b89] dark:text-gray-400">
+                            <p className="mt-4 hidden text-sm font-medium italic sm:block text-[#405b89] dark:text-gray-400">
                                 "More Journeys. Brighter Destinations."
                             </p>
 
-                            <div className="mt-6 flex flex-wrap gap-3">
+                            <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-6 sm:flex sm:flex-wrap sm:gap-3">
                                 <button
                                     type="button"
                                     onClick={() =>
@@ -752,7 +752,7 @@ const Dashboard = () => {
                                     className="dashboard-primary-button inline-flex items-center gap-2 rounded-xl bg-[#0b1b41] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition hover:-translate-y-0.5 hover:bg-[#13275c] dark:bg-blue-600 dark:hover:bg-blue-500"
                                 >
                                     <Car size={16} />
-                                    Manage Fleet
+                                    <span className="sm:hidden">Fleet</span><span className="hidden sm:inline">Manage Fleet</span>
                                 </button>
 
                                 <button
@@ -763,7 +763,7 @@ const Dashboard = () => {
                                     className="inline-flex items-center gap-2 rounded-xl border border-[#0b1b41]/15 bg-white/80 px-4 py-2.5 text-sm font-semibold text-[#0b1b41] backdrop-blur transition hover:-translate-y-0.5 hover:bg-white dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
                                 >
                                     <CalendarCheck size={16} />
-                                    Review Bookings
+                                    <span className="sm:hidden">Bookings</span><span className="hidden sm:inline">Review Bookings</span>
                                 </button>
                             </div>
                         </motion.div>
@@ -777,9 +777,9 @@ const Dashboard = () => {
                                 ease: EASE_OUT,
                                 delay: 0.12,
                             }}
-                            className="w-full max-w-sm rounded-2xl border border-white/70 bg-white/85 p-4 shadow-xl shadow-blue-900/10 backdrop-blur-md dark:border-gray-700/70 dark:bg-gray-900/85"
+                            className="w-full lg:max-w-xs lg:shrink-0 sm:rounded-2xl sm:border sm:border-white/70 sm:bg-white/85 sm:p-4 sm:shadow-xl sm:shadow-blue-900/10 sm:backdrop-blur-md sm:dark:border-gray-700/70 sm:dark:bg-gray-900/85"
                         >
-                            <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                            <div className="hidden items-center gap-2 text-xs font-semibold text-gray-500 sm:flex dark:text-gray-400">
                                 {isRefreshing ? (
                                     <>
                                         <RefreshCw
@@ -798,10 +798,10 @@ const Dashboard = () => {
                                 )}
                             </div>
 
-                            <div className="mt-3 space-y-2">
+                            <div className="space-y-2 sm:mt-3">
                                 <label
                                     htmlFor="dashboard-period"
-                                    className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500"
+                                    className="sr-only text-[11px] font-bold uppercase tracking-wider text-gray-400 sm:not-sr-only dark:text-gray-500"
                                 >
                                     Reporting Period
                                 </label>
@@ -834,7 +834,7 @@ const Dashboard = () => {
                 variants={containerVariants}
                 initial="hidden"
                 animate="show"
-                className="mx-auto max-w-[1600px] space-y-6 px-5 pt-6 sm:px-8 lg:px-10"
+                className="mx-auto max-w-[1600px] space-y-4 px-0 pt-4 sm:space-y-6 sm:px-8 sm:pt-6 lg:px-10"
             >
                 {error && (
                     <ErrorBanner
@@ -863,6 +863,7 @@ const Dashboard = () => {
                 {/* QUICK STATS */}
                 <motion.div variants={fadeUpVariants}>
                     <QuickStats
+                        compactMobile
                         stats={
                             hasDashboardData
                                 ? dashboardStats
@@ -1025,8 +1026,9 @@ const Dashboard = () => {
                         {statsFirstLoad ? (
                             <motion.div
                                 key="analytics-skeleton"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="show"
                                 exit={{ opacity: 0 }}
                                 className="space-y-6"
                             >
@@ -1054,8 +1056,9 @@ const Dashboard = () => {
                         ) : (
                             <motion.div
                                 key="analytics-content"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="show"
                                 exit={{ opacity: 0 }}
                                 className="space-y-6"
                             >
@@ -1569,7 +1572,7 @@ const Dashboard = () => {
                     {/* PROMO BANNER */}
                     <motion.section
                         variants={fadeUpVariants}
-                        className="relative min-h-[250px] w-full overflow-hidden rounded-2xl bg-cover bg-center shadow-lg"
+                        className="relative hidden min-h-[250px] w-full overflow-hidden rounded-2xl bg-cover bg-center shadow-lg sm:block"
                         style={{
                             backgroundImage: `url(${MorePossibilities})`,
                         }}

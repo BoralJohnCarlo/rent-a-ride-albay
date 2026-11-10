@@ -1,0 +1,2937 @@
+[
+  {
+    "label": "dashboard-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 4790
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\nFleet\nBookings\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n128\n\nVehicles\n\n24\n\nBookings\n\n346\n\nRevenue\n\n₱1,250,000\n128\nCustomers\nAll time\n346\nBookings\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 4797
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nRENT-A-RIDE ALBAY\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\n\"More Journeys. Brighter Destinations.\"\n\nManage Fleet\nReview Bookings\nUpdated just now\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-iPhone-16-portrait",
+    "body": 393,
+    "viewport": 393,
+    "main": {
+      "width": 383,
+      "scroll": 383,
+      "height": 727,
+      "content": 4670
+    },
+    "header": {
+      "width": 393,
+      "scroll": 393,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 281,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 333,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\nFleet\nBookings\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n128\n\nVehicles\n\n24\n\nBookings\n\n346\n\nRevenue\n\n₱1,250,000\n128\nCustomers\nAll time\n346\nBookings\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-iPhone-16-landscape",
+    "body": 852,
+    "viewport": 852,
+    "main": {
+      "width": 842,
+      "scroll": 842,
+      "height": 272,
+      "content": 4797
+    },
+    "header": {
+      "width": 852,
+      "scroll": 852,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 784,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nRENT-A-RIDE ALBAY\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\n\"More Journeys. Brighter Destinations.\"\n\nManage Fleet\nReview Bookings\nUpdated just now\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 430,
+      "scroll": 430,
+      "height": 831,
+      "content": 4550
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\nFleet\nBookings\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n128\n\nVehicles\n\n24\n\nBookings\n\n346\n\nRevenue\n\n₱1,250,000\n128\nCustomers\nAll time\n346\nBookings\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 4818
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nRENT-A-RIDE ALBAY\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\n\"More Journeys. Brighter Destinations.\"\n\nManage Fleet\nReview Bookings\nUpdated just now\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-Pixel-9-portrait",
+    "body": 412,
+    "viewport": 412,
+    "main": {
+      "width": 402,
+      "scroll": 402,
+      "height": 799,
+      "content": 4638
+    },
+    "header": {
+      "width": 412,
+      "scroll": 412,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 352,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\nFleet\nBookings\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n128\n\nVehicles\n\n24\n\nBookings\n\n346\n\nRevenue\n\n₱1,250,000\n128\nCustomers\nAll time\n346\nBookings\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-Pixel-9-landscape",
+    "body": 924,
+    "viewport": 924,
+    "main": {
+      "width": 914,
+      "scroll": 914,
+      "height": 291,
+      "content": 4797
+    },
+    "header": {
+      "width": 924,
+      "scroll": 924,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 804,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 856,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nRENT-A-RIDE ALBAY\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\n\"More Journeys. Brighter Destinations.\"\n\nManage Fleet\nReview Bookings\nUpdated just now\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-Pixel-9-Pro-portrait",
+    "body": 427,
+    "viewport": 427,
+    "main": {
+      "width": 417,
+      "scroll": 417,
+      "height": 827,
+      "content": 4614
+    },
+    "header": {
+      "width": 427,
+      "scroll": 427,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 367,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\nFleet\nBookings\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n128\n\nVehicles\n\n24\n\nBookings\n\n346\n\nRevenue\n\n₱1,250,000\n128\nCustomers\nAll time\n346\nBookings\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-Pixel-9-Pro-landscape",
+    "body": 952,
+    "viewport": 952,
+    "main": {
+      "width": 942,
+      "scroll": 942,
+      "height": 306,
+      "content": 4805
+    },
+    "header": {
+      "width": 952,
+      "scroll": 952,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 832,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 884,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nRENT-A-RIDE ALBAY\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\n\"More Journeys. Brighter Destinations.\"\n\nManage Fleet\nReview Bookings\nUpdated just now\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-Pixel-10-portrait",
+    "body": 412,
+    "viewport": 412,
+    "main": {
+      "width": 402,
+      "scroll": 402,
+      "height": 799,
+      "content": 4638
+    },
+    "header": {
+      "width": 412,
+      "scroll": 412,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 352,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\nFleet\nBookings\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n128\n\nVehicles\n\n24\n\nBookings\n\n346\n\nRevenue\n\n₱1,250,000\n128\nCustomers\nAll time\n346\nBookings\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-Pixel-10-landscape",
+    "body": 924,
+    "viewport": 924,
+    "main": {
+      "width": 914,
+      "scroll": 914,
+      "height": 291,
+      "content": 4797
+    },
+    "header": {
+      "width": 924,
+      "scroll": 924,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 804,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 856,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nRENT-A-RIDE ALBAY\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\n\"More Journeys. Brighter Destinations.\"\n\nManage Fleet\nReview Bookings\nUpdated just now\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 4846
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\nFleet\nBookings\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n128\n\nVehicles\n\n24\n\nBookings\n\n346\n\nRevenue\n\n₱1,250,000\n128\nCustomers\nAll time\n346\nBookings\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 4797
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Dashboard\n3\nAD\nRENT-A-RIDE ALBAY\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\n\"More Journeys. Brighter Destinations.\"\n\nManage Fleet\nReview Bookings\nUpdated 14s ago\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n1",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 1449
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\n\nACTIVE NOW\n\n0\n\nCANCELLED\n\n0\n\nREJECTED\n\n0\n\nEXPIRED\n\n0\n\nNO-SHOWS\n\n0\n\nCONFIRMED VALUE\n\n₱0\n\nBOOKINGS TO MANAGE\n\nPending, paid, and approved bookings plus open requests\n\n2\n\nCOMPLETED\n\nFinished rentals\n\n0\n\nVEHICLE CONF",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 1001
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\nFilters\nExport to Excel\n\nACTIVE NOW\n\n0\n\nVehicles currently out\n\nCANCELLED\n\n0\n\nCancelled bookings\n\nREJECTED\n\n0\n\nRejected bookings\n\nEXPIRED\n\n0\n\nExpired bookings\n\nNO-SHOWS\n\n0\n\nApproved but never picked up\n\nCONFIRMED ",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-16-portrait",
+    "body": 393,
+    "viewport": 393,
+    "main": {
+      "width": 383,
+      "scroll": 383,
+      "height": 727,
+      "content": 1449
+    },
+    "header": {
+      "width": 393,
+      "scroll": 393,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 281,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 333,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\n\nACTIVE NOW\n\n0\n\nCANCELLED\n\n0\n\nREJECTED\n\n0\n\nEXPIRED\n\n0\n\nNO-SHOWS\n\n0\n\nCONFIRMED VALUE\n\n₱0\n\nBOOKINGS TO MANAGE\n\nPending, paid, and approved bookings plus open requests\n\n2\n\nCOMPLETED\n\nFinished rentals\n\n0\n\nVEHICLE CONF",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-16-landscape",
+    "body": 852,
+    "viewport": 852,
+    "main": {
+      "width": 842,
+      "scroll": 842,
+      "height": 272,
+      "content": 897
+    },
+    "header": {
+      "width": 852,
+      "scroll": 852,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 784,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\nFilters\nExport to Excel\n\nACTIVE NOW\n\n0\n\nVehicles currently out\n\nCANCELLED\n\n0\n\nCancelled bookings\n\nREJECTED\n\n0\n\nRejected bookings\n\nEXPIRED\n\n0\n\nExpired bookings\n\nNO-SHOWS\n\n0\n\nApproved but never picked up\n\nCONFIRMED ",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 430,
+      "scroll": 430,
+      "height": 831,
+      "content": 1449
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\n\nACTIVE NOW\n\n0\n\nCANCELLED\n\n0\n\nREJECTED\n\n0\n\nEXPIRED\n\n0\n\nNO-SHOWS\n\n0\n\nCONFIRMED VALUE\n\n₱0\n\nBOOKINGS TO MANAGE\n\nPending, paid, and approved bookings plus open requests\n\n2\n\nCOMPLETED\n\nFinished rentals\n\n0\n\nVEHICLE CONF",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 897
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\nFilters\nExport to Excel\n\nACTIVE NOW\n\n0\n\nVehicles currently out\n\nCANCELLED\n\n0\n\nCancelled bookings\n\nREJECTED\n\n0\n\nRejected bookings\n\nEXPIRED\n\n0\n\nExpired bookings\n\nNO-SHOWS\n\n0\n\nApproved but never picked up\n\nCONFIRMED ",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-Pixel-9-portrait",
+    "body": 412,
+    "viewport": 412,
+    "main": {
+      "width": 402,
+      "scroll": 402,
+      "height": 799,
+      "content": 1449
+    },
+    "header": {
+      "width": 412,
+      "scroll": 412,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 352,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\n\nACTIVE NOW\n\n0\n\nCANCELLED\n\n0\n\nREJECTED\n\n0\n\nEXPIRED\n\n0\n\nNO-SHOWS\n\n0\n\nCONFIRMED VALUE\n\n₱0\n\nBOOKINGS TO MANAGE\n\nPending, paid, and approved bookings plus open requests\n\n2\n\nCOMPLETED\n\nFinished rentals\n\n0\n\nVEHICLE CONF",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-Pixel-9-landscape",
+    "body": 924,
+    "viewport": 924,
+    "main": {
+      "width": 914,
+      "scroll": 914,
+      "height": 291,
+      "content": 897
+    },
+    "header": {
+      "width": 924,
+      "scroll": 924,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 804,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 856,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\nFilters\nExport to Excel\n\nACTIVE NOW\n\n0\n\nVehicles currently out\n\nCANCELLED\n\n0\n\nCancelled bookings\n\nREJECTED\n\n0\n\nRejected bookings\n\nEXPIRED\n\n0\n\nExpired bookings\n\nNO-SHOWS\n\n0\n\nApproved but never picked up\n\nCONFIRMED ",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-Pixel-9-Pro-portrait",
+    "body": 427,
+    "viewport": 427,
+    "main": {
+      "width": 417,
+      "scroll": 417,
+      "height": 827,
+      "content": 1449
+    },
+    "header": {
+      "width": 427,
+      "scroll": 427,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 367,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\n\nACTIVE NOW\n\n0\n\nCANCELLED\n\n0\n\nREJECTED\n\n0\n\nEXPIRED\n\n0\n\nNO-SHOWS\n\n0\n\nCONFIRMED VALUE\n\n₱0\n\nBOOKINGS TO MANAGE\n\nPending, paid, and approved bookings plus open requests\n\n2\n\nCOMPLETED\n\nFinished rentals\n\n0\n\nVEHICLE CONF",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-Pixel-9-Pro-landscape",
+    "body": 952,
+    "viewport": 952,
+    "main": {
+      "width": 942,
+      "scroll": 942,
+      "height": 306,
+      "content": 897
+    },
+    "header": {
+      "width": 952,
+      "scroll": 952,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 832,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 884,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\nFilters\nExport to Excel\n\nACTIVE NOW\n\n0\n\nVehicles currently out\n\nCANCELLED\n\n0\n\nCancelled bookings\n\nREJECTED\n\n0\n\nRejected bookings\n\nEXPIRED\n\n0\n\nExpired bookings\n\nNO-SHOWS\n\n0\n\nApproved but never picked up\n\nCONFIRMED ",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-Pixel-10-portrait",
+    "body": 412,
+    "viewport": 412,
+    "main": {
+      "width": 402,
+      "scroll": 402,
+      "height": 799,
+      "content": 1449
+    },
+    "header": {
+      "width": 412,
+      "scroll": 412,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 352,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\n\nACTIVE NOW\n\n0\n\nCANCELLED\n\n0\n\nREJECTED\n\n0\n\nEXPIRED\n\n0\n\nNO-SHOWS\n\n0\n\nCONFIRMED VALUE\n\n₱0\n\nBOOKINGS TO MANAGE\n\nPending, paid, and approved bookings plus open requests\n\n2\n\nCOMPLETED\n\nFinished rentals\n\n0\n\nVEHICLE CONF",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-Pixel-10-landscape",
+    "body": 924,
+    "viewport": 924,
+    "main": {
+      "width": 914,
+      "scroll": 914,
+      "height": 291,
+      "content": 897
+    },
+    "header": {
+      "width": 924,
+      "scroll": 924,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 804,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 856,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\nFilters\nExport to Excel\n\nACTIVE NOW\n\n0\n\nVehicles currently out\n\nCANCELLED\n\n0\n\nCancelled bookings\n\nREJECTED\n\n0\n\nRejected bookings\n\nEXPIRED\n\n0\n\nExpired bookings\n\nNO-SHOWS\n\n0\n\nApproved but never picked up\n\nCONFIRMED ",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 1449
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\n\nACTIVE NOW\n\n0\n\nCANCELLED\n\n0\n\nREJECTED\n\n0\n\nEXPIRED\n\n0\n\nNO-SHOWS\n\n0\n\nCONFIRMED VALUE\n\n₱0\n\nBOOKINGS TO MANAGE\n\nPending, paid, and approved bookings plus open requests\n\n2\n\nCOMPLETED\n\nFinished rentals\n\n0\n\nVEHICLE CONF",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 897
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Booking Management\n3\nAD\nNewest first\nFilters\nExport to Excel\n\nACTIVE NOW\n\n0\n\nVehicles currently out\n\nCANCELLED\n\n0\n\nCancelled bookings\n\nREJECTED\n\n0\n\nRejected bookings\n\nEXPIRED\n\n0\n\nExpired bookings\n\nNO-SHOWS\n\n0\n\nApproved but never picked up\n\nCONFIRMED ",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 701
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 713
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-iPhone-16-portrait",
+    "body": 393,
+    "viewport": 393,
+    "main": {
+      "width": 393,
+      "scroll": 393,
+      "height": 727,
+      "content": 727
+    },
+    "header": {
+      "width": 393,
+      "scroll": 393,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 281,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 333,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-iPhone-16-landscape",
+    "body": 852,
+    "viewport": 852,
+    "main": {
+      "width": 842,
+      "scroll": 842,
+      "height": 272,
+      "content": 434
+    },
+    "header": {
+      "width": 852,
+      "scroll": 852,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 784,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 440,
+      "scroll": 440,
+      "height": 831,
+      "content": 831
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 434
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-Pixel-9-portrait",
+    "body": 412,
+    "viewport": 412,
+    "main": {
+      "width": 412,
+      "scroll": 412,
+      "height": 799,
+      "content": 799
+    },
+    "header": {
+      "width": 412,
+      "scroll": 412,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 352,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-Pixel-9-landscape",
+    "body": 924,
+    "viewport": 924,
+    "main": {
+      "width": 914,
+      "scroll": 914,
+      "height": 291,
+      "content": 434
+    },
+    "header": {
+      "width": 924,
+      "scroll": 924,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 804,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 856,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-Pixel-9-Pro-portrait",
+    "body": 427,
+    "viewport": 427,
+    "main": {
+      "width": 427,
+      "scroll": 427,
+      "height": 827,
+      "content": 827
+    },
+    "header": {
+      "width": 427,
+      "scroll": 427,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 367,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-Pixel-9-Pro-landscape",
+    "body": 952,
+    "viewport": 952,
+    "main": {
+      "width": 942,
+      "scroll": 942,
+      "height": 306,
+      "content": 434
+    },
+    "header": {
+      "width": 952,
+      "scroll": 952,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 832,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 884,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-Pixel-10-portrait",
+    "body": 412,
+    "viewport": 412,
+    "main": {
+      "width": 412,
+      "scroll": 412,
+      "height": 799,
+      "content": 799
+    },
+    "header": {
+      "width": 412,
+      "scroll": 412,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 352,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-Pixel-10-landscape",
+    "body": 924,
+    "viewport": 924,
+    "main": {
+      "width": 914,
+      "scroll": 914,
+      "height": 291,
+      "content": 434
+    },
+    "header": {
+      "width": 924,
+      "scroll": 924,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 804,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 856,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 701
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "users-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 434
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "User Management\n3\nAD\nUsers\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID RENEWALS\n\n0 / 1\n\nCE\nChristopher Emmanuel Santos\n\ncustomer@example.test\n\nCustom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 1066
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nAdd Vehicle\n\nTOTAL FLEET\n\n3\n\nACTIVE\n\n3\n\nARCHIVED\n\n0\n\nCOMPANY-OWNED\n\n0\n\nCONSIGNED\n\n0\n\nCATEGORIES\n\n0\n\nVEHICLE\nToyota Innova 2.8 Automatic\nCompany\n\nVH-000002 · 2025 · Uncategorized\n\nSTATUS\nAvailable\nBooking on\nNEXT BOOKING\nNo upcom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 1212
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nFilters\nExport to Excel\nAdd Vehicle\n\nTOTAL FLEET\n\n3\n\nAll vehicles\n\nACTIVE\n\n3\n\nCurrently listed\n\nARCHIVED\n\n0\n\nHidden from booking\n\nCOMPANY-OWNED\n\n0\n\nOwned by us\n\nCONSIGNED\n\n0\n\nPartner-owned\n\nCATEGORIES\n\n0\n\nManage categories\n\nNo I",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-16-portrait",
+    "body": 393,
+    "viewport": 393,
+    "main": {
+      "width": 383,
+      "scroll": 383,
+      "height": 727,
+      "content": 1238
+    },
+    "header": {
+      "width": 393,
+      "scroll": 393,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 281,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 333,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nAdd Vehicle\n\nTOTAL FLEET\n\n3\n\nACTIVE\n\n3\n\nARCHIVED\n\n0\n\nCOMPANY-OWNED\n\n0\n\nCONSIGNED\n\n0\n\nCATEGORIES\n\n0\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nVH-000002\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n/DAY\n\n7 Seats\n\nDiesel\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-16-landscape",
+    "body": 852,
+    "viewport": 852,
+    "main": {
+      "width": 842,
+      "scroll": 842,
+      "height": 272,
+      "content": 884
+    },
+    "header": {
+      "width": 852,
+      "scroll": 852,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 784,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nFilters\nExport to Excel\nTable\nCards\nAdd Vehicle\nExpand All\nCollapse All\n\nTOTAL FLEET\n\n3\n\nAll vehicles\n\nACTIVE\n\n3\n\nCurrently listed\n\nARCHIVED\n\n0\n\nHidden from booking\n\nCOMPANY-OWNED\n\n0\n\nOwned by us\n\nCONSIGNED\n\n0\n\nPartner-owned\n\nCA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 430,
+      "scroll": 430,
+      "height": 831,
+      "content": 1066
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nAdd Vehicle\n\nTOTAL FLEET\n\n3\n\nACTIVE\n\n3\n\nARCHIVED\n\n0\n\nCOMPANY-OWNED\n\n0\n\nCONSIGNED\n\n0\n\nCATEGORIES\n\n0\n\nVEHICLE\nToyota Innova 2.8 Automatic\nCompany\n\nVH-000002 · 2025 · Uncategorized\n\nSTATUS\nAvailable\nBooking on\nNEXT BOOKING\nNo upcom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 884
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nFilters\nExport to Excel\nTable\nCards\nAdd Vehicle\nExpand All\nCollapse All\n\nTOTAL FLEET\n\n3\n\nAll vehicles\n\nACTIVE\n\n3\n\nCurrently listed\n\nARCHIVED\n\n0\n\nHidden from booking\n\nCOMPANY-OWNED\n\n0\n\nOwned by us\n\nCONSIGNED\n\n0\n\nPartner-owned\n\nCA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-Pixel-9-portrait",
+    "body": 412,
+    "viewport": 412,
+    "main": {
+      "width": 402,
+      "scroll": 402,
+      "height": 799,
+      "content": 1066
+    },
+    "header": {
+      "width": 412,
+      "scroll": 412,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 352,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nAdd Vehicle\n\nTOTAL FLEET\n\n3\n\nACTIVE\n\n3\n\nARCHIVED\n\n0\n\nCOMPANY-OWNED\n\n0\n\nCONSIGNED\n\n0\n\nCATEGORIES\n\n0\n\nVEHICLE\nToyota Innova 2.8 Automatic\nCompany\n\nVH-000002 · 2025 · Uncategorized\n\nSTATUS\nAvailable\nBooking on\nNEXT BOOKING\nNo upcom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-Pixel-9-landscape",
+    "body": 924,
+    "viewport": 924,
+    "main": {
+      "width": 914,
+      "scroll": 914,
+      "height": 291,
+      "content": 884
+    },
+    "header": {
+      "width": 924,
+      "scroll": 924,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 804,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 856,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nFilters\nExport to Excel\nTable\nCards\nAdd Vehicle\nExpand All\nCollapse All\n\nTOTAL FLEET\n\n3\n\nAll vehicles\n\nACTIVE\n\n3\n\nCurrently listed\n\nARCHIVED\n\n0\n\nHidden from booking\n\nCOMPANY-OWNED\n\n0\n\nOwned by us\n\nCONSIGNED\n\n0\n\nPartner-owned\n\nCA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-Pixel-9-Pro-portrait",
+    "body": 427,
+    "viewport": 427,
+    "main": {
+      "width": 417,
+      "scroll": 417,
+      "height": 827,
+      "content": 1066
+    },
+    "header": {
+      "width": 427,
+      "scroll": 427,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 367,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nAdd Vehicle\n\nTOTAL FLEET\n\n3\n\nACTIVE\n\n3\n\nARCHIVED\n\n0\n\nCOMPANY-OWNED\n\n0\n\nCONSIGNED\n\n0\n\nCATEGORIES\n\n0\n\nVEHICLE\nToyota Innova 2.8 Automatic\nCompany\n\nVH-000002 · 2025 · Uncategorized\n\nSTATUS\nAvailable\nBooking on\nNEXT BOOKING\nNo upcom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-Pixel-9-Pro-landscape",
+    "body": 952,
+    "viewport": 952,
+    "main": {
+      "width": 942,
+      "scroll": 942,
+      "height": 306,
+      "content": 884
+    },
+    "header": {
+      "width": 952,
+      "scroll": 952,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 832,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 884,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nFilters\nExport to Excel\nTable\nCards\nAdd Vehicle\nExpand All\nCollapse All\n\nTOTAL FLEET\n\n3\n\nAll vehicles\n\nACTIVE\n\n3\n\nCurrently listed\n\nARCHIVED\n\n0\n\nHidden from booking\n\nCOMPANY-OWNED\n\n0\n\nOwned by us\n\nCONSIGNED\n\n0\n\nPartner-owned\n\nCA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-Pixel-10-portrait",
+    "body": 412,
+    "viewport": 412,
+    "main": {
+      "width": 402,
+      "scroll": 402,
+      "height": 799,
+      "content": 1066
+    },
+    "header": {
+      "width": 412,
+      "scroll": 412,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 352,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nAdd Vehicle\n\nTOTAL FLEET\n\n3\n\nACTIVE\n\n3\n\nARCHIVED\n\n0\n\nCOMPANY-OWNED\n\n0\n\nCONSIGNED\n\n0\n\nCATEGORIES\n\n0\n\nVEHICLE\nToyota Innova 2.8 Automatic\nCompany\n\nVH-000002 · 2025 · Uncategorized\n\nSTATUS\nAvailable\nBooking on\nNEXT BOOKING\nNo upcom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-Pixel-10-landscape",
+    "body": 924,
+    "viewport": 924,
+    "main": {
+      "width": 914,
+      "scroll": 914,
+      "height": 291,
+      "content": 884
+    },
+    "header": {
+      "width": 924,
+      "scroll": 924,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 804,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 856,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nFilters\nExport to Excel\nTable\nCards\nAdd Vehicle\nExpand All\nCollapse All\n\nTOTAL FLEET\n\n3\n\nAll vehicles\n\nACTIVE\n\n3\n\nCurrently listed\n\nARCHIVED\n\n0\n\nHidden from booking\n\nCOMPANY-OWNED\n\n0\n\nOwned by us\n\nCONSIGNED\n\n0\n\nPartner-owned\n\nCA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 1066
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nAdd Vehicle\n\nTOTAL FLEET\n\n3\n\nACTIVE\n\n3\n\nARCHIVED\n\n0\n\nCOMPANY-OWNED\n\n0\n\nCONSIGNED\n\n0\n\nCATEGORIES\n\n0\n\nVEHICLE\nToyota Innova 2.8 Automatic\nCompany\n\nVH-000002 · 2025 · Uncategorized\n\nSTATUS\nAvailable\nBooking on\nNEXT BOOKING\nNo upcom",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 884
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Fleet Management\n3\nAD\nFilters\nExport to Excel\nTable\nCards\nAdd Vehicle\nExpand All\nCollapse All\n\nTOTAL FLEET\n\n3\n\nAll vehicles\n\nACTIVE\n\n3\n\nCurrently listed\n\nARCHIVED\n\n0\n\nHidden from booking\n\nCOMPANY-OWNED\n\n0\n\nOwned by us\n\nCONSIGNED\n\n0\n\nPartner-owned\n\nCA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 833
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Requested\n\n0\n\nA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 1027
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nTable\nCards\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Req",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-16-portrait",
+    "body": 393,
+    "viewport": 393,
+    "main": {
+      "width": 383,
+      "scroll": 383,
+      "height": 727,
+      "content": 833
+    },
+    "header": {
+      "width": 393,
+      "scroll": 393,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 281,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 333,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Requested\n\n0\n\nA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-16-landscape",
+    "body": 852,
+    "viewport": 852,
+    "main": {
+      "width": 842,
+      "scroll": 842,
+      "height": 272,
+      "content": 895
+    },
+    "header": {
+      "width": 852,
+      "scroll": 852,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 784,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nTable\nCards\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Req",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 430,
+      "scroll": 430,
+      "height": 831,
+      "content": 833
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Requested\n\n0\n\nA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 895
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nTable\nCards\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Req",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-Pixel-9-portrait",
+    "body": 412,
+    "viewport": 412,
+    "main": {
+      "width": 402,
+      "scroll": 402,
+      "height": 799,
+      "content": 833
+    },
+    "header": {
+      "width": 412,
+      "scroll": 412,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 352,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Requested\n\n0\n\nA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-Pixel-9-landscape",
+    "body": 924,
+    "viewport": 924,
+    "main": {
+      "width": 914,
+      "scroll": 914,
+      "height": 291,
+      "content": 895
+    },
+    "header": {
+      "width": 924,
+      "scroll": 924,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 804,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 856,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nTable\nCards\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Req",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-Pixel-9-Pro-portrait",
+    "body": 427,
+    "viewport": 427,
+    "main": {
+      "width": 417,
+      "scroll": 417,
+      "height": 827,
+      "content": 833
+    },
+    "header": {
+      "width": 427,
+      "scroll": 427,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 367,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Requested\n\n0\n\nA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-Pixel-9-Pro-landscape",
+    "body": 952,
+    "viewport": 952,
+    "main": {
+      "width": 942,
+      "scroll": 942,
+      "height": 306,
+      "content": 895
+    },
+    "header": {
+      "width": 952,
+      "scroll": 952,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 832,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 884,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nTable\nCards\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Req",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-Pixel-10-portrait",
+    "body": 412,
+    "viewport": 412,
+    "main": {
+      "width": 402,
+      "scroll": 402,
+      "height": 799,
+      "content": 833
+    },
+    "header": {
+      "width": 412,
+      "scroll": 412,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 352,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Requested\n\n0\n\nA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-Pixel-10-landscape",
+    "body": 924,
+    "viewport": 924,
+    "main": {
+      "width": 914,
+      "scroll": 914,
+      "height": 291,
+      "content": 895
+    },
+    "header": {
+      "width": 924,
+      "scroll": 924,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 804,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 856,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nTable\nCards\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Req",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 853
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Requested\n\n0\n\nA",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 899
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Consignment Management\n3\nAD\nTable\nCards\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\nPending Vehicles\n\n0\n\nWithdrawn\n\n0\n\nRejected\n\n0\n\nRevision Req",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "/admin-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/admin-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/admin-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/admin/bookings-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/admin/bookings-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/admin/bookings-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/admin/users-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/admin/users-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/admin/users-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/admin/vehicles-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/admin/vehicles-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/admin/vehicles-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/admin/consignments-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/admin/consignments-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/admin/consignments-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  }
+]

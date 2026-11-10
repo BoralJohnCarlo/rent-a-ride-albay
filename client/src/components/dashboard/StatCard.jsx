@@ -40,6 +40,7 @@ const StatCard = ({
     loading = false,
     onClick,
     className = "",
+    compactMobile = false,
 }) => {
     const variant =
         colorVariants[color] || colorVariants.blue;
@@ -52,7 +53,7 @@ const StatCard = ({
                 border
                 border-gray-200
                 bg-white
-                p-5
+                ${compactMobile ? "min-w-0 p-3 sm:p-5" : "p-5"}
                 shadow-sm
                 transition
                 dark:border-gray-800
@@ -82,7 +83,7 @@ const StatCard = ({
                             </p>
 
                             <h3
-                                className={`mt-2 text-3xl font-bold ${variant.value}`}
+                                className={`mt-2 ${compactMobile ? "text-2xl sm:text-3xl" : "text-3xl"} font-bold ${variant.value}`}
                             >
                                 {value}
                             </h3>
@@ -91,7 +92,7 @@ const StatCard = ({
                         {icon && (
                             <div
                                 className={`
-                                    flex
+                                    ${compactMobile ? "hidden sm:flex" : "flex"}
                                     h-12
                                     w-12
                                     items-center
@@ -106,7 +107,7 @@ const StatCard = ({
                     </div>
 
                     {(subtitle || trend !== undefined) && (
-                        <div className="mt-5 flex items-center justify-between">
+                        <div className={`${compactMobile ? "mt-3 hidden sm:flex" : "mt-5 flex"} items-center justify-between`}>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
                                 {subtitle}
                             </p>

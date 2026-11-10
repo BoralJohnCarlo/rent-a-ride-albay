@@ -40,7 +40,7 @@ const ConsignmentSectionTabs = ({
                                 role="tab"
                                 aria-selected={active}
                                 onClick={() => onChange?.(section.value)}
-                                className={`relative flex shrink-0 items-center whitespace-nowrap rounded-full font-semibold transition-colors ${
+                                className={`relative flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full font-semibold transition-colors ${
                                     compact
                                         ? "gap-1 px-2.5 py-1 text-[11px]"
                                         : "gap-2 px-4 py-2 text-sm"
