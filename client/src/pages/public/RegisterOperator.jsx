@@ -1,3 +1,4 @@
+import PhilippinePhoneInput from "../../components/common/PhilippinePhoneInput";
 import "../../styles/registration-mobile.css";
 import {
     AnimatePresence,
@@ -22,11 +23,9 @@ import {
     Check,
     ChevronLeft,
     ChevronRight,
-    Contact,
     IdCard,
     Lock,
     Mail,
-    Phone,
     ReceiptText,
     ShieldCheck,
     User,
@@ -1823,9 +1822,9 @@ const RegisterOperator = () => {
 
                                                         <Input id="birthdate" name="birthdate" type="date" label="Birthdate" value={formData.birthdate} onChange={handleChange} max={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0]} error={getFieldError("birthdate")} required />
 
-                                                        <Input id="phoneNumber" name="phoneNumber" type="tel" label="Phone Number" placeholder="+639369875311" maxLength={13} pattern="[+]639[0-9]{9}" helperText="Philippine mobile only: +63 followed by your 10-digit mobile number." value={formData.phoneNumber} onChange={handlePhoneNumberChange} autoComplete="tel" leftIcon={<Phone size={17} />} error={getFieldError("phoneNumber")} required />
+                                                        <PhilippinePhoneInput id="phoneNumber" name="phoneNumber" label="Phone Number" value={formData.phoneNumber} onChange={handlePhoneNumberChange} autoComplete="tel-national" error={getFieldError("phoneNumber")} required />
 
-                                                        <Input id="alternativeContact" name="alternativeContact" label="Alternative Contact" type="tel" maxLength={13} pattern="[+]639[0-9]{9}" helperText="Optional. Use +63 followed by your 10-digit mobile number." error={getFieldError("alternativeContact")} placeholder="+639369875311" value={formData.alternativeContact} onChange={handlePhoneNumberChange} autoComplete="off" leftIcon={<Contact size={17} />} />
+                                                        <PhilippinePhoneInput id="alternativeContact" name="alternativeContact" label="Alternative Contact" value={formData.alternativeContact} onChange={handlePhoneNumberChange} autoComplete="off" error={getFieldError("alternativeContact")} />
                                                     </div>
 
                                                     <div className="mt-4">
