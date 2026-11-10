@@ -27,7 +27,7 @@ const OperatorAppointmentsPanel = ({ admin = false, ...props }) => {
                 let page = 1;
                 let pages = 1;
                 do {
-                    const result = await (admin ? getPendingVehicles : getMyPendingVehicles)({ page, limit: 20 });
+                    const result = await (admin ? getPendingVehicles : getMyPendingVehicles)({ page, limit: 20, includeCompleted: true });
                     if (cancelled) return;
                     records.push(...(result.data || []));
                     pages = result.pagination?.pages || 1;

@@ -3,6 +3,8 @@ import { assertInspectionSlotAvailable } from "../services/inspectionSlotService
 import PendingVehicle from "../models/PendingVehicle.js";
 import Vehicle from "../models/Vehicle.js";
 import User from "../models/User.js";
+import Notification from "../models/Notification.js";
+import createError from "../utils/createError.js";
 import generateVehicleCode from "../utils/generateVehicleCode.js";
 import { notifyUser } from "../services/notificationService.js";
 import {
@@ -10,21 +12,33 @@ import {
     VEHICLE_OWNERSHIP,
 } from "../constants/vehicleConstants.js";
 
+// A new listing stays unbookable until the completed submission is durable.
+// If activation fails, repeating approval finishes this same listing.
+const activateRegistrationVehicle = async (vehicle, submission) => {
+    if (!vehicle.isPendingInspection) return vehicle;
+    return await Vehicle.findOneAndUpdate(
+        { _id: vehicle._id, registrationSubmission: submission._id, isPendingInspection: true },
+        { $set: { isPendingInspection: false, "availability.bookingEnabled": submission.availability?.bookingEnabled !== false } },
+        { returnDocument: "after" }
+    ) || await Vehicle.findById(vehicle._id);
+};
+
 /*
  * Best-effort notice to the operator who submitted a pending vehicle about an
  * admin decision. A failure here must never fail the status update.
  */
-const notifyOperatorOfPendingVehicle = async (pendingVehicle, { type, title, message, variant }) => {
+const notifyOperatorOfPendingVehicle = async (pendingVehicle, { type, title, message, variant, dedupeKey }) => {
     if (!pendingVehicle?.operator) {
         return;
     }
 
     try {
-        await notifyUser(pendingVehicle.operator, {
+        return await notifyUser(pendingVehicle.operator, {
             type,
             title,
             message,
             variant,
+            dedupeKey,
             category: "Vehicle",
             metadata: {
                 reference: pendingVehicle.plateNumber,
@@ -40,6 +54,30 @@ const notifyOperatorOfPendingVehicle = async (pendingVehicle, { type, title, mes
     }
 };
 
+const recoveryIds = () => Vehicle.distinct("registrationSubmission", { registrationSubmission: { $ne: null }, isPendingInspection: true });
+const queueFilter = ids => ({ $or: [{ status: { $ne: "approved" } }, { approvalPending: true }, { _id: { $in: ids } }] });
+const annotateRecovery = (records, ids) => records.map(record => ({
+    ...record.toObject(),
+    approvalRecoveryRequired: record.approvalPending || ids.some(id => String(id) === String(record._id)),
+}));
+const finishApproval = async (submission, listing) => {
+    const vehicle = await activateRegistrationVehicle(listing, submission);
+    const dedupeKey = `registration-approved:${submission._id}`;
+    const receipt = { recipient: submission.operator, $or: [{ dedupeKey }, { type: "Vehicle Approved", "metadata.relatedId": submission._id }] };
+    await Notification.init();
+    if (!await Notification.exists(receipt)) {
+        await notifyOperatorOfPendingVehicle(submission, {
+            type: "Vehicle Approved", title: "Vehicle Approved", variant: "success",
+            message: `Your vehicle ${submission.brand} ${submission.model} (${submission.plateNumber}) was approved and is now listed on the platform as ${vehicle.vehicleCode}.`,
+            dedupeKey,
+        });
+    }
+    if (!await Notification.exists(receipt)) throw createError("Approval was saved, but its confirmation could not be delivered. Please retry approval.", 503);
+    await PendingVehicle.updateOne({ _id: submission._id, status: "approved" }, { $set: { approvalPending: false } });
+    submission.approvalPending = false;
+    return vehicle;
+};
+
 export const getPendingVehicles = async (req, res, next) => {
     try {
         const {
@@ -52,10 +90,11 @@ export const getPendingVehicles = async (req, res, next) => {
             limit = 20
         } = req.query;
 
-        const query = {};
+        const ids = await recoveryIds();
+        const query = req.query.includeCompleted === "true" || status ? {} : queueFilter(ids);
 
         if (search) {
-            query.$or = [
+            query.$and = [{ $or: [
                 { "operator.firstName": { $regex: search, $options: "i" } },
                 { "operator.lastName": { $regex: search, $options: "i" } },
                 { "operator.email": { $regex: search, $options: "i" } },
@@ -63,7 +102,7 @@ export const getPendingVehicles = async (req, res, next) => {
                 { registrationNumber: { $regex: search, $options: "i" } },
                 { brand: { $regex: search, $options: "i" } },
                 { model: { $regex: search, $options: "i" } }
-            ];
+            ] }];
         }
 
         if (vehicleType) {
@@ -83,6 +122,8 @@ export const getPendingVehicles = async (req, res, next) => {
             sort.plateNumber = sortOrder === "desc" ? -1 : 1;
         }
 
+        // Keep page boundaries stable when multiple submissions share a date/name.
+        sort._id = sortOrder === "desc" ? -1 : 1;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const pendingVehicles = await PendingVehicle.find(query)
@@ -95,7 +136,7 @@ export const getPendingVehicles = async (req, res, next) => {
 
         res.json({
             success: true,
-            data: pendingVehicles,
+            data: annotateRecovery(pendingVehicles, ids),
             pagination: {
                 total,
                 page: parseInt(page),
@@ -123,6 +164,8 @@ export const getMyPendingVehicles = async (req, res, next) => {
         } = req.query;
 
         const query = { operator: req.user._id };
+        const ids = await recoveryIds();
+        if (req.query.includeCompleted !== "true") Object.assign(query, queueFilter(ids));
 
         let sort = {};
         if (sortBy === "createdAt") {
@@ -144,7 +187,7 @@ export const getMyPendingVehicles = async (req, res, next) => {
 
         res.json({
             success: true,
-            data: pendingVehicles,
+            data: annotateRecovery(pendingVehicles, ids),
             pagination: {
                 total,
                 page: parseInt(page),
@@ -216,6 +259,17 @@ const updatePendingVehicleStatusUnlocked = async (req, res, next) => {
             });
         }
 
+        if (pendingVehicle.status === "approved") {
+            if (status !== "approved") return res.status(409).json({ success: false, message: "This submission is completed. Manage its approved vehicle instead." });
+            let vehicle = await Vehicle.findById(pendingVehicle.approvedVehicle);
+            if (!vehicle) return res.status(409).json({ success: false, message: "The approved vehicle is no longer available. The appointment history has been preserved." });
+            vehicle = await finishApproval(pendingVehicle, vehicle);
+            return res.json({ success: true, message: "Vehicle is already approved.", data: { vehicle, pendingVehicle } });
+        }
+
+        const existingVehicle = await Vehicle.findOne({ registrationSubmission: pendingVehicle._id });
+        if (existingVehicle && status !== "approved") return res.status(409).json({ success: false, message: "Approval was partially saved. Retry approval to finish before changing this submission." });
+
         // If setting status to approved, create the bookable vehicle
         if (["pending_review", "under_inspection"].includes(status) && !["pending_review", "under_inspection"].includes(pendingVehicle.status) && pendingVehicle.inspection?.scheduledDate) {
             await assertInspectionSlotAvailable(pendingVehicle.inspection.scheduledDate, pendingVehicle.inspection.scheduledTime, { excludePendingVehicleId: pendingVehicle._id });
@@ -234,10 +288,10 @@ const updatePendingVehicleStatusUnlocked = async (req, res, next) => {
              */
             const effectivePricing = {
                 dailyRate:
-                    pricing?.dailyRate ??
+                    existingVehicle?.pricing?.dailyRate ?? pricing?.dailyRate ??
                     pendingVehicle.pricing?.dailyRate,
                 reservationFee:
-                    pricing?.reservationFee ??
+                    existingVehicle?.pricing?.reservationFee ?? pricing?.reservationFee ??
                     pendingVehicle.pricing?.reservationFee,
                 securityDeposit:
                     pricing?.securityDeposit ??
@@ -259,10 +313,11 @@ const updatePendingVehicleStatusUnlocked = async (req, res, next) => {
             }
 
             // Generate vehicle code
-            const vehicleCode = await generateVehicleCode();
+            const vehicleCode = existingVehicle?.vehicleCode || await generateVehicleCode();
 
             // Create new Vehicle from PendingVehicle data
-            const newVehicle = await Vehicle.create({
+            let newVehicle = existingVehicle || await Vehicle.create({
+                registrationSubmission: pendingVehicle._id,
                 vehicleCode,
                 plateNumber: pendingVehicle.plateNumber,
                 registrationNumber: pendingVehicle.registrationNumber,
@@ -297,7 +352,7 @@ const updatePendingVehicleStatusUnlocked = async (req, res, next) => {
                     isPrimary: image.isPrimary || false,
                 })),
                 availability: {
-                    bookingEnabled: pendingVehicle.availability?.bookingEnabled !== undefined ? pendingVehicle.availability.bookingEnabled : true,
+                    bookingEnabled: false,
                     availableFrom: pendingVehicle.availability?.availableFrom || null,
                     blockedDates: pendingVehicle.availability?.blockedDates || []
                 },
@@ -312,27 +367,26 @@ const updatePendingVehicleStatusUnlocked = async (req, res, next) => {
                 isFeatured: pendingVehicle.isFeatured || false,
                 operator: pendingVehicle.operator,
                 status: VEHICLE_STATUS.AVAILABLE,
-                isPendingInspection: false,
+                isPendingInspection: true,
                 ownership: VEHICLE_OWNERSHIP.CONSIGNED,
                 category: null
             });
 
-            // Delete the PendingVehicle record after successful creation
-            await PendingVehicle.findByIdAndDelete(id);
-
-            await notifyOperatorOfPendingVehicle(pendingVehicle, {
-                type: "Vehicle Approved",
-                title: "Vehicle Approved",
-                message: `Your vehicle ${pendingVehicle.brand} ${pendingVehicle.model} (${pendingVehicle.plateNumber}) was approved and is now listed on the platform as ${newVehicle.vehicleCode}.`,
-                variant: "success",
-            });
+            // Keep the inspection and request history after the listing is approved.
+            pendingVehicle.status = "approved";
+            pendingVehicle.isPendingInspection = false;
+            pendingVehicle.approvedVehicle = newVehicle._id;
+            pendingVehicle.approvedAt = new Date();
+            pendingVehicle.approvalPending = true;
+            await pendingVehicle.save();
+            newVehicle = await finishApproval(pendingVehicle, newVehicle);
 
             res.json({
                 success: true,
                 message: "Vehicle approved and created successfully",
                 data: {
                     vehicle: newVehicle,
-                    pendingVehicle: null
+                    pendingVehicle
                 }
             });
         } else {
@@ -382,11 +436,11 @@ const updatePendingVehicleStatusUnlocked = async (req, res, next) => {
     }
 };
 
-export const updatePendingVehicle = async (req, res, next) => {
+const updatePendingVehicleUnlocked = async (req, res, next) => {
     try {
         const { id } = req.params;
         const updateData = req.body;
-        if (updateData.inspection !== undefined || updateData.reschedule !== undefined || updateData.status !== undefined) {
+        if (updateData.inspection !== undefined || updateData.reschedule !== undefined || updateData.status !== undefined || updateData.approvedVehicle !== undefined || updateData.approvedAt !== undefined || updateData.approvalPending !== undefined) {
             return res.status(400).json({ success: false, message: "Use the appointment or status action to update inspection details." });
         }
 
@@ -398,6 +452,9 @@ export const updatePendingVehicle = async (req, res, next) => {
                 message: "Pending vehicle not found"
             });
         }
+
+        if (pendingVehicle.status === "approved") return res.status(409).json({ success: false, message: "This submission is completed. Manage its approved vehicle instead." });
+        if (await Vehicle.exists({ registrationSubmission: pendingVehicle._id })) return res.status(409).json({ success: false, message: "Approval was partially saved. Retry approval before editing this submission." });
 
         // If pricing is being updated, validate it
         if (updateData.pricing) {
@@ -430,8 +487,9 @@ export const updatePendingVehicle = async (req, res, next) => {
 
 export const getPendingVehicleCounts = async (req, res, next) => {
     try {
+        const ids = await recoveryIds();
         const counts = {
-            total: await PendingVehicle.countDocuments(),
+            total: await PendingVehicle.countDocuments(queueFilter(ids)),
             pending_review: await PendingVehicle.countDocuments({ status: "pending_review" }),
             under_inspection: await PendingVehicle.countDocuments({ status: "under_inspection" }),
             approved: await PendingVehicle.countDocuments({ status: "approved" }),
@@ -448,3 +506,4 @@ export const getPendingVehicleCounts = async (req, res, next) => {
 };
 
 export const updatePendingVehicleStatus = (req, res, next) => withInspectionBookingLock(() => updatePendingVehicleStatusUnlocked(req, res, next)).catch(next);
+export const updatePendingVehicle = (req, res, next) => withInspectionBookingLock(() => updatePendingVehicleUnlocked(req, res, next)).catch(next);

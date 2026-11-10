@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { ShieldCheck } from "lucide-react";
 
 import Button from "../common/Button";
-import Checkbox from "../common/Checkbox";
 import DatePicker from "../common/DatePicker";
 import Modal from "../common/Modal";
 
@@ -27,7 +26,8 @@ const VerifyValidIdDialog = ({
     onConfirm,
 }) => {
     const [expirationDate, setExpirationDate] = useState("");
-    const [noExpiry, setNoExpiry] = useState(false);
+    const [expiryChoice, setExpiryChoice] = useState("");
+    const expiryGroupId = useId();
 
     const todayKey = toManilaDateKey(new Date());
 
@@ -42,11 +42,15 @@ const VerifyValidIdDialog = ({
             ? toManilaDateKey(user.validIdExpirationDate)
             : "";
 
-        setExpirationDate(onFile >= todayKey ? onFile : "");
-        setNoExpiry(false);
+        const wasVerified = user?.verifiedByAdmin ?? user?.isVerified;
+        const confirmedHasExpiry = user?.validIdHasExpiration === true || Boolean(onFile && wasVerified);
+        const confirmedNoExpiry = user?.validIdHasExpiration === false ||
+            (user?.validIdHasExpiration == null && !onFile && wasVerified);
+        setExpirationDate(confirmedHasExpiry && onFile >= todayKey ? onFile : "");
+        setExpiryChoice(confirmedNoExpiry ? "none" : confirmedHasExpiry ? "date" : "");
     }, [isOpen, user, todayKey]);
 
-    const canConfirm = noExpiry || Boolean(expirationDate);
+    const canConfirm = expiryChoice === "none" || (expiryChoice === "date" && Boolean(expirationDate) && expirationDate >= todayKey);
 
     const fullName = [user?.firstName, user?.lastName]
         .filter(Boolean)
@@ -78,8 +82,8 @@ const VerifyValidIdDialog = ({
                         variant="success"
                         leftIcon={<ShieldCheck size={15} />}
                         onClick={() =>
-                            onConfirm({
-                                expirationDate: noExpiry
+                            canConfirm && !loading && onConfirm({
+                                expirationDate: expiryChoice === "none"
                                     ? null
                                     : expirationDate,
                             })
@@ -94,10 +98,8 @@ const VerifyValidIdDialog = ({
         >
             <div className="space-y-4">
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                    Check the {user?.validIdType || "valid ID"} and enter
-                    the expiry date printed on it. Verification is put on
-                    hold automatically once that date passes, until a
-                    renewed ID is uploaded and verified.
+                    Check the {user?.validIdType || "valid ID"} and choose whether
+                    it has an expiration date. Only enter a date if one is printed on the ID.
                 </p>
 
                 {images.length > 0 && (
@@ -129,26 +131,29 @@ const VerifyValidIdDialog = ({
                     </div>
                 )}
 
-                <DatePicker
+                <fieldset disabled={loading} className="space-y-2">
+                    <legend className="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">Does this ID have an expiration date?</legend>
+                    {[{ value: "date", label: "Has an expiration date" }, { value: "none", label: "No expiration date" }].map(option => (
+                        <label key={option.value} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:text-gray-200">
+                            <input type="radio" name={expiryGroupId} value={option.value} checked={expiryChoice === option.value} onChange={() => setExpiryChoice(option.value)} className="h-4 w-4 shrink-0" />
+                            {option.label}
+                        </label>
+                    ))}
+                </fieldset>
+
+                {expiryChoice === "date" && <DatePicker
                     name="validIdExpirationDate"
                     label="Expiry date on the ID"
-                    value={noExpiry ? "" : expirationDate}
+                    value={expirationDate}
                     onChange={(event) =>
                         setExpirationDate(event.target.value)
                     }
                     min={todayKey}
-                    disabled={noExpiry}
+                    disabled={loading}
+                    required
                     placeholder="Select the expiry date"
-                />
-
-                <Checkbox
-                    name="validIdNoExpiry"
-                    label="This ID has no expiry date"
-                    checked={noExpiry}
-                    onChange={(event) =>
-                        setNoExpiry(event.target.checked)
-                    }
-                />
+                />}
+                {expiryChoice === "date" && <p className="text-sm text-gray-500 dark:text-gray-400">Verification is put on hold after this date until a renewed ID is uploaded and verified.</p>}
             </div>
         </Modal>
     );

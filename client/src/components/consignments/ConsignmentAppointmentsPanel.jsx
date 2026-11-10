@@ -108,7 +108,7 @@ const ConsignmentAppointmentsPanel = ({
                 registrationVehicle: vehicle,
                 consignmentCode: "Registration inspection",
                 snapshots: { vehicle },
-                application: { inspection: { ...vehicle.inspection, status: ({ pending_review: "Scheduled", under_inspection: "Under Inspection", approved: "Completed", rejected: "Rejected" })[vehicle.status] || vehicle.status } },
+                application: { inspection: { ...vehicle.inspection, status: vehicle.approvalRecoveryRequired ? "Approval needs attention" : ({ pending_review: "Scheduled", under_inspection: "Under Inspection", approved: "Completed", rejected: "Rejected" })[vehicle.status] || vehicle.status } },
             })),
         ], now),
         [consignments, registrationVehicles, now]
@@ -199,9 +199,13 @@ const ConsignmentAppointmentsPanel = ({
                 )}
                 {!consignment.registrationAppointment && onManage && ["Pending", "Under Review"].includes(consignment.application.status) && inspection.status === "Pending" && consignment.reschedule?.status !== "Pending" && <Button size="sm" variant="outline" className="min-h-11" onClick={() => onManage(consignment)}>Reschedule</Button>}
                 {consignment.registrationAppointment && <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                    {consignment.registrationVehicle.approvalRecoveryRequired ? <p role="status" className="max-w-sm break-words text-sm text-amber-700 dark:text-amber-300">
+                        {showApplicant ? "Approval recovery is required. Open Pending Vehicles and retry approval." : "An administrator needs to finish approval before this appointment can be changed."}
+                    </p> : <>
                     {onRegistrationManage && ["pending_review", "under_inspection"].includes(consignment.registrationVehicle.status) && consignment.registrationVehicle.reschedule?.status !== "Pending" && <Button size="sm" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => onRegistrationManage(consignment.registrationVehicle)}>Reschedule</Button>}
                     {["pending_review", "under_inspection"].includes(consignment.registrationVehicle.status) && consignment.registrationVehicle.reschedule?.status === "Pending" && (onRegistrationReview ? <Button size="sm" className="min-h-11 w-full sm:w-auto" onClick={() => onRegistrationReview(consignment.registrationVehicle)}>Review Reschedule</Button> : <span className="text-sm text-amber-700 dark:text-amber-300">Reschedule awaiting admin approval</span>)}
                     {consignment.registrationVehicle.reschedule?.status === "Rejected" && consignment.registrationVehicle.reschedule?.reviewRemarks && <p className="w-full break-words text-sm text-red-600 dark:text-red-400">Reschedule declined: {consignment.registrationVehicle.reschedule.reviewRemarks}</p>}
+                    </>}
                 </div>}
             </div>
         </motion.div>

@@ -246,6 +246,9 @@ const pendingVehicleSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+        approvedVehicle: { type: mongoose.Schema.Types.ObjectId, ref: "Vehicle", default: null },
+        approvedAt: { type: Date, default: null },
+        approvalPending: { type: Boolean, default: false },
 
         reschedule: {
             status: { type: String, enum: ["None", "Pending", "Approved", "Rejected"], default: "None" },

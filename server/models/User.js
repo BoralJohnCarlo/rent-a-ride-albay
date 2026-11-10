@@ -281,6 +281,8 @@ emailVerificationExpires: {
             type: Date,
             default: null,
         },
+        // Null means an administrator has not recorded a choice for this ID yet.
+        validIdHasExpiration: { type: Boolean, default: null },
 
         // Records password changes for security notices and legacy sessions.
         // credentialVersion invalidates current sessions without clock rounding.

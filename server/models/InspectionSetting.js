@@ -74,11 +74,23 @@ const inspectionSettingSchema = new Schema({
 
 inspectionSettingSchema.statics = {
     getInstance: async function () {
-        let instance = await this.findOne();
-        if (!instance) {
-            instance = await this.create({});
+        // Keep legacy settings (and consistently select the oldest if an old
+        // initialization race created duplicates). Never discard configured slots.
+        const existing = await this.findOne().sort({ createdAt: 1, _id: 1 });
+        if (existing) return existing;
+        // The built-in unique _id index serializes initialization without relying
+        // on a secondary index having finished building on a new database.
+        const singletonId = '000000000000000000000001';
+        try {
+            return await this.findOneAndUpdate(
+                { _id: singletonId },
+                { $setOnInsert: { inspectionSlots: [], disabledDates: [] } },
+                { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+            );
+        } catch (error) {
+            if (error.code !== 11000) throw error;
+            return this.findById(singletonId);
         }
-        return instance;
     }
 };
 

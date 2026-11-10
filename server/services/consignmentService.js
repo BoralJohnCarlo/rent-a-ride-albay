@@ -506,7 +506,7 @@ const getConsignments = async (
         )
         .populate(
             "audit.createdBy",
-            "firstName lastName email isVerified validIdType validIdImage validIdBack validIdExpirationDate"
+            "firstName lastName email isVerified validIdType validIdImage validIdBack validIdExpirationDate validIdHasExpiration"
         );
 };
 
@@ -532,7 +532,7 @@ const getOperatorConsignments = async (
         )
         .populate(
             "audit.createdBy",
-            "firstName lastName email isVerified validIdType validIdImage validIdBack validIdExpirationDate"
+            "firstName lastName email isVerified validIdType validIdImage validIdBack validIdExpirationDate validIdHasExpiration"
         );
 };
 
@@ -556,7 +556,7 @@ const getConsignmentById = async (
 
     await consignment.populate(
         "audit.createdBy",
-        "firstName lastName email isVerified validIdType validIdImage validIdBack validIdExpirationDate"
+        "firstName lastName email isVerified validIdType validIdImage validIdBack validIdExpirationDate validIdHasExpiration"
     );
 
     return consignment;

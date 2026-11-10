@@ -137,6 +137,7 @@ describe("verifyValidId", () => {
         });
 
         assert.equal(result.isVerified, true);
+        assert.equal(result.validIdHasExpiration, true);
 
         const saved = await User.findById(user._id);
         assert.equal(
@@ -154,7 +155,16 @@ describe("verifyValidId", () => {
 
         const saved = await User.findById(user._id);
         assert.equal(saved.validIdExpirationDate, null);
+        assert.equal(saved.validIdHasExpiration, false);
         assert.equal(saved.isVerified, true);
+    });
+
+    it("remembers a confirmed no-expiration choice when verification is removed", async () => {
+        const user = await createUser();
+        await verifyValidId(user._id, { adminId, expirationDate: null });
+        const result = await unverifyValidId(user._id);
+        assert.equal(result.isVerified, false);
+        assert.equal(result.validIdHasExpiration, false);
     });
 
     it("stamps the admin and date on the current history record", async () => {
@@ -191,6 +201,7 @@ describe("renewed valid ID", () => {
         });
 
         assert.equal(result.isVerified, false);
+        assert.equal(result.validIdHasExpiration, null);
         assert.equal(result.verifiedByAdmin, false);
 
         const history = await getValidIdHistory(user._id);
@@ -218,6 +229,7 @@ describe("profile ID change", () => {
         const user = await createUser({
             isVerified: true,
             validIdExpirationDate: new Date(Date.now() + 100 * DAY_MS),
+            validIdHasExpiration: true,
         });
         await recordValidIdUpload(user, { source: "registration" });
 
@@ -230,6 +242,7 @@ describe("profile ID change", () => {
         const saved = await User.findById(user._id);
         assert.equal(saved.isVerified, false);
         assert.equal(saved.validIdExpirationDate, null);
+        assert.equal(saved.validIdHasExpiration, null);
 
         const records = await ValidIdDocument.find({ user: user._id }).sort({
             createdAt: 1,

@@ -19,6 +19,7 @@ import {
     verifyEmail,
 } from "../../services/authService.js";
 import { getBookedInspectionCounts } from "../../services/inspectionSlotService.js";
+import { withInspectionBookingLock } from "../../services/inspectionBookingLock.js";
 import { getCurrentLegalDocument } from "../../services/legalDocumentService.js";
 import { LEGAL_DOCUMENT_TYPES } from "../../constants/legalDocumentConstants.js";
 import {
@@ -208,6 +209,48 @@ beforeEach(async () => {
 });
 
 describe("partner registration", () => {
+    const assertMailDoesNotHoldAppointmentLock = async (start) => {
+        const previous = transporter.sendMail;
+        let release, started, timer;
+        const entered = new Promise(resolve => { started = resolve; });
+        const paused = new Promise(resolve => { release = resolve; });
+        transporter.sendMail = async mail => { sentMail.push(mail); started(); await paused; return { messageId: "slow-test" }; };
+        const operation = start();
+        try {
+            await Promise.race([entered, operation.then(() => { throw new Error("Email was not sent"); })]);
+            const result = await Promise.race([
+                withInspectionBookingLock(async () => {
+                    const counts = await getBookedInspectionCounts();
+                    return counts.get(`${SLOT_DATE}|${SLOT_TIME}`);
+                }),
+                new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("Email is holding the appointment lock")), 2000); }),
+            ]);
+            assert.equal(result, 1, "the slot stays reserved while email delivery is pending");
+        } finally { clearTimeout(timer); release(); await operation; transporter.sendMail = previous; }
+    };
+
+    it("releases the appointment lock before sending a signup email", async () => {
+        const payload = await operatorPayload("slow-signup@test.com");
+        await assertMailDoesNotHoldAppointmentLock(() => registerOperator(payload));
+    });
+
+    it("releases the appointment lock before sending a replacement code", async () => {
+        const email = "slow-resend@test.com";
+        await registerOperator(await operatorPayload(email));
+        await PendingRegistration.updateOne({ email }, { lastCodeSentAt: new Date(Date.now() - 120000) });
+        await assertMailDoesNotHoldAppointmentLock(() => resendVerificationEmail(email));
+    });
+
+    it("releases a new signup hold when its verification email fails", async () => {
+        const payload = await operatorPayload("failed-email@test.com");
+        const previous = transporter.sendMail;
+        transporter.sendMail = async () => { throw new Error("simulated SMTP failure"); };
+        try { await assert.rejects(registerOperator(payload), /verification email/i); }
+        finally { transporter.sendMail = previous; }
+        assert.equal(await PendingRegistration.countDocuments({ email: payload.email }), 0);
+        assert.equal((await getBookedInspectionCounts()).get(`${SLOT_DATE}|${SLOT_TIME}`) || 0, 0);
+    });
+
     it("does not revive an expired appointment hold when resending a code for a now-full slot", async () => {
         const email = "expired-inspection-hold@test.com";
         await registerOperator(await operatorPayload(email));

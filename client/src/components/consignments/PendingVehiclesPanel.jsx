@@ -9,7 +9,7 @@ import PendingVehicleGrid from "../pendingVehicles/PendingVehicleGrid";
 
 import usePendingVehicles from "../../hooks/pendingVehicles/usePendingVehicles";
 import useToast from "../../hooks/toast/useToast";
-import { updatePendingVehicleStatus } from "../../api/pendingVehicleApi";
+import { getPendingVehicles, updatePendingVehicleStatus } from "../../api/pendingVehicleApi";
 
 const LIST_PARAMS = {
     sortBy: "createdAt",
@@ -20,12 +20,14 @@ const LIST_PARAMS = {
 const PendingVehiclesPanel = () => {
     const toast = useToast();
 
-    const {
-        pendingVehicles,
-        loading,
-        loadPendingVehicles,
-        loadPendingVehicleCounts,
-    } = usePendingVehicles();
+    const { loadPendingVehicleCounts } = usePendingVehicles();
+    // Keep the page request independent of the dashboard count request.
+    const [pendingVehicles, setPendingVehicles] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [listError, setListError] = useState("");
+    const [page, setPage] = useState(1);
+    const [pagination, setPagination] = useState({ total: 0, pages: 1 });
+    const [reloadCount, setReloadCount] = useState(0);
 
     const [selectedId, setSelectedId] = useState(null);
     const [action, setAction] = useState({
@@ -40,14 +42,42 @@ const PendingVehiclesPanel = () => {
     const [priceError, setPriceError] = useState("");
 
     const reload = () => {
-        loadPendingVehicles(LIST_PARAMS);
+        setReloadCount(value => value + 1);
         loadPendingVehicleCounts();
     };
 
     useEffect(() => {
-        reload();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        loadPendingVehicleCounts();
+    }, [loadPendingVehicleCounts]);
+
+    useEffect(() => {
+        let cancelled = false;
+        let changingPage = false;
+        const load = async () => {
+            setLoading(true);
+            setListError("");
+            setSelectedId(null);
+            try {
+                const result = await getPendingVehicles({ ...LIST_PARAMS, page });
+                if (cancelled) return;
+                const pages = Math.max(1, result.pagination?.pages || 1);
+                setPagination({ total: result.pagination?.total || 0, pages });
+                // Approving the final item on a page can remove that page.
+                if (page > pages) {
+                    changingPage = true;
+                    setPage(pages);
+                    return;
+                }
+                setPendingVehicles(result.data || []);
+            } catch (error) {
+                if (!cancelled) setListError(error.response?.data?.message || "Unable to load pending vehicles. Please retry.");
+            } finally {
+                if (!cancelled && !changingPage) setLoading(false);
+            }
+        };
+        load();
+        return () => { cancelled = true; };
+    }, [page, reloadCount]);
 
     const openAction = (mode) => (vehicle) => {
         setPriceError("");
@@ -76,7 +106,7 @@ const PendingVehiclesPanel = () => {
 
         let pricing;
 
-        if (mode === "approve") {
+        if (mode === "approve" && !vehicle.approvalRecoveryRequired) {
             const parsedDailyRate = Number(dailyRate);
             const parsedReservationFee = Number(reservationFee);
 
@@ -152,7 +182,10 @@ const PendingVehiclesPanel = () => {
                 </p>
             </div>
 
-            <PendingVehicleGrid
+            {listError ? <div role="alert" className="space-y-3 rounded-xl border border-red-200 p-4 text-sm text-red-700 dark:text-red-300">
+                <p>{listError}</p>
+                <Button variant="outline" className="w-full sm:w-auto" onClick={reload}>Retry loading vehicles</Button>
+            </div> : <PendingVehicleGrid
                 pendingVehicles={pendingVehicles}
                 loading={loading}
                 onSelect={setSelectedId}
@@ -160,12 +193,20 @@ const PendingVehiclesPanel = () => {
                 onApprove={openAction("approve")}
                 onReject={openAction("reject")}
                 selectedId={selectedId}
-            />
+            />}
+
+            <nav aria-label="Pending vehicle pages" className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p aria-live="polite" className="text-sm text-gray-600 dark:text-gray-300">Page {page} of {pagination.pages} · {pagination.total} submissions</p>
+                <div className="grid grid-cols-2 gap-2 sm:flex">
+                    <Button variant="outline" className="min-h-11" disabled={loading || action.loading || !!listError || page <= 1} onClick={() => setPage(value => value - 1)}>Previous</Button>
+                    <Button variant="outline" className="min-h-11" disabled={loading || action.loading || !!listError || page >= pagination.pages} onClick={() => setPage(value => value + 1)}>Next</Button>
+                </div>
+            </nav>
 
             <Modal
                 isOpen={action.open && action.mode === "approve"}
                 onClose={closeAction}
-                title="Approve Vehicle"
+                title={action.vehicle?.approvalRecoveryRequired ? "Retry approval" : "Approve Vehicle"}
                 size="md"
                 footer={
                     <>
@@ -181,12 +222,13 @@ const PendingVehiclesPanel = () => {
                             loading={action.loading}
                             onClick={confirmAction}
                         >
-                            Approve
+                            {action.vehicle?.approvalRecoveryRequired ? "Retry approval" : "Approve"}
                         </Button>
                     </>
                 }
             >
                 <div className="space-y-4">
+                    {action.vehicle?.approvalRecoveryRequired ? <p className="text-sm text-gray-600 dark:text-gray-300">Finish the saved approval and send the partner's confirmation. Existing pricing and vehicle details will be preserved.</p> : <>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                         This vehicle wasn't priced at registration —
                         set its rental pricing to add it to the fleet
@@ -232,6 +274,7 @@ const PendingVehiclesPanel = () => {
                             {priceError}
                         </p>
                     )}
+                    </>}
                 </div>
             </Modal>
 

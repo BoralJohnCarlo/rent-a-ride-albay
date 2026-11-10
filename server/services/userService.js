@@ -366,6 +366,7 @@ export const updateUserProfile = async (userId, profileData) => {
     // one's when verifying it (verifyValidId).
     if (isChangingValidId) {
         user.validIdExpirationDate = null;
+        user.validIdHasExpiration = null;
     }
 
     if (profileData.licenseNumber !== undefined) {
@@ -828,7 +829,9 @@ export const verifyValidId = async (
 
     if (expirationDate === null) {
         user.validIdExpirationDate = null;
+        user.validIdHasExpiration = false;
     } else if (expirationDate !== undefined) {
+        user.validIdHasExpiration = true;
         user.validIdExpirationDate = new Date(
             businessDayStart(addDaysToDateKey(expirationDate, 1)).getTime() - 1
         );
@@ -960,6 +963,7 @@ export const uploadRenewedValidId = async (
             // A default until an admin verifies it and records the date printed on
             // the new ID (verifyValidId).
             user.validIdExpirationDate = new Date(Date.now() + renewalPeriodMs);
+            user.validIdHasExpiration = null;
 
             /*
              * Optional upgrade: a customer renewing can also switch their ID type

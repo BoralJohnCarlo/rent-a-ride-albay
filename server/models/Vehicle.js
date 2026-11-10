@@ -428,6 +428,11 @@ const auditSchema = new mongoose.Schema(
 );
 const vehicleSchema = new mongoose.Schema(
     {
+        registrationSubmission: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "PendingVehicle",
+            index: { unique: true, sparse: true },
+        },
         vehicleCode: {
             type: String,
             required: true,

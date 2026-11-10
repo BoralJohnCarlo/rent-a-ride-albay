@@ -36,7 +36,7 @@ const PendingVehicleGrid = ({
 
     return (
         <div className="space-y-4">
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
                 {pendingVehicles.map((pendingVehicle) => (
                     <motion.div
                         key={pendingVehicle._id}

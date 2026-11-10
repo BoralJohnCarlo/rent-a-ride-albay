@@ -74,6 +74,7 @@ const formatUser = (user) => ({
     validIdRenewalCount: user.validIdRenewalCount,
     lastValidIdRenewalAt: user.lastValidIdRenewalAt,
     validIdExpirationDate: user.validIdExpirationDate,
+    validIdHasExpiration: user.validIdHasExpiration ?? null,
     passwordChangedAt: user.passwordChangedAt ?? null,
     // The Terms & Conditions version accepted at registration (null for
     // accounts from before versions were recorded).

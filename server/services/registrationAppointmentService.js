@@ -1,4 +1,5 @@
 import PendingVehicle from "../models/PendingVehicle.js";
+import Vehicle from "../models/Vehicle.js";
 import createError from "../utils/createError.js";
 import { withInspectionBookingLock } from "./inspectionBookingLock.js";
 import { assertInspectionSlotAvailable } from "./inspectionSlotService.js";
@@ -9,6 +10,7 @@ export const updateRegistrationAppointment = (id, input, user) => withInspection
     if (!vehicle) throw createError("Registration vehicle not found.", 404);
     if (user.role !== "admin" && (user.role !== "operator" || String(vehicle.operator) !== String(user._id))) throw createError("You do not have permission to change this appointment.", 403);
     if (!["pending_review", "under_inspection"].includes(vehicle.status)) throw createError("This inspection is already closed.", 400);
+    if (await Vehicle.exists({ registrationSubmission: vehicle._id })) throw createError("Approval was partially saved. Ask an administrator to retry approval before changing this appointment.", 409);
     const { action, date, time } = input;
     const reason = String(input.reason || "").trim();
     const remarks = String(input.remarks || "").trim();

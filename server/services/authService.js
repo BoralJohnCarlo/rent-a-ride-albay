@@ -451,7 +451,7 @@ const resolveRegistrationTerms = async (termsVersionId) => {
     };
 };
 
-const savePendingRegistration = async (email, fields) => {
+const savePendingRegistration = async (email, fields, deferDelivery = false) => {
     const { rawCode, hashedCode } = createEmailVerificationCode();
     const verificationExpires = new Date(
         Date.now() + EMAIL_VERIFICATION_EXPIRATION
@@ -507,27 +507,30 @@ const savePendingRegistration = async (email, fields) => {
         throw error;
     }
 
-    try {
-        await sendVerificationEmail(pendingRegistration, rawCode);
-    } catch (error) {
-        console.error("Failed to send verification email:", error);
+    const deliver = async () => {
+        try {
+            await sendVerificationEmail(pendingRegistration, rawCode);
+        } catch (error) {
+            console.error("Failed to send verification email:", error);
 
-        await PendingRegistration.deleteOne({
-            _id: pendingRegistration._id,
-            emailVerificationToken: hashedCode,
-        });
+            await PendingRegistration.deleteOne({
+                _id: pendingRegistration._id,
+                emailVerificationToken: hashedCode,
+            });
 
-        throw new Error(VERIFICATION_EMAIL_FAILED_MESSAGE);
-    }
+            throw new Error(VERIFICATION_EMAIL_FAILED_MESSAGE);
+        }
 
-    await holdTemporaryUploadsUntil(
-        fields.temporaryUploadIds,
-        verificationExpires
-    );
+        await holdTemporaryUploadsUntil(
+            fields.temporaryUploadIds,
+            verificationExpires
+        );
 
-    return {
-        email: pendingRegistration.email,
+        return {
+            email: pendingRegistration.email,
+        };
     };
+    return deferDelivery ? deliver : deliver();
 };
 
 export const registerUser = async (
@@ -744,7 +747,7 @@ const registerOperatorUnlocked = async (
         vehicleData: registrationVehicle,
         inspectionDate: inspectionDate || null,
         inspectionSlot,
-    });
+    }, true);
 };
 
 const verifyEmailUnlocked = async (
@@ -1243,49 +1246,53 @@ const resendVerificationEmailUnlocked = async (
         throw createError("A verification request is already being processed. Please use the latest code or wait a minute before requesting another.", 429);
     }
 
-    try {
-        await sendVerificationEmail(
-            reservedRegistration,
-            rawCode
-        );
-    } catch (error) {
+    // The reservation is committed before SMTP starts. Token comparisons keep
+    // rollback from overwriting a concurrent verification or newer resend.
+    return async () => {
         try {
-            // Restore only our own reservation, never a newer resend or a
-            // token that verification has since locked or consumed.
-            await PendingRegistration.updateOne(
-                { _id: pendingRegistration._id, emailVerificationToken: hashedCode, lastCodeSentAt: new Date(now) },
-                { $set: {
-                    emailVerificationToken: previousToken,
-                    emailVerificationExpires: previousExpiry,
-                    verificationAttempts: previousAttempts,
-                    codesSent: previousCodesSent,
-                    lastCodeSentAt: previousLastSentAt,
-                } }
+            await sendVerificationEmail(
+                reservedRegistration,
+                rawCode
             );
-        } catch (rollbackError) {
+        } catch (error) {
+            try {
+                // Restore only our own reservation, never a newer resend or a
+                // token that verification has since locked or consumed.
+                await PendingRegistration.updateOne(
+                    { _id: pendingRegistration._id, emailVerificationToken: hashedCode, lastCodeSentAt: new Date(now) },
+                    { $set: {
+                        emailVerificationToken: previousToken,
+                        emailVerificationExpires: previousExpiry,
+                        verificationAttempts: previousAttempts,
+                        codesSent: previousCodesSent,
+                        lastCodeSentAt: previousLastSentAt,
+                    } }
+                );
+            } catch (rollbackError) {
+                console.error(
+                    "Failed to restore the previous verification code:",
+                    rollbackError
+                );
+            }
+
             console.error(
-                "Failed to restore the previous verification code:",
-                rollbackError
+                "Failed to send verification email:",
+                error
+            );
+            throw new Error(
+                "Failed to send verification email. Please try again."
             );
         }
 
-        console.error(
-            "Failed to send verification email:",
-            error
+        // The registration lives on, so its images must too.
+        await holdTemporaryUploadsUntil(
+            reservedRegistration.temporaryUploadIds || [],
+            reservedRegistration.emailVerificationExpires
         );
-        throw new Error(
-            "Failed to send verification email. Please try again."
-        );
-    }
 
-    // The registration lives on, so its images must too.
-    await holdTemporaryUploadsUntil(
-        reservedRegistration.temporaryUploadIds || [],
-        reservedRegistration.emailVerificationExpires
-    );
-
-    return {
-        email: pendingRegistration.email,
+        return {
+            email: pendingRegistration.email,
+        };
     };
 };
 
@@ -1445,8 +1452,14 @@ export const loginUser = async ({
     };
 };
 
-export const registerOperator = (...args) => withInspectionBookingLock(() => registerOperatorUnlocked(...args));
+export const registerOperator = async (...args) => {
+    const deliver = await withInspectionBookingLock(() => registerOperatorUnlocked(...args));
+    return deliver();
+};
 
 export const verifyEmail = (...args) => withInspectionBookingLock(() => verifyEmailUnlocked(...args));
 
-export const resendVerificationEmail = (...args) => withInspectionBookingLock(() => resendVerificationEmailUnlocked(...args));
+export const resendVerificationEmail = async (...args) => {
+    const deliver = await withInspectionBookingLock(() => resendVerificationEmailUnlocked(...args));
+    return deliver();
+};
