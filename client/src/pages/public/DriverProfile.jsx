@@ -11,7 +11,7 @@ const DriverProfile = () => {
         <PageContainer>
             <Section
                 spacing="MD"
-                className="mx-auto w-full max-w-3xl"
+                className="mx-auto w-full max-w-3xl pt-24 sm:pt-28"
             >
                 <DriverProfileContent driverId={driverId} />
             </Section>

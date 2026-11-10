@@ -354,8 +354,8 @@ const CustomerService = () => {
                     className="
                         mt-8
                         grid
-                        h-[min(760px,calc(100dvh-9rem))]
-                        min-h-135
+                        h-[min(760px,calc(100dvh-13rem))] lg:h-[min(760px,calc(100dvh-9rem))]
+                        min-h-64 lg:min-h-135
                         overflow-hidden
                         rounded-3xl
                         border

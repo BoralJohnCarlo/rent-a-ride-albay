@@ -60,7 +60,7 @@ const NAVBAR_CLEARANCE = 96;
 
 /* Popover shell: opens above the bar when there's room, else below. */
 const Popover = ({ open, placement = "top", className = "", children, label, onClose }) => {
-    const isPhone = useMediaQuery("(width < 40rem)");
+    const isPhone = useMediaQuery("(width < 40rem), (max-width: 1023px) and (max-height: 500px)");
     if (isPhone) return <Modal open={open} onClose={onClose} title={label} size="sm">{children}</Modal>;
     return (
     <AnimatePresence>
@@ -166,7 +166,7 @@ const HOLD_SPRING = { stiffness: 260, damping: 32, mass: 0.6 };
  */
 const HeroSearchBar = ({ categories = [], exitProgress }) => {
     const navigate = useNavigate();
-    const isPhone = useMediaQuery("(width < 40rem)");
+    const isPhone = useMediaQuery("(width < 40rem), (max-width: 1023px) and (max-height: 500px)");
     const rootRef = useRef(null);
 
     /* Glass over the hero video in every colour theme — the video is
@@ -465,7 +465,7 @@ const HeroSearchBar = ({ categories = [], exitProgress }) => {
                                 key={preset.label}
                                 type="button"
                                 onClick={() => applyPreset(preset.range)}
-                                className="rounded-full border border-gray-200 px-2.5 py-0.5 text-[11px] font-semibold text-gray-600 transition hover:border-yellow-400 hover:bg-yellow-50 hover:text-gray-900 dark:border-white/10 dark:text-gray-300 dark:hover:border-yellow-400 dark:hover:bg-yellow-400/10 dark:hover:text-white"
+                                className="min-h-11 sm:min-h-0 rounded-full border border-gray-200 px-2.5 py-0.5 text-[11px] font-semibold text-gray-600 transition hover:border-yellow-400 hover:bg-yellow-50 hover:text-gray-900 dark:border-white/10 dark:text-gray-300 dark:hover:border-yellow-400 dark:hover:bg-yellow-400/10 dark:hover:text-white"
                             >
                                 {preset.label}
                             </button>

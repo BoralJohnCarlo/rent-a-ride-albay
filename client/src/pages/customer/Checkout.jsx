@@ -196,7 +196,7 @@ const Checkout = () => {
 
     if (paymentLoading) {
         return (
-            <main className="min-h-[70vh] bg-gray-50 dark:bg-gray-950">
+            <main className="min-h-[70vh] bg-gray-50 pt-24 sm:pt-28 dark:bg-gray-950">
                 <div className="flex min-h-[70vh] items-center justify-center">
                     <LoadingSpinner />
                 </div>
@@ -206,7 +206,7 @@ const Checkout = () => {
 
     if (!selectedPayment) {
         return (
-            <main className="min-h-[70vh] bg-gray-50 dark:bg-gray-950">
+            <main className="min-h-[70vh] bg-gray-50 pt-24 sm:pt-28 dark:bg-gray-950">
                 <div className="mx-auto flex min-h-[70vh] max-w-2xl items-center justify-center px-4 py-16">
                     <div className="w-full rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -276,7 +276,7 @@ const Checkout = () => {
         })}`;
 
     return (
-        <main className="min-h-[70vh] bg-gray-50 dark:bg-gray-950">
+        <main className="min-h-[70vh] bg-gray-50 pt-24 sm:pt-28 dark:bg-gray-950">
             <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
                 <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-8">
                     <div className="text-center">

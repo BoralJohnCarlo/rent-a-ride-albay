@@ -1,3 +1,4 @@
+import "../../styles/registration-mobile.css";
 import {
     AnimatePresence,
     motion,
@@ -1312,8 +1313,8 @@ const Register = ({ verificationOnly = false }) => {
 
             {/* Main registration card */}
             <div className="relative z-10 flex min-h-screen items-start justify-center px-0 pb-0 pt-20 sm:px-5 sm:pb-5 sm:pt-20 lg:px-8 lg:pt-20">
-                <div className="h-[480px] max-h-[calc(100vh-96px)] max-sm:h-auto max-sm:max-h-none max-sm:min-h-[calc(100dvh-80px)] max-sm:rounded-none max-sm:shadow-none max-sm:ring-0 max-sm:pb-24 w-full max-w-[660px] overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-gray-900 dark:ring-white/10">
-                    <div className="flex h-full min-h-0 flex-col max-sm:h-auto lg:flex-row">
+                <div className="registration-card h-[480px] max-h-[calc(100vh-96px)] max-sm:h-auto max-sm:max-h-none max-sm:min-h-[calc(100dvh-80px)] max-sm:rounded-none max-sm:shadow-none max-sm:ring-0 max-sm:pb-24 w-full max-w-[660px] overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-gray-900 dark:ring-white/10">
+                    <div className="registration-body flex h-full min-h-0 flex-col max-sm:h-auto lg:flex-row">
                             {/* Sidebar / Stepper */}
                             <aside className="relative w-full shrink-0 overflow-hidden bg-[#f8f7f3] px-4 py-4 sm:px-5 sm:py-4 lg:h-full lg:w-[27%] lg:px-5 lg:py-5 dark:bg-gray-900">
 <div className="absolute -bottom-24 -left-16 h-44 w-44 rounded-full border-[28px] border-gray-200/60 dark:border-gray-700/60" />
@@ -1333,7 +1334,7 @@ const Register = ({ verificationOnly = false }) => {
                                     </div>
 
                                     {/* Desktop / tablet vertical stepper */}
-                                    <div className="mt-5 hidden sm:block lg:mt-4">
+                                    <div className="registration-desktop-steps mt-5 hidden sm:block lg:mt-4">
                                         {FORM_STEPS.map((step, index) => {
                                             const isActive = currentStep === index;
                                             const isComplete = currentStep > index;
@@ -1397,7 +1398,7 @@ const Register = ({ verificationOnly = false }) => {
                                     </div>
 
                                     {/* Mobile stepper */}
-                                    <div className="mt-5 sm:hidden">
+                                    <div className="registration-mobile-steps mt-5 sm:hidden">
                                         <div className="flex items-center">
                                             {FORM_STEPS.map((step, index) => {
                                                 const isActive = currentStep === index;
@@ -1448,7 +1449,7 @@ const Register = ({ verificationOnly = false }) => {
                                         </div>
                                     </div>
 
-                                    <div className="mt-auto hidden pt-3 sm:block">
+                                    <div className="registration-desktop-steps mt-auto hidden pt-3 sm:block">
                                         <p className="text-[9px] text-gray-500 dark:text-gray-400">
                                             Already have an account?
                                         </p>
@@ -1463,7 +1464,7 @@ const Register = ({ verificationOnly = false }) => {
                             </aside>
 
                             {/* Form */}
-                            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden max-sm:overflow-visible px-4 py-3.5 sm:px-5 sm:py-4 lg:px-6 lg:py-4">
+                            <main className="registration-main flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden max-sm:overflow-visible px-4 py-3.5 sm:px-5 sm:py-4 lg:px-6 lg:py-4">
                                 <div className="mx-auto flex min-h-full w-full max-w-[480px] flex-col">
                                     {error && (
                                         <Alert
@@ -1498,7 +1499,7 @@ const Register = ({ verificationOnly = false }) => {
                                     {/* Separator between step header and step content */}
                                     <div className="mb-3 shrink-0 border-b border-gray-200 dark:border-gray-700" />
 
-                                    <div ref={stepTopRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain max-sm:flex-none max-sm:overflow-visible max-sm:overscroll-auto max-sm:pr-0 max-sm:[&_input]:text-base max-sm:[&_[role=combobox]]:text-base pr-1 [&_label]:text-xs [&_h3]:text-[13px] [&_p]:text-[11px] [&_input]:py-2 [&_input]:text-[13px] [&_[role=combobox]]:py-2 [&_[role=combobox]]:text-[13px] [&_.space-y-2]:space-y-1">
+                                    <div ref={stepTopRef} className="registration-fields min-h-0 flex-1 overflow-y-auto overscroll-contain max-sm:flex-none max-sm:overflow-visible max-sm:overscroll-auto max-sm:pr-0 max-sm:[&_input]:text-base max-sm:[&_[role=combobox]]:text-base pr-1 [&_label]:text-xs [&_h3]:text-[13px] [&_p]:text-[11px] [&_input]:py-2 [&_input]:text-[13px] [&_[role=combobox]]:py-2 [&_[role=combobox]]:text-[13px] [&_.space-y-2]:space-y-1">
                                         <AnimatePresence mode="wait" initial={false}>
                                             <motion.div
                                                 key={currentStep}

@@ -49,7 +49,7 @@ const Contact = () => {
             <Section
                 spacing="XL"
                 className="
-                    bg-gray-50
+                    overflow-x-clip bg-gray-50
                     dark:bg-gray-950
                 "
             >
@@ -264,7 +264,7 @@ const Contact = () => {
             <Section
                 spacing="XL"
                 className="
-                    bg-gray-50
+                    overflow-x-clip bg-gray-50
                     dark:bg-gray-950
                 "
             >

@@ -329,7 +329,7 @@ const RateBooking = () => {
 
     return (
         <PageContainer>
-            <Section spacing="MD" className="mx-auto w-full max-w-2xl">
+            <Section spacing="MD" className="mx-auto w-full max-w-2xl pt-24 sm:pt-28">
                 <Link
                     to="/customer/bookings"
                     className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"

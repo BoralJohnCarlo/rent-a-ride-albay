@@ -16,7 +16,6 @@ import {
     Heart,
     ImageOff,
     Info,
-    MapPin,
     Settings2,
     Star,
     Users,
@@ -119,6 +118,7 @@ const VehicleDetails = () => {
         reviewCount,
         reviews,
         loading: reviewsLoading,
+        error: reviewsError,
         fetchVehicleAverageRating,
         fetchVehicleReviews,
     } = useReview();
@@ -209,7 +209,8 @@ const VehicleDetails = () => {
             return;
         }
 
-        void fetchVehicleAverageRating(vehicleId);
+        // The review store exposes failures for the inline unavailable state.
+        void fetchVehicleAverageRating(vehicleId).catch(() => {});
     }, [vehicleId, fetchVehicleAverageRating]);
 
     useEffect(() => {
@@ -217,7 +218,7 @@ const VehicleDetails = () => {
             return;
         }
 
-        void fetchVehicleReviews(vehicleId);
+        void fetchVehicleReviews(vehicleId).catch(() => {});
     }, [vehicleId, fetchVehicleReviews]);
 
     useEffect(() => {
@@ -676,10 +677,6 @@ const VehicleDetails = () => {
         getActiveDiscount(selectedVehicle);
     const effectiveDailyRate =
         getEffectiveDailyRate(selectedVehicle);
-
-    const description =
-        selectedVehicle.description?.public ??
-        "No public description is available for this vehicle.";
 
     const primaryImage =
         vehicleImages[activeImage]?.url ?? null;
@@ -1404,16 +1401,16 @@ const VehicleDetails = () => {
                                 />
 
                                 <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                                    {reviewCount > 0
+                                    {reviewsError ? "Reviews are temporarily unavailable. Please try again later." : reviewCount > 0
                                         ? "See what our customers have to say about their experience with this vehicle."
                                         : "No reviews yet. Be the first to review this vehicle after your rental."}
                                 </p>
 
                                 <div className="mt-5">
-                                    <ReviewList
+                                    {!reviewsError && <ReviewList
                                         reviews={reviews}
                                         loading={reviewsLoading}
-                                    />
+                                    />}
                                 </div>
                             </div>
                         </motion.div>

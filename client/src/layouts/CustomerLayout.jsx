@@ -29,9 +29,10 @@ const CustomerLayout = () => {
                 </PageTransition>
             </main>
 
-            {/* The chat page is the destination - and the bubble would sit
-                over its message box. */}
-            {pathname !== "/customer/customer-service" && (
+            {/* Keep the composer and payment actions clear of the floating bubble. */}
+            {pathname !== "/customer/customer-service" &&
+                !pathname.startsWith("/customer/checkout/") &&
+                !pathname.startsWith("/customer/payment/") && (
                 <CustomerServiceButton />
             )}
 

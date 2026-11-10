@@ -224,7 +224,7 @@ const SiteMenuSheet = ({
                                     event.stopPropagation()
                                 }
                                 aria-label="Close menu"
-                                className="absolute right-4 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-600 shadow-sm ring-1 ring-gray-200 transition-colors hover:text-gray-950 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-800 dark:hover:text-white"
+                                className="absolute right-4 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-white text-gray-600 shadow-sm ring-1 ring-gray-200 transition-colors hover:text-gray-950 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-800 dark:hover:text-white"
                             >
                                 <X size={18} />
                             </button>

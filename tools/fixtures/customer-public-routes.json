@@ -1,0 +1,106 @@
+[
+  {
+    "name": "public-Home",
+    "route": "/"
+  },
+  {
+    "name": "public-PublicVehicles",
+    "route": "/vehicles"
+  },
+  {
+    "name": "public-AvailableVehicles",
+    "route": "/available"
+  },
+  {
+    "name": "public-VehicleDetails",
+    "route": "/vehicles/000000000000000000000002"
+  },
+  {
+    "name": "public-DriverProfile",
+    "route": "/drivers/000000000000000000000009"
+  },
+  {
+    "name": "public-ExploreAlbay",
+    "route": "/explore"
+  },
+  {
+    "name": "public-About",
+    "route": "/about"
+  },
+  {
+    "name": "public-Contact",
+    "route": "/contact"
+  },
+  {
+    "name": "public-FAQ",
+    "route": "/faq"
+  },
+  {
+    "name": "public-TermsOfService",
+    "route": "/terms"
+  },
+  {
+    "name": "public-Privacy",
+    "route": "/privacy"
+  },
+  {
+    "name": "public-Login",
+    "route": "/login"
+  },
+  {
+    "name": "public-Register",
+    "route": "/register"
+  },
+  {
+    "name": "public-RegisterOperator",
+    "route": "/register-operator"
+  },
+  {
+    "name": "public-ForgotPassword",
+    "route": "/forgot-password"
+  },
+  {
+    "name": "customer-Home",
+    "route": "/customer/home"
+  },
+  {
+    "name": "customer-Bookings",
+    "route": "/customer/bookings"
+  },
+  {
+    "name": "customer-BookingDetails",
+    "route": "/customer/bookings/000000000000000000000003"
+  },
+  {
+    "name": "customer-RateBooking",
+    "route": "/customer/bookings/000000000000000000000006/rate"
+  },
+  {
+    "name": "customer-Favorites",
+    "route": "/customer/favorites"
+  },
+  {
+    "name": "customer-Profile",
+    "route": "/customer/profile"
+  },
+  {
+    "name": "customer-Settings",
+    "route": "/customer/settings"
+  },
+  {
+    "name": "customer-Checkout",
+    "route": "/customer/checkout/000000000000000000000011"
+  },
+  {
+    "name": "customer-PaymentResult",
+    "route": "/customer/payment/success?paymentId=000000000000000000000011"
+  },
+  {
+    "name": "customer-CustomerService",
+    "route": "/customer/customer-service"
+  },
+  {
+    "name": "customer-Notifications",
+    "route": "/customer/notifications"
+  }
+]

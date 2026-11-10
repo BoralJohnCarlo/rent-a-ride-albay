@@ -2183,7 +2183,7 @@ const Bookings = () => {
                                     </button>
                                 )}
 
-                                <div className="mt-4 grid max-w-xl grid-cols-2 gap-1.5 sm:grid-cols-4">
+                                <div className="mt-4 grid max-w-xl grid-cols-4 gap-1.5">
                                     {headerStats.map((stat) => (
                                         <button
                                             key={stat.key}
@@ -2219,7 +2219,8 @@ const Bookings = () => {
                                                 type="button"
                                                 onClick={item.onClick}
                                                 disabled={isEmpty}
-                                                className="group flex min-w-0 flex-col rounded-xl bg-white/[0.06] px-2 py-1.5 text-left ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:bg-white/[0.06]"
+                                                data-empty={isEmpty}
+                                                className="data-[empty=true]:hidden sm:data-[empty=true]:flex group flex min-w-0 flex-col rounded-xl bg-white/[0.06] px-2 py-1.5 text-left ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:bg-white/[0.06]"
                                             >
                                                 <span className="flex items-center justify-between">
                                                     <span
@@ -2243,19 +2244,21 @@ const Bookings = () => {
 
                                 <Link
                                     to="/explore"
-                                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-gray-300 transition hover:text-white"
+                                    className="mt-3 hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-gray-300 transition hover:text-white"
                                 >
                                     <MapPin size={13} />
                                     Explore Albay
                                 </Link>
                             </div>
 
+                            <div className={nextTrip ? "min-w-0" : "hidden lg:block"}>
                             <NextRideTicket
                                 booking={nextTrip}
                                 now={now}
                                 onViewDetails={handleViewDetails}
                                 onBrowse={() => navigate("/vehicles")}
                             />
+                            </div>
                         </div>
                     </div>
                 </div>
