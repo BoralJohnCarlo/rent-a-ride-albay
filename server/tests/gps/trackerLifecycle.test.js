@@ -63,20 +63,88 @@ const runAuth = async (imei, deviceKey) => {
     return { nextCalled, statusCode: res.statusCode, body: res.body, req };
 };
 
-const activeAlert = (vehicle, tracker, type = ALERT_TYPE.GPS_LOST) =>
-    Alert.create({
+const activeAlert = async (vehicle, tracker, type = ALERT_TYPE.GPS_LOST) => {
+    const current = await Tracker.findById(tracker).select("alertSession").lean();
+    return Alert.create({
         vehicle,
         tracker,
         type,
         severity: "warning",
         title: "Test alert",
         message: "Test alert",
+        alertSession: current?.alertSession ?? null,
     });
+};
 
 describe("tracker lifecycle", () => {
     before(connectTestDb);
     after(disconnectTestDb);
     beforeEach(clearCollections);
+
+    for (const operation of ["assign", "unassign"]) {
+        it(`overlapping ${operation} cannot undo a completed disable`, async (t) => {
+            const vehicle = await createTestVehicle();
+            const created = await createTracker({
+                imei: uniqueImei(),
+                ...(operation === "unassign" ? { vehicle } : {}),
+            }, adminId);
+            const originalSave = Tracker.prototype.save;
+            let intercepted = false;
+            t.mock.method(Tracker.prototype, "save", async function (...args) {
+                if (!intercepted && String(this._id) === String(created._id) && this.isModified("vehicle")) {
+                    intercepted = true;
+                    await disableTracker(created._id, adminId);
+                }
+                return originalSave.apply(this, args);
+            });
+            await assert.rejects(
+                operation === "assign"
+                    ? assignTrackerToVehicle(created._id, vehicle, adminId)
+                    : unassignTracker(created._id, adminId),
+                { statusCode: 409 }
+            );
+            assert.equal(intercepted, true);
+            const saved = await Tracker.findById(created._id);
+            assert.equal(saved.status, TRACKER_STATUS.INACTIVE);
+            assert.equal(String(saved.vehicle), operation === "assign" ? "null" : String(vehicle));
+        });
+    }
+
+    it("concurrent assignments leave exactly one tracker on a vehicle", async () => {
+        const vehicle = await createTestVehicle();
+        const a = await createTracker({ imei: uniqueImei() }, adminId);
+        const b = await createTracker({ imei: uniqueImei() }, adminId);
+        const results = await Promise.allSettled([
+            assignTrackerToVehicle(a._id, vehicle, adminId),
+            assignTrackerToVehicle(b._id, vehicle, adminId),
+        ]);
+        assert.equal(results.filter(r => r.status === "fulfilled").length, 1);
+        assert.equal(results.find(r => r.status === "rejected").reason.statusCode, 409);
+        assert.equal(await Tracker.countDocuments({ vehicle }), 1);
+        assert.equal(await Tracker.countDocuments({ vehicle: null }), 1);
+    });
+
+    it("concurrent creation with one vehicle returns a conflict and retains one assignment", async () => {
+        const vehicle = await createTestVehicle();
+        const results = await Promise.allSettled([
+            createTracker({ imei: uniqueImei(), vehicle }, adminId),
+            createTracker({ imei: uniqueImei(), vehicle }, adminId),
+        ]);
+        assert.equal(results.filter(r => r.status === "fulfilled").length, 1);
+        assert.equal(results.find(r => r.status === "rejected").reason.statusCode, 409);
+        assert.equal(await Tracker.countDocuments({ vehicle }), 1);
+    });
+
+    it("the database rejects duplicate assignments even when service checks are bypassed", async () => {
+        const vehicle = await createTestVehicle();
+        await createTracker({ imei: uniqueImei(), vehicle }, adminId);
+        const b = await createTracker({ imei: uniqueImei() }, adminId);
+        await assert.rejects(Tracker.updateOne({ _id: b._id }, { $set: { vehicle } }), { code: 11000 });
+        // Multiple unassigned trackers remain valid.
+        await createTracker({ imei: uniqueImei() }, adminId);
+        assert.equal(await Tracker.countDocuments({ vehicle: null }), 2);
+    });
+
 
     describe("registration", () => {
         it("defaults to http_simulator, stores metadata, returns the key once", async () => {
@@ -129,6 +197,42 @@ describe("tracker lifecycle", () => {
     });
 
     describe("unassign", () => {
+        for (const operation of ["unassign", "reassign"]) {
+            it(`delayed ${operation} cleanup preserves alerts after assignment back to the same vehicle`, async (t) => {
+                const vehicle = await createTestVehicle();
+                const otherVehicle = await createTestVehicle();
+                const created = await createTracker({ imei: uniqueImei(), vehicle }, adminId);
+                const previous = await activeAlert(vehicle, created._id, ALERT_TYPE.LOW_BATTERY);
+                const originalSave = Tracker.prototype.save;
+                let intercepted = false;
+                t.mock.method(Tracker.prototype, "save", async function (...args) {
+                    const pause = !intercepted && String(this._id) === String(created._id) &&
+                        this.isModified("vehicle") && String(this.vehicle) !== String(vehicle);
+                    if (pause) intercepted = true;
+                    const result = await originalSave.apply(this, args);
+                    if (pause) {
+                        await assignTrackerToVehicle(created._id, vehicle, adminId);
+                        await ingestTelemetry(await Tracker.findById(created._id), normalizeTelemetryPayload({
+                            latitude: 13.14, longitude: 123.74, gpsFix: false, recordedAt: new Date().toISOString(),
+                        }));
+                        assert.equal(await Alert.countDocuments({ vehicle, type: ALERT_TYPE.GPS_LOST, status: ALERT_STATUS.ACTIVE }), 1);
+                    }
+                    return result;
+                });
+                if (operation === "unassign") await unassignTracker(created._id, adminId);
+                else await assignTrackerToVehicle(created._id, otherVehicle, adminId);
+                assert.equal(intercepted, true);
+                const tracker = await Tracker.findById(created._id).lean();
+                assert.equal(tracker.status, TRACKER_STATUS.ACTIVE);
+                assert.equal(String(tracker.vehicle), String(vehicle));
+                assert.ok(tracker.alertSession);
+                assert.equal((await Alert.findById(previous._id)).status, ALERT_STATUS.RESOLVED);
+                const fresh = await Alert.findOne({ vehicle, type: ALERT_TYPE.GPS_LOST, status: ALERT_STATUS.ACTIVE });
+                assert.ok(fresh);
+                assert.equal(fresh.alertSession, tracker.alertSession);
+            });
+        }
+
         it("clears the vehicle, sets UNASSIGNED, resolves alerts, keeps history", async () => {
             const vehicleId = await createTestVehicle();
             const created = await createTracker(
@@ -174,6 +278,32 @@ describe("tracker lifecycle", () => {
     });
 
     describe("reassign", () => {
+        it("cleanup preserves an alert that arrives on the new assignment before cleanup runs", async () => {
+            const vehicleA = await createTestVehicle();
+            const vehicleB = await createTestVehicle();
+            const created = await createTracker({ imei: uniqueImei(), vehicle: vehicleA }, adminId);
+            await activeAlert(vehicleA, created._id);
+            const original = Tracker.prototype.save;
+            let injected = false;
+            Tracker.prototype.save = async function (...args) {
+                const result = await original.apply(this, args);
+                if (!injected && String(this._id) === String(created._id) && String(this.vehicle) === String(vehicleB)) {
+                    injected = true;
+                    await ingestTelemetry(await Tracker.findById(this._id),
+                        normalizeTelemetryPayload({ latitude: 13, longitude: 123, gpsFix: false }));
+                }
+                return result;
+            };
+            try {
+                await assignTrackerToVehicle(created._id, vehicleB, adminId);
+                assert.equal(injected, true);
+                assert.equal(await Alert.countDocuments({ vehicle: vehicleA, status: ALERT_STATUS.ACTIVE }), 0);
+                assert.equal(await Alert.countDocuments({ vehicle: vehicleB, tracker: created._id,
+                    type: ALERT_TYPE.GPS_LOST, status: ALERT_STATUS.ACTIVE }), 1);
+                assert.equal(await Alert.countDocuments({ vehicle: vehicleA, status: ALERT_STATUS.RESOLVED }), 1);
+            } finally { Tracker.prototype.save = original; }
+        });
+
         it("moves to the new vehicle and resolves the previous vehicle's alerts", async () => {
             const vehicleA = await createTestVehicle();
             const vehicleB = await createTestVehicle();
@@ -227,6 +357,112 @@ describe("tracker lifecycle", () => {
     });
 
     describe("disable / enable", () => {
+        it("disable cleans an alert created immediately before its save", async (t) => {
+            const vehicle = await createTestVehicle();
+            const created = await createTracker({ imei: uniqueImei(), vehicle }, adminId);
+            const originalSave = Tracker.prototype.save;
+            let intercepted = false;
+            t.mock.method(Tracker.prototype, "save", async function (...args) {
+                if (!intercepted && String(this._id) === String(created._id) && this.status === TRACKER_STATUS.INACTIVE) {
+                    intercepted = true;
+                    await ingestTelemetry(await Tracker.findById(created._id), normalizeTelemetryPayload({
+                        latitude: 13.14, longitude: 123.74, gpsFix: false, recordedAt: new Date().toISOString(),
+                    }));
+                    assert.equal(await Alert.countDocuments({ vehicle, status: ALERT_STATUS.ACTIVE }), 1);
+                }
+                return originalSave.apply(this, args);
+            });
+            await disableTracker(created._id, adminId);
+            assert.equal(intercepted, true);
+            assert.equal((await Tracker.findById(created._id)).status, TRACKER_STATUS.INACTIVE);
+            assert.equal(await Alert.countDocuments({ vehicle, status: ALERT_STATUS.ACTIVE }), 0);
+        });
+
+        for (const previousType of [ALERT_TYPE.LOW_BATTERY, ALERT_TYPE.GPS_LOST]) {
+            it(`delayed disable cleanup preserves fresh GPS loss after re-enable with previous ${previousType}`, async (t) => {
+                const vehicle = await createTestVehicle();
+                const created = await createTracker({ imei: uniqueImei(), vehicle }, adminId);
+                const previous = await activeAlert(vehicle, created._id, previousType);
+                const originalSave = Tracker.prototype.save;
+                let intercepted = false;
+                t.mock.method(Tracker.prototype, "save", async function (...args) {
+                    const pause = !intercepted && String(this._id) === String(created._id) && this.status === TRACKER_STATUS.INACTIVE;
+                    if (pause) intercepted = true;
+                    const result = await originalSave.apply(this, args);
+                    if (pause) {
+                        await enableTracker(created._id, adminId);
+                        await ingestTelemetry(await Tracker.findById(created._id), normalizeTelemetryPayload({
+                            latitude: 13.14, longitude: 123.74, gpsFix: false, recordedAt: new Date().toISOString(),
+                        }));
+                        assert.equal(await Alert.countDocuments({ vehicle, type: ALERT_TYPE.GPS_LOST, status: ALERT_STATUS.ACTIVE }), 1);
+                    }
+                    return result;
+                });
+                await disableTracker(created._id, adminId);
+                assert.equal(intercepted, true);
+                assert.equal((await Tracker.findById(created._id)).status, TRACKER_STATUS.ACTIVE);
+                assert.equal((await Alert.findById(previous._id)).status, ALERT_STATUS.RESOLVED);
+                assert.equal(await Alert.countDocuments({ vehicle, type: ALERT_TYPE.GPS_LOST, status: ALERT_STATUS.ACTIVE }), 1);
+            });
+        }
+
+        it("disable rejects a completed reassignment and cleans the current vehicle on retry", async (t) => {
+            const oldVehicle = await createTestVehicle();
+            const newVehicle = await createTestVehicle();
+            const created = await createTracker({ imei: uniqueImei(), vehicle: oldVehicle }, adminId);
+            const originalSave = Tracker.prototype.save;
+            let intercepted = false;
+            t.mock.method(Tracker.prototype, "save", async function (...args) {
+                if (!intercepted && String(this._id) === String(created._id) && this.status === TRACKER_STATUS.INACTIVE) {
+                    intercepted = true;
+                    await assignTrackerToVehicle(created._id, newVehicle, adminId);
+                    await activeAlert(newVehicle, created._id);
+                }
+                return originalSave.apply(this, args);
+            });
+            await assert.rejects(disableTracker(created._id, adminId), { statusCode: 409 });
+            assert.equal(intercepted, true);
+            const saved = await Tracker.findById(created._id).lean();
+            assert.equal(saved.status, TRACKER_STATUS.ACTIVE);
+            assert.equal(String(saved.vehicle), String(newVehicle));
+            assert.equal(await Alert.countDocuments({ vehicle: newVehicle, status: ALERT_STATUS.ACTIVE }), 1);
+
+            const disabled = await disableTracker(created._id, adminId);
+            assert.equal(disabled.status, TRACKER_STATUS.INACTIVE);
+            assert.equal(String(disabled.vehicle), String(newVehicle));
+            assert.equal(await Alert.countDocuments({ vehicle: newVehicle, status: ALERT_STATUS.ACTIVE }), 0);
+            assert.equal((await Tracker.findById(created._id)).status, TRACKER_STATUS.INACTIVE);
+        });
+
+        for (const operation of ["assign", "unassign"]) {
+            it(`enable rejects a concurrent ${operation} and succeeds after refresh`, async (t) => {
+                const vehicle = await createTestVehicle();
+                const created = await createTracker({
+                    imei: uniqueImei(),
+                    ...(operation === "unassign" ? { vehicle } : {}),
+                }, adminId);
+                await disableTracker(created._id, adminId);
+                const originalSave = Tracker.prototype.save;
+                let intercepted = false;
+                t.mock.method(Tracker.prototype, "save", async function (...args) {
+                    if (!intercepted && String(this._id) === String(created._id) && this.status !== TRACKER_STATUS.INACTIVE) {
+                        intercepted = true;
+                        if (operation === "assign") await assignTrackerToVehicle(created._id, vehicle, adminId);
+                        else await unassignTracker(created._id, adminId);
+                    }
+                    return originalSave.apply(this, args);
+                });
+                await assert.rejects(enableTracker(created._id, adminId), { statusCode: 409 });
+                assert.equal(intercepted, true);
+                const saved = await Tracker.findById(created._id).lean();
+                assert.equal(saved.status, TRACKER_STATUS.INACTIVE);
+                assert.equal(String(saved.vehicle), operation === "assign" ? String(vehicle) : "null");
+                const enabled = await enableTracker(created._id, adminId);
+                assert.equal(enabled.status, operation === "assign" ? TRACKER_STATUS.ACTIVE : TRACKER_STATUS.UNASSIGNED);
+                assert.equal(String(enabled.vehicle), String(saved.vehicle));
+            });
+        }
+
         it("disable sets INACTIVE, keeps the assignment, resolves alerts and blocks ingestion", async () => {
             const vehicleId = await createTestVehicle();
             const created = await createTracker(
@@ -409,6 +645,48 @@ describe("tracker lifecycle", () => {
     });
 
     describe("vehicle archival", () => {
+        it("cleanup preserves a reassignment completed before its database write", async (t) => {
+            const oldVehicle = await createTestVehicle();
+            const newVehicle = await createTestVehicle();
+            const created = await createTracker({ imei: uniqueImei(), vehicle: oldVehicle }, adminId);
+            const originalUpdate = Tracker.collection.updateMany;
+            let intercepted = false;
+            t.mock.method(Tracker.collection, "updateMany", async function (...args) {
+                if (!intercepted) {
+                    intercepted = true;
+                    await assignTrackerToVehicle(created._id, newVehicle, adminId);
+                    await activeAlert(newVehicle, created._id, ALERT_TYPE.GPS_LOST);
+                }
+                return originalUpdate.apply(this, args);
+            });
+            assert.equal(await releaseTrackersForVehicle(oldVehicle, adminId), 0);
+            assert.equal(intercepted, true);
+            const tracker = await Tracker.findById(created._id).lean();
+            assert.equal(String(tracker.vehicle), String(newVehicle));
+            assert.equal(tracker.status, TRACKER_STATUS.ACTIVE);
+            assert.equal(await Alert.countDocuments({ vehicle: newVehicle, status: ALERT_STATUS.ACTIVE }), 1);
+        });
+
+        it("cleanup preserves a disable completed before its database write", async (t) => {
+            const vehicle = await createTestVehicle();
+            const created = await createTracker({ imei: uniqueImei(), vehicle }, adminId);
+            const originalUpdate = Tracker.collection.updateMany;
+            let intercepted = false;
+            t.mock.method(Tracker.collection, "updateMany", async function (...args) {
+                if (!intercepted) {
+                    intercepted = true;
+                    await disableTracker(created._id, adminId);
+                }
+                return originalUpdate.apply(this, args);
+            });
+            assert.equal(await releaseTrackersForVehicle(vehicle, String(adminId)), 1);
+            assert.equal(intercepted, true);
+            const tracker = await Tracker.findById(created._id).lean();
+            assert.equal(tracker.vehicle, null);
+            assert.equal(tracker.status, TRACKER_STATUS.INACTIVE);
+            assert.equal(String(tracker.audit.updatedBy), String(adminId));
+        });
+
         it("releaseTrackersForVehicle unassigns the tracker and resolves the vehicle's alerts", async () => {
             const vehicleId = await createTestVehicle();
             const created = await createTracker(

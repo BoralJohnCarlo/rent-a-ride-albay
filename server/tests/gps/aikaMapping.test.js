@@ -113,6 +113,31 @@ describe("parseAikaPositionTime", () => {
         assert.equal(parseAikaPositionTime(""), null);
         assert.equal(parseAikaPositionTime(undefined), null);
     });
+
+    it("rejects impossible calendar dates and overflowing times", () => {
+        for (const value of [
+            "2026-02-30 03:00:00", "2026-02-29 03:00:00",
+            "1900-02-29 03:00:00", "2100-02-29 03:00:00",
+            "2026-04-31 03:00:00", "2026-13-01 03:00:00",
+            "2026-00-01 03:00:00", "2026-11-00 03:00:00",
+            "2026-11-32 03:00:00", "2026-11-11 24:00:00",
+            "2026-11-11 25:00:00", "2026-11-11 03:60:00",
+            "2026-11-11 03:00:60",
+        ]) {
+            assert.equal(parseAikaPositionTime(value), null, value);
+            assert.equal(mapAikaTracking({ ...AIKA_PARKED_REPLY, positionTime: value }), null, value);
+        }
+    });
+
+    it("preserves valid leap days, day boundaries, whitespace and early years", () => {
+        for (const value of [
+            "2024-02-29 23:59:59", "2000-02-29 00:00:00",
+            "0096-02-29 03:00:00", "2026-12-31 23:59:59",
+            "2027-01-01 00:00:00",
+        ]) {
+            assert.equal(parseAikaPositionTime(" " + value + " ").toISOString(), value.replace(" ", "T") + ".000Z");
+        }
+    });
 });
 
 describe("parseAikaIgnition", () => {

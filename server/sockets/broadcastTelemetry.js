@@ -3,6 +3,13 @@ import { vehicleRoom } from "./rooms.js";
 
 export const GPS_TELEMETRY_EVENT = "gps:telemetry";
 export const GPS_HEARTBEAT_EVENT = "gps:heartbeat";
+export const GPS_ASSIGNMENT_EVENT = "gps:assignment-changed";
+
+// Notification only: clients reread assignments through their authorized API.
+export const broadcastVehicleAssignmentChanged = (vehicleId) => {
+    if (!vehicleId) return;
+    getIO()?.to(vehicleRoom(String(vehicleId))).emit(GPS_ASSIGNMENT_EVENT, { vehicleId: String(vehicleId) });
+};
 
 /*
  * Reshapes the already-normalized/persisted telemetry document into the
@@ -19,6 +26,7 @@ export const buildRealtimePayload = (telemetry) => ({
     ignition: telemetry.ignition,
     batteryLevel: telemetry.batteryLevel,
     gpsFix: telemetry.gpsFix,
+    gpsFixUpdatedAt: telemetry.gpsFixUpdatedAt ?? telemetry.receivedAt,
     recordedAt: telemetry.recordedAt,
     receivedAt: telemetry.receivedAt,
     source: telemetry.source,
@@ -28,10 +36,11 @@ export const buildRealtimePayload = (telemetry) => ({
  * Communication-only update (no position): lets the UI know the tracker is
  * still talking even when no new, newer GPS reading arrived.
  */
-export const buildHeartbeatPayload = ({ vehicleId, trackerId, lastSeenAt }) => ({
+export const buildHeartbeatPayload = ({ vehicleId, trackerId, lastSeenAt, gpsFix, gpsFixUpdatedAt }) => ({
     vehicleId: String(vehicleId),
     trackerId: String(trackerId),
     lastSeenAt,
+    ...(typeof gpsFix === "boolean" ? { gpsFix, gpsFixUpdatedAt } : {}),
 });
 
 /*

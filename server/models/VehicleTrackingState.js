@@ -4,7 +4,9 @@ import { TELEMETRY_SOURCE_VALUES } from "../constants/telemetryConstants.js";
 
 /*
  * One document per vehicle holding only the latest known telemetry
- * snapshot, upserted on every ingest. Kept separate from the high-frequency
+ * snapshot, upserted on every ingest. Before a first position, an explicit
+ * fix observation may create a snapshot with null coordinates/recordedAt.
+ * Kept separate from the high-frequency
  * Telemetry history collection so "where is this vehicle right now" is a
  * single indexed lookup instead of a sort+limit over history.
  */
@@ -25,12 +27,12 @@ const vehicleTrackingStateSchema = new mongoose.Schema(
 
         latitude: {
             type: Number,
-            required: true,
+            default: null,
         },
 
         longitude: {
             type: Number,
-            required: true,
+            default: null,
         },
 
         speed: {
@@ -59,11 +61,14 @@ const vehicleTrackingStateSchema = new mongoose.Schema(
             default: null,
         },
 
+        gpsFixUpdatedAt: { type: Date, default: null },
+        lastSeenAt: { type: Date, default: null },
+
         // Device timestamp of this snapshot - the chronology key. The state
         // only ever advances to a strictly newer recordedAt (trackingService).
         recordedAt: {
             type: Date,
-            required: true,
+            default: null,
         },
 
         receivedAt: {

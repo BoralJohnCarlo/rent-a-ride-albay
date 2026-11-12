@@ -18,6 +18,7 @@ const initialState = {
     trackers: [],
     loading: false,
     error: null,
+    trackerListRequestId: null,
 };
 
 export const getTrackers = createAsyncThunk(
@@ -145,6 +146,7 @@ const setRejected = (state, action) => {
 };
 
 const replaceUpdatedTracker = (state, action) => {
+    state.trackerListRequestId = null;
     state.loading = false;
     state.error = null;
 
@@ -179,12 +181,15 @@ const trackerSlice = createSlice({
         builder
             // Get Trackers
 
-            .addCase(getTrackers.pending, (state) => {
+            .addCase(getTrackers.pending, (state, action) => {
+                state.trackerListRequestId = action.meta.requestId;
                 state.loading = true;
                 state.error = null;
             })
 
             .addCase(getTrackers.fulfilled, (state, action) => {
+                if (!action.meta?.requestId || state.trackerListRequestId !== action.meta.requestId) return;
+                state.trackerListRequestId = null;
                 state.loading = false;
                 state.error = null;
                 state.trackers = (
@@ -193,6 +198,8 @@ const trackerSlice = createSlice({
             })
 
             .addCase(getTrackers.rejected, (state, action) => {
+                if (!action.meta?.requestId || state.trackerListRequestId !== action.meta.requestId) return;
+                state.trackerListRequestId = null;
                 state.loading = false;
                 state.error = action.payload;
             })
@@ -209,6 +216,7 @@ const trackerSlice = createSlice({
             })
 
             .addCase(registerTracker.fulfilled, (state) => {
+                state.trackerListRequestId = null;
                 state.loading = false;
                 state.error = null;
             })
@@ -226,6 +234,7 @@ const trackerSlice = createSlice({
             })
 
             .addCase(assignTracker.fulfilled, (state, action) => {
+                state.trackerListRequestId = null;
                 state.loading = false;
                 state.error = null;
 
@@ -256,6 +265,7 @@ const trackerSlice = createSlice({
             })
 
             .addCase(updateTracker.fulfilled, (state, action) => {
+                state.trackerListRequestId = null;
                 state.loading = false;
                 state.error = null;
 
@@ -286,6 +296,9 @@ const trackerSlice = createSlice({
                 .addCase(thunk.fulfilled, replaceUpdatedTracker)
                 .addCase(thunk.rejected, setRejected);
         });
+        for (const type of ["auth/logout/fulfilled", "auth/sessionEnded", "auth/getCurrentUser/rejected", "auth/login/fulfilled"]) {
+            builder.addCase(type, () => initialState);
+        }
     },
 });
 

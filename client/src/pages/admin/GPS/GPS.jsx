@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -32,6 +32,7 @@ import TrackerDeviceKeyDialog from "../../../components/modals/TrackerDeviceKeyD
 import { getVehicles } from "../../../store/vehicles";
 import { getTrackers } from "../../../store/trackers";
 import useGPS from "../../../hooks/gps/useGPS";
+import useGpsAssignmentSync from "../../../hooks/gps/useGpsAssignmentSync";
 import useNowTicker, { latestTimestamp } from "../../../hooks/gps/useNowTicker";
 import useRouteHistory from "../../../hooks/gps/useRouteHistory";
 import useSocket from "../../../hooks/shared/useSocket";
@@ -152,8 +153,11 @@ const VehicleGpsSubscriber = ({ vehicleId }) => {
 const GPS = () => {
     const dispatch = useDispatch();
     const toast = useToast();
-    const { connected: socketConnected, error: socketError } =
+    const { socket, connected: socketConnected, error: socketError } =
         useSocket();
+
+    const refreshAssignments = useCallback(() => dispatch(getTrackers()).unwrap(), [dispatch]);
+    useGpsAssignmentSync(socket, refreshAssignments);
 
     const vehicles = useSelector((state) => state.vehicles.vehicles);
     const vehiclesLoading = useSelector(
@@ -268,8 +272,9 @@ const GPS = () => {
     const entries = useMemo(
         () =>
             activeVehicles.map((vehicle) => {
-                const telemetry = byVehicleId[vehicle._id] || null;
                 const tracker = trackerByVehicleId.get(vehicle._id);
+                const cached = byVehicleId[vehicle._id];
+                const telemetry = tracker && cached?.trackerId !== tracker._id ? null : cached || null;
 
                 return {
                     vehicle,
@@ -281,7 +286,8 @@ const GPS = () => {
                         latestTimestamp(
                             tracker?.lastSeenAt,
                             telemetry?.lastSeenAt
-                        )
+                        ),
+                        tracker?.protocol
                     ),
                 };
             }),
@@ -314,7 +320,7 @@ const GPS = () => {
                     ...tracker,
                     lastSeenAt: latestTimestamp(
                         tracker.lastSeenAt,
-                        latestTimestamp(liveReceivedAt, live.lastSeenAt)
+                        latestTimestamp(liveReceivedAt, live.trackerId === tracker._id ? live.lastSeenAt : null)
                     ),
                 };
             }),

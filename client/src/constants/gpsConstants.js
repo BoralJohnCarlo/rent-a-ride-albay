@@ -127,36 +127,34 @@ export const getVehicleGpsStatus = (
     telemetry,
     now = Date.now(),
     hasTracker = false,
-    lastSeenAt = null
+    lastSeenAt = null,
+    protocol = null
 ) => {
-    if (
-        !telemetry ||
-        telemetry.latitude === null ||
-        telemetry.latitude === undefined ||
-        telemetry.longitude === null ||
-        telemetry.longitude === undefined
-    ) {
-        return hasTracker ? GPS_STATUS.WAITING : GPS_STATUS.NO_TRACKER;
-    }
+    if (!hasTracker) return GPS_STATUS.NO_TRACKER;
 
     const lastCommunication = Math.max(
-        ...[toTime(telemetry.receivedAt), toTime(lastSeenAt)].filter(
+        ...[toTime(telemetry?.receivedAt), toTime(telemetry?.lastSeenAt), toTime(lastSeenAt)].filter(
             (time) => !Number.isNaN(time)
         ),
         -Infinity
     );
 
-    const isStale =
-        !Number.isFinite(lastCommunication) ||
-        now - lastCommunication > getGpsStaleThresholdMs(telemetry.source);
+    // A tracker that never communicated is waiting, not offline.
+    if (!Number.isFinite(lastCommunication)) return GPS_STATUS.WAITING;
+
+    const threshold = protocol === "aika_cloud"
+        ? AIKA_STALE_THRESHOLD_MS : getGpsStaleThresholdMs(telemetry?.source);
+    const isStale = now - lastCommunication > threshold;
 
     if (isStale) {
         return GPS_STATUS.OFFLINE;
     }
 
-    if (telemetry.gpsFix === false) {
+    if (telemetry?.gpsFix === false) {
         return GPS_STATUS.GPS_LOST;
     }
+
+    if (telemetry?.latitude == null || telemetry?.longitude == null) return GPS_STATUS.WAITING;
 
     return GPS_STATUS.LIVE;
 };

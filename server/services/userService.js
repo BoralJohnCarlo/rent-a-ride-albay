@@ -558,6 +558,8 @@ export const updateUser = async (
         throw new Error("User not found.");
     }
 
+    const previousRole = user.role;
+
     if (updateData.firstName !== undefined) {
         user.firstName = updateData.firstName;
     }
@@ -623,6 +625,7 @@ export const updateUser = async (
 
     await user.save();
 
+    if (user.isSuspended || user.role !== previousRole) disconnectUserSockets(user._id);
     return formatUser(user);
 };
 
@@ -642,6 +645,7 @@ export const updateUserStatus = async (
     user.isSuspended = isSuspended;
 
     await user.save();
+    if (user.isSuspended) disconnectUserSockets(user._id);
 
     /*
      * Suspending/unsuspending an operator only ever locked their own account

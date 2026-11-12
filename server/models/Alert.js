@@ -70,6 +70,7 @@ const alertSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.Mixed,
             default: () => ({}),
         },
+        alertSession: { type: String, default: null },
 
         triggeredAt: {
             type: Date,

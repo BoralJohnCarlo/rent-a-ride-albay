@@ -37,6 +37,12 @@ const authenticateSocket = async (socket, next) => {
         }
 
         socket.user = user;
+        socket.authExpiresAt = decoded.exp * 1000;
+
+        // The token can expire while the user lookup is in flight.
+        if (!Number.isFinite(socket.authExpiresAt) || socket.authExpiresAt <= Date.now()) {
+            return next(new Error("Invalid or expired token."));
+        }
 
         next();
     } catch (error) {

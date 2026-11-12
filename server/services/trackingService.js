@@ -32,6 +32,20 @@ import {
 
 const DUPLICATE_KEY_ERROR_CODE = 11000;
 
+// Authentication/adapters may hold a tracker loaded before an admin changed it.
+// Reject that request rather than attributing it to a different assignment.
+const assertCurrentTracker = async (tracker) => {
+    if (tracker.status === TRACKER_STATUS.INACTIVE) throw createError("Tracker is inactive.", 403);
+    const current = await Tracker.findById(tracker._id).lean();
+    if (!current || current.status === TRACKER_STATUS.INACTIVE) {
+        throw createError("Tracker is inactive or no longer exists.", 403);
+    }
+    if (String(current.vehicle) !== String(tracker.vehicle) ||
+        (current.assignedAt?.getTime() ?? null) !== (tracker.assignedAt?.getTime() ?? null)) {
+        throw createError("Tracker assignment changed. Retry with the current assignment.", 409);
+    }
+};
+
 /*
  * The source label is a property of how the tracker talks to us, so it's
  * derived from the authenticated tracker's protocol - a request body can
@@ -79,7 +93,8 @@ const runCommunicationAlerts = async (tracker) => {
 /*
  * Advances the vehicle's latest snapshot only when this reading is strictly
  * newer (by device timestamp `recordedAt`, never server arrival time) than
- * the stored one. Done as one atomic conditional upsert: if a snapshot with
+ * the stored one from the same tracker. A replacement starts its own clock.
+ * Done as one atomic conditional upsert: if a snapshot with
  * an equal-or-newer recordedAt exists, the filter misses, the upsert tries
  * to insert, and the unique `vehicle` index rejects it - so on equal
  * timestamps the snapshot already stored wins, deterministically.
@@ -87,32 +102,44 @@ const runCommunicationAlerts = async (tracker) => {
  * Returns the updated snapshot, or null when the reading was not newer.
  */
 const advanceTrackingState = async (tracker, normalizedTelemetry, source, receivedAt) => {
+    // Position chronology and fix-observation chronology are independent.
+    // Decide inside the atomic update so a concurrent heartbeat is preserved.
+    const sameTracker = { $eq: ["$tracker", { $literal: tracker._id }] };
+    const keepFix = { $and: [
+        sameTracker,
+        { $gte: [{ $ifNull: ["$gpsFixUpdatedAt", new Date(0)] }, receivedAt] },
+    ] };
+    const literal = (value) => ({ $literal: value ?? null });
     try {
         return await VehicleTrackingState.findOneAndUpdate(
             {
                 vehicle: tracker.vehicle,
-                recordedAt: { $lt: normalizedTelemetry.recordedAt },
+                $or: [
+                    { tracker: { $ne: tracker._id } },
+                    { recordedAt: null },
+                    { recordedAt: { $lt: normalizedTelemetry.recordedAt } },
+                ],
             },
-            {
-                $set: {
-                    tracker: tracker._id,
-                    latitude: normalizedTelemetry.latitude,
-                    longitude: normalizedTelemetry.longitude,
-                    speed: normalizedTelemetry.speed,
-                    heading: normalizedTelemetry.heading,
-                    ignition: normalizedTelemetry.ignition,
-                    batteryLevel: normalizedTelemetry.batteryLevel,
-                    gpsFix: normalizedTelemetry.gpsFix,
-                    recordedAt: normalizedTelemetry.recordedAt,
-                    receivedAt,
-                    source,
-                },
-            },
-            {
-                upsert: true,
-                new: true,
-                setDefaultsOnInsert: true,
-            }
+            [{ $set: {
+                tracker: literal(tracker._id),
+                latitude: literal(normalizedTelemetry.latitude),
+                longitude: literal(normalizedTelemetry.longitude),
+                speed: literal(normalizedTelemetry.speed),
+                heading: literal(normalizedTelemetry.heading),
+                ignition: literal(normalizedTelemetry.ignition),
+                batteryLevel: literal(normalizedTelemetry.batteryLevel),
+                gpsFix: { $cond: [keepFix, "$gpsFix", literal(normalizedTelemetry.gpsFix)] },
+                gpsFixUpdatedAt: { $cond: [keepFix, "$gpsFixUpdatedAt", literal(receivedAt)] },
+                recordedAt: literal(normalizedTelemetry.recordedAt),
+                receivedAt: literal(receivedAt),
+                // Communication from the previous device must not make the
+                // replacement look recently active.
+                lastSeenAt: { $cond: [sameTracker,
+                    { $max: ["$lastSeenAt", receivedAt] }, literal(receivedAt)] },
+                source: literal(source),
+                createdAt: { $ifNull: ["$createdAt", "$$NOW"] },
+            } }],
+            { upsert: true, returnDocument: "after", updatePipeline: true }
         );
     } catch (error) {
         if (error?.code === DUPLICATE_KEY_ERROR_CODE) {
@@ -123,27 +150,113 @@ const advanceTrackingState = async (tracker, normalizedTelemetry, source, receiv
     }
 };
 
+const publishAdvancedState = async (tracker, trackingState, reading) => {
+    broadcastVehicleTelemetry(String(tracker.vehicle), buildRealtimePayload(trackingState));
+    try {
+        const { created, resolved } = await evaluateTelemetryAlerts(
+            tracker, { ...reading, gpsFix: trackingState.gpsFix }
+        );
+        created.forEach(broadcastNewAlert);
+        resolved.forEach(broadcastResolvedAlert);
+    } catch (error) {
+        console.error("GPS alert evaluation failed:", error);
+    }
+};
+
+// History may have committed before a transient snapshot-write failure.
+// Replay the saved reading without inserting another history row or treating
+// old history as fresh communication. The adapter records current contact.
+export const recoverVehicleTrackingState = async (tracker, telemetry) => {
+    await assertCurrentTracker(tracker);
+    if (!tracker.vehicle || !telemetry ||
+        String(telemetry.vehicle) !== String(tracker.vehicle) ||
+        String(telemetry.tracker) !== String(tracker._id) ||
+        (tracker.assignedAt && telemetry.recordedAt < tracker.assignedAt) ||
+        !(await isVehicleTrackable(tracker.vehicle))) return false;
+
+    const current = await VehicleTrackingState.findOne({ vehicle: tracker.vehicle })
+        .select("tracker recordedAt").lean();
+    if (String(current?.tracker) === String(tracker._id) && current?.recordedAt &&
+        current.recordedAt >= telemetry.recordedAt) return false;
+
+    await assertCurrentTracker(tracker);
+    const state = await advanceTrackingState(tracker, telemetry, resolveTelemetrySource(tracker), telemetry.receivedAt);
+    if (!state) return false;
+    await publishAdvancedState(tracker, state, telemetry);
+    return true;
+};
+
 /*
  * Communication without a GPS position (a protocol heartbeat/keep-alive).
- * Updates Tracker.lastSeenAt only - never invents a position, never writes
- * Telemetry or VehicleTrackingState. No HTTP endpoint calls this yet; it is
+ * Never invents a position or writes Telemetry. An optional observed GPS fix
+ * can create a snapshot with null coordinates and raises/resolves its fix alert.
+ * No HTTP endpoint calls this yet; it is
  * the entry point future protocol adapters call for heartbeat packets, and
  * ingestTelemetry reuses its pieces.
  */
-export const recordHeartbeat = async (tracker, receivedAt = new Date()) => {
-    if (tracker.status === TRACKER_STATUS.INACTIVE) {
-        throw createError("Tracker is inactive.", 403);
-    }
+export const recordHeartbeat = async (tracker, receivedAt = new Date(), { gpsFix } = {}) => {
+    await assertCurrentTracker(tracker);
 
     await touchLastSeen(tracker._id, receivedAt);
 
     if (tracker.vehicle) {
+        let fixState = null;
+        if (typeof gpsFix === "boolean" && await isVehicleTrackable(tracker.vehicle)) {
+            await assertCurrentTracker(tracker);
+            const sameTracker = { $eq: ["$tracker", { $literal: tracker._id }] };
+            const keepPositionField = (field) => ({
+                $cond: [sameTracker, { $ifNull: [`$${field}`, null] }, null],
+            });
+            try {
+                fixState = await VehicleTrackingState.findOneAndUpdate(
+                    { vehicle: tracker.vehicle, $or: [
+                        { tracker: { $ne: tracker._id } },
+                        { gpsFixUpdatedAt: null },
+                        { gpsFixUpdatedAt: { $lt: receivedAt } },
+                    ] },
+                    [{ $set: {
+                        tracker: { $literal: tracker._id },
+                        gpsFix: { $literal: gpsFix },
+                        gpsFixUpdatedAt: { $literal: receivedAt },
+                        lastSeenAt: { $cond: [sameTracker,
+                            { $max: ["$lastSeenAt", receivedAt] }, { $literal: receivedAt }] },
+                        // A heartbeat from the current tracker keeps its position.
+                        // A replacement owns a fix-only snapshot until it reports one.
+                        latitude: keepPositionField("latitude"),
+                        longitude: keepPositionField("longitude"),
+                        recordedAt: keepPositionField("recordedAt"),
+                        speed: keepPositionField("speed"),
+                        heading: keepPositionField("heading"),
+                        ignition: keepPositionField("ignition"),
+                        batteryLevel: keepPositionField("batteryLevel"),
+                        receivedAt: { $cond: [sameTracker,
+                            { $ifNull: ["$receivedAt", receivedAt] }, { $literal: receivedAt }] },
+                        source: { $literal: resolveTelemetrySource(tracker) },
+                        createdAt: { $ifNull: ["$createdAt", "$$NOW"] },
+                    } }],
+                    { upsert: true, returnDocument: "after", updatePipeline: true }
+                );
+            } catch (error) {
+                // The same tracker already has an equal/newer fix observation.
+                if (error?.code !== DUPLICATE_KEY_ERROR_CODE) throw error;
+            }
+            if (fixState) {
+                try {
+                    const { created, resolved } = await evaluateTelemetryAlerts(tracker, { gpsFix });
+                    created.forEach(broadcastNewAlert);
+                    resolved.forEach(broadcastResolvedAlert);
+                } catch (error) {
+                    console.error("GPS fix alert evaluation failed:", error);
+                }
+            }
+        }
         broadcastVehicleHeartbeat(
             String(tracker.vehicle),
             buildHeartbeatPayload({
                 vehicleId: tracker.vehicle,
                 trackerId: tracker._id,
                 lastSeenAt: receivedAt,
+                ...(fixState ? { gpsFix, gpsFixUpdatedAt: receivedAt } : {}),
             })
         );
 
@@ -153,8 +266,9 @@ export const recordHeartbeat = async (tracker, receivedAt = new Date()) => {
     return { lastSeenAt: receivedAt };
 };
 
-export const ingestTelemetry = async (tracker, normalizedTelemetry) => {
+export const ingestTelemetry = async (tracker, normalizedTelemetry, { receivedAt = new Date() } = {}) => {
     const source = resolveTelemetrySource(tracker);
+    await assertCurrentTracker(tracker);
 
     // The HTTP validator already enforces this; repeated here so every
     // ingestion path (protocol adapters included) applies the same rule.
@@ -164,8 +278,6 @@ export const ingestTelemetry = async (tracker, normalizedTelemetry) => {
             400
         );
     }
-
-    const receivedAt = new Date();
 
     // An unassigned tracker is still communicating - record that, but its
     // reading belongs to no vehicle, so no Telemetry/state/alerts.
@@ -192,6 +304,7 @@ export const ingestTelemetry = async (tracker, normalizedTelemetry) => {
 
     // History is append-only: a valid older (out-of-order) reading is still
     // real history and is kept.
+    await assertCurrentTracker(tracker);
     const telemetry = await Telemetry.create({
         tracker: tracker._id,
         vehicle: tracker.vehicle,
@@ -210,26 +323,7 @@ export const ingestTelemetry = async (tracker, normalizedTelemetry) => {
     await touchLastSeen(tracker._id, receivedAt);
 
     if (trackingState) {
-        // Broadcast only after the write succeeded, and only for a reading
-        // that became the vehicle's current position - an older reading
-        // must never move the live marker backwards.
-        broadcastVehicleTelemetry(
-            String(tracker.vehicle),
-            buildRealtimePayload(telemetry)
-        );
-
-        // Best-effort: must never fail an otherwise successful ingest.
-        try {
-            const { created, resolved } = await evaluateTelemetryAlerts(
-                tracker,
-                normalizedTelemetry
-            );
-
-            created.forEach(broadcastNewAlert);
-            resolved.forEach(broadcastResolvedAlert);
-        } catch (error) {
-            console.error("GPS alert evaluation failed:", error);
-        }
+        await publishAdvancedState(tracker, trackingState, normalizedTelemetry);
     } else {
         // Not a new position, but still proof of communication.
         broadcastVehicleHeartbeat(
@@ -391,7 +485,7 @@ export const getOperatorFleetTracking = async (operatorId) => {
             .lean(),
         VehicleTrackingState.find({ vehicle: { $in: vehicleIds } })
             .select(
-                "vehicle tracker latitude longitude speed heading ignition batteryLevel gpsFix recordedAt receivedAt source"
+                "vehicle tracker latitude longitude speed heading ignition batteryLevel gpsFix gpsFixUpdatedAt lastSeenAt recordedAt receivedAt source"
             )
             .lean(),
     ]);

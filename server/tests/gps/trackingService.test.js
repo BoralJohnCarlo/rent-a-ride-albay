@@ -13,12 +13,13 @@ import {
 import Alert from "../../models/Alert.js";
 import Telemetry from "../../models/Telemetry.js";
 import Tracker from "../../models/Tracker.js";
+import Vehicle from "../../models/Vehicle.js";
 import VehicleTrackingState from "../../models/VehicleTrackingState.js";
 import {
     ingestTelemetry,
     recordHeartbeat,
 } from "../../services/trackingService.js";
-import { createTracker } from "../../services/trackerService.js";
+import { createTracker, disableTracker, assignTrackerToVehicle, unassignTracker } from "../../services/trackerService.js";
 import { normalizeTelemetryPayload } from "../../services/telemetryNormalizationService.js";
 import {
     TELEMETRY_SOURCE,
@@ -60,6 +61,62 @@ describe("trackingService", () => {
     beforeEach(clearCollections);
 
     describe("time integrity", () => {
+        it("a replacement establishes its own clock without changing old history", async () => {
+            const { vehicleId, tracker: oldTracker } = await registerAssignedTracker();
+            const ahead = new Date(Date.now() + 4 * 60000);
+            await ingestTelemetry(oldTracker, reading({ gpsFix: false, recordedAt: ahead.toISOString() }));
+            await unassignTracker(oldTracker._id, adminId);
+            const created = await createTracker({ imei: uniqueImei(), vehicle: vehicleId }, adminId);
+            const replacement = await loadTracker(created._id);
+            const recordedAt = new Date();
+            const result = await ingestTelemetry(replacement, reading({ latitude: 14, gpsFix: true,
+                recordedAt: recordedAt.toISOString() }));
+            assert.equal(result.stateAdvanced, true);
+            assert.equal(String(result.trackingState.tracker), String(replacement._id));
+            assert.equal(result.trackingState.latitude, 14);
+            assert.equal(result.trackingState.gpsFix, true);
+            assert.equal(await Alert.countDocuments({ vehicle: vehicleId, type: ALERT_TYPE.GPS_LOST,
+                status: ALERT_STATUS.ACTIVE }), 0);
+            assert.deepEqual((await Telemetry.findOne({ tracker: oldTracker._id })).recordedAt, ahead);
+            for (const offset of [-1000, 0]) {
+                const stale = await ingestTelemetry(replacement, reading({ latitude: 15,
+                    recordedAt: new Date(recordedAt.getTime() + offset).toISOString() }));
+                assert.equal(stale.stateAdvanced, false);
+            }
+            const newer = await ingestTelemetry(replacement, reading({ latitude: 16,
+                recordedAt: new Date(recordedAt.getTime() + 1000).toISOString() }));
+            assert.equal(newer.stateAdvanced, true);
+            assert.equal(newer.trackingState.latitude, 16);
+            assert.equal(await VehicleTrackingState.countDocuments({ vehicle: vehicleId }), 1);
+        });
+
+        it("older contact cannot overwrite a newer fix loss while position advances", async () => {
+            const { vehicleId, tracker } = await registerAssignedTracker();
+            const newerContact = minutesAgo(1);
+            const olderContact = minutesAgo(2);
+            await recordHeartbeat(tracker, newerContact, { gpsFix: false });
+            const result = await ingestTelemetry(tracker, reading({ gpsFix: true }), { receivedAt: olderContact });
+            assert.equal(result.stateAdvanced, true);
+            assert.equal(result.trackingState.latitude, 13.14);
+            assert.equal(result.trackingState.gpsFix, false);
+            assert.deepEqual(result.trackingState.gpsFixUpdatedAt, newerContact);
+            assert.equal(result.telemetry.gpsFix, true, "history retains the original observation");
+            assert.equal(await Alert.countDocuments({ vehicle: vehicleId, type: ALERT_TYPE.GPS_LOST, status: ALERT_STATUS.ACTIVE }), 1);
+            const current = await VehicleTrackingState.findOne({ vehicle: vehicleId }).lean();
+            assert.equal(current.gpsFix, false);
+            // A genuinely later fix can resolve the loss.
+            await ingestTelemetry(tracker, reading({ recordedAt: new Date(Date.now() + 1000).toISOString() }));
+            assert.equal(await Alert.countDocuments({ vehicle: vehicleId, type: ALERT_TYPE.GPS_LOST, status: ALERT_STATUS.ACTIVE }), 0);
+        });
+
+        it("equal-contact position updates preserve the already observed fix", async () => {
+            const { tracker } = await registerAssignedTracker();
+            const contact = minutesAgo(1);
+            await recordHeartbeat(tracker, contact, { gpsFix: false });
+            const result = await ingestTelemetry(tracker, reading({ gpsFix: true }), { receivedAt: contact });
+            assert.equal(result.trackingState.gpsFix, false);
+        });
+
         it("an older reading is stored as history but never overwrites the latest state", async () => {
             const { vehicleId, tracker } = await registerAssignedTracker();
 
@@ -318,7 +375,110 @@ describe("trackingService", () => {
         });
     });
 
+    describe("stale tracker requests", () => {
+        it("rechecks disablement after awaiting vehicle validation", async () => {
+            const { tracker } = await registerAssignedTracker();
+            const originalExists = Vehicle.exists;
+            Vehicle.exists = async (...args) => {
+                await disableTracker(tracker._id, adminId);
+                return originalExists.apply(Vehicle, args);
+            };
+            try {
+                await assert.rejects(ingestTelemetry(tracker, reading()), { statusCode: 403 });
+                assert.equal(await Telemetry.countDocuments(), 0);
+                assert.equal(await VehicleTrackingState.countDocuments(), 0);
+            } finally {
+                Vehicle.exists = originalExists;
+            }
+        });
+
+        it("rejects telemetry and heartbeats loaded before disabling", async () => {
+            const { tracker } = await registerAssignedTracker();
+            await disableTracker(tracker._id, adminId);
+            await assert.rejects(ingestTelemetry(tracker, reading()), { statusCode: 403 });
+            await assert.rejects(recordHeartbeat(tracker, new Date(), { gpsFix: false }), { statusCode: 403 });
+            assert.equal(await Telemetry.countDocuments(), 0);
+            assert.equal(await VehicleTrackingState.countDocuments(), 0);
+            assert.equal(await Alert.countDocuments(), 0);
+            assert.equal((await loadTracker(tracker._id)).lastSeenAt, null);
+        });
+
+        it("rejects an earlier assignment without writing to either vehicle", async () => {
+            const { tracker } = await registerAssignedTracker();
+            await assignTrackerToVehicle(tracker._id, await createTestVehicle(), adminId);
+            await assert.rejects(ingestTelemetry(tracker, reading()), { statusCode: 409 });
+            await assert.rejects(recordHeartbeat(tracker, new Date(), { gpsFix: false }), { statusCode: 409 });
+            assert.equal(await Telemetry.countDocuments(), 0);
+            assert.equal(await VehicleTrackingState.countDocuments(), 0);
+            assert.equal(await Alert.countDocuments(), 0);
+        });
+    });
+
     describe("recordHeartbeat", () => {
+        it("a replacement heartbeat owns a fix-only snapshot and alerts before its first position", async () => {
+            const { vehicleId, tracker: oldTracker } = await registerAssignedTracker();
+            const oldPosition = reading({ recordedAt: new Date(Date.now() + 4 * 60000).toISOString() });
+            await ingestTelemetry(oldTracker, oldPosition);
+            await unassignTracker(oldTracker._id, adminId);
+            const created = await createTracker({ imei: uniqueImei(), vehicle: vehicleId }, adminId);
+            const replacement = await loadTracker(created._id);
+            const lostAt = new Date();
+            await recordHeartbeat(replacement, lostAt, { gpsFix: false });
+            let snapshot = await VehicleTrackingState.findOne({ vehicle: vehicleId }).lean();
+            assert.equal(String(snapshot.tracker), String(replacement._id));
+            assert.equal(snapshot.gpsFix, false);
+            assert.deepEqual(snapshot.gpsFixUpdatedAt, lostAt);
+            assert.deepEqual(snapshot.lastSeenAt, lostAt);
+            for (const field of ["latitude", "longitude", "recordedAt", "speed", "heading", "ignition", "batteryLevel"]) {
+                assert.equal(snapshot[field], null, field + " must not come from the previous tracker");
+            }
+            assert.equal(await Alert.countDocuments({ vehicle: vehicleId, tracker: replacement._id,
+                type: ALERT_TYPE.GPS_LOST, status: ALERT_STATUS.ACTIVE }), 1);
+            assert.equal(await Telemetry.countDocuments(), 1);
+            assert.deepEqual((await Telemetry.findOne({ tracker: oldTracker._id })).recordedAt, oldPosition.recordedAt);
+            await assert.rejects(recordHeartbeat(oldTracker, new Date(), { gpsFix: true }), { statusCode: 409 });
+            await recordHeartbeat(replacement, new Date(lostAt.getTime() - 1000), { gpsFix: true });
+            assert.equal((await VehicleTrackingState.findOne({ vehicle: vehicleId })).gpsFix, false);
+            await recordHeartbeat(replacement, new Date(lostAt.getTime() + 1000), { gpsFix: true });
+            snapshot = await VehicleTrackingState.findOne({ vehicle: vehicleId }).lean();
+            assert.equal(snapshot.gpsFix, true);
+            assert.equal(snapshot.latitude, null);
+            assert.equal(await Alert.countDocuments({ vehicle: vehicleId, type: ALERT_TYPE.GPS_LOST,
+                status: ALERT_STATUS.ACTIVE }), 0);
+            const position = await ingestTelemetry(replacement, reading());
+            assert.equal(position.stateAdvanced, true);
+            assert.equal(position.trackingState.latitude, 13.14);
+            assert.equal(await Telemetry.countDocuments({ tracker: replacement._id }), 1);
+            assert.equal(await VehicleTrackingState.countDocuments({ vehicle: vehicleId }), 1);
+        });
+
+        it("persists and alerts on fix loss before the first position, then advances normally", async () => {
+            const { vehicleId, tracker } = await registerAssignedTracker();
+            const lostAt = minutesAgo(3);
+            await recordHeartbeat(tracker, lostAt, { gpsFix: false });
+            let snapshot = await VehicleTrackingState.findOne({ vehicle: vehicleId }).lean();
+            assert.equal(snapshot.latitude, null);
+            assert.equal(snapshot.longitude, null);
+            assert.equal(snapshot.recordedAt, null);
+            assert.equal(snapshot.gpsFix, false);
+            assert.deepEqual(snapshot.gpsFixUpdatedAt, lostAt);
+            assert.equal(await Alert.countDocuments({ vehicle: vehicleId, type: ALERT_TYPE.GPS_LOST, status: ALERT_STATUS.ACTIVE }), 1);
+            assert.equal(await Telemetry.countDocuments(), 0);
+            // Unknown and older heartbeats cannot clear a known loss.
+            await recordHeartbeat(tracker, minutesAgo(2));
+            await recordHeartbeat(tracker, minutesAgo(4), { gpsFix: true });
+            snapshot = await VehicleTrackingState.findOne({ vehicle: vehicleId }).lean();
+            assert.equal(snapshot.gpsFix, false);
+            assert.equal(await Alert.countDocuments({ type: ALERT_TYPE.GPS_LOST, status: ALERT_STATUS.ACTIVE }), 1);
+            await recordHeartbeat(tracker, minutesAgo(1), { gpsFix: true });
+            assert.equal(await Alert.countDocuments({ type: ALERT_TYPE.GPS_LOST, status: ALERT_STATUS.ACTIVE }), 0);
+            const result = await ingestTelemetry(tracker, reading());
+            assert.equal(result.stateAdvanced, true);
+            assert.equal(result.trackingState.latitude, 13.14);
+            assert.equal(await VehicleTrackingState.countDocuments(), 1);
+            assert.equal(await Telemetry.countDocuments(), 1);
+        });
+
         it("updates lastSeenAt without inventing a position", async () => {
             const { tracker } = await registerAssignedTracker();
 

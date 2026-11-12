@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -23,10 +23,11 @@ import ConnectionIndicator from "../../components/gps/ConnectionIndicator";
 import AlertTable from "../../components/tables/AlertTable";
 
 import { getMyFleetTracking } from "../../api/telemetryApi";
-import { telemetryReceived } from "../../store/gps";
+import { telemetryReceived, vehicleTrackerAssignmentsReceived } from "../../store/gps";
 import useGPS, { normalizeTrackingState } from "../../hooks/gps/useGPS";
 import useNowTicker, { latestTimestamp } from "../../hooks/gps/useNowTicker";
 import useRouteHistory from "../../hooks/gps/useRouteHistory";
+import useGpsAssignmentSync from "../../hooks/gps/useGpsAssignmentSync";
 import useSocket from "../../hooks/shared/useSocket";
 import useAlerts from "../../hooks/alerts";
 import useToast from "../../hooks/toast/useToast";
@@ -75,7 +76,7 @@ const VehicleGpsSubscriber = ({ vehicleId }) => {
 const Tracking = () => {
     const dispatch = useDispatch();
     const toast = useToast();
-    const { connected: socketConnected, error: socketError } = useSocket();
+    const { socket, connected: socketConnected, error: socketError } = useSocket();
     const byVehicleId = useSelector((state) => state.gps.byVehicleId);
 
     const {
@@ -117,13 +118,20 @@ const Tracking = () => {
         earliestStartMessage: HISTORY_WINDOW_MESSAGE,
     });
 
+    const fleetRequest = useRef(0);
+    useEffect(() => () => { fleetRequest.current += 1; }, []);
     const loadFleet = useCallback(async () => {
+        const request = ++fleetRequest.current;
         setFleet((current) => ({ ...current, loading: true, error: null }));
 
         try {
             const response = await getMyFleetTracking();
+            if (request !== fleetRequest.current) return;
             const entries = response.data || [];
 
+            dispatch(vehicleTrackerAssignmentsReceived(entries.map(({ vehicle, tracker }) => ({
+                vehicleId: vehicle._id, trackerId: tracker?._id ?? null,
+            }))));
             entries.forEach(({ trackingState }) => {
                 if (trackingState) {
                     dispatch(
@@ -135,16 +143,21 @@ const Tracking = () => {
             });
 
             setFleet({ loading: false, error: null, entries });
+            return true;
         } catch (error) {
-            setFleet({
+            if (request !== fleetRequest.current) return;
+            setFleet((current) => ({
+                ...current,
                 loading: false,
                 error:
                     error.response?.data?.message ||
                     "Unable to load your vehicles.",
-                entries: [],
-            });
+            }));
+            return false;
         }
     }, [dispatch]);
+
+    useGpsAssignmentSync(socket, loadFleet);
 
     useEffect(() => {
         loadFleet();
@@ -165,7 +178,8 @@ const Tracking = () => {
     const entries = useMemo(
         () =>
             fleet.entries.map(({ vehicle, tracker }) => {
-                const telemetry = byVehicleId[vehicle._id] || null;
+                const cached = byVehicleId[vehicle._id];
+                const telemetry = tracker && cached?.trackerId !== tracker._id ? null : cached || null;
 
                 return {
                     vehicle,
@@ -177,7 +191,8 @@ const Tracking = () => {
                         latestTimestamp(
                             tracker?.lastSeenAt,
                             telemetry?.lastSeenAt
-                        )
+                        ),
+                        tracker?.protocol
                     ),
                 };
             }),

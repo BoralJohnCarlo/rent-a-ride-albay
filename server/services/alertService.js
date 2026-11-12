@@ -1,6 +1,8 @@
 import Alert from "../models/Alert.js";
 import Tracker from "../models/Tracker.js";
 import Vehicle from "../models/Vehicle.js";
+import VehicleTrackingState from "../models/VehicleTrackingState.js";
+import { broadcastResolvedAlert } from "../sockets/broadcastAlerts.js";
 import createError from "../utils/createError.js";
 import {
     ALERT_TYPE,
@@ -28,7 +30,7 @@ const findActiveAlert = (vehicleId, type) =>
  * Alert (see models/Alert.js) turns that race into a duplicate-key error
  * instead of a second row.
  */
-const createAlert = async ({ vehicle, tracker, type, context = {} }) => {
+const createAlert = async ({ vehicle, tracker, type, context = {}, alertSession = null }) => {
     const definition = ALERT_DEFINITIONS[type];
 
     try {
@@ -40,6 +42,7 @@ const createAlert = async ({ vehicle, tracker, type, context = {} }) => {
             title: definition.title,
             message: definition.buildMessage(context),
             context,
+            alertSession,
         });
     } catch (error) {
         if (error?.code === DUPLICATE_KEY_ERROR_CODE) {
@@ -50,21 +53,16 @@ const createAlert = async ({ vehicle, tracker, type, context = {} }) => {
     }
 };
 
-const resolveAlertDoc = async (alertDoc) => {
-    alertDoc.status = ALERT_STATUS.RESOLVED;
-    alertDoc.resolvedAt = new Date();
-
-    await alertDoc.save();
-
-    return alertDoc;
-};
+const resolveAlertDoc = (alertDoc) => Alert.findOneAndUpdate(
+    { _id: alertDoc._id, status: ALERT_STATUS.ACTIVE },
+    { $set: { status: ALERT_STATUS.RESOLVED, resolvedAt: new Date() } },
+    { returnDocument: "after" }
+);
 
 /*
- * Generic condition evaluator shared by every alert type. The Alert
- * collection's own ACTIVE/RESOLVED state IS the "was this condition already
- * true" memory - no separate previous-value bookkeeping is kept anywhere
- * else, so this one lookup+branch is the entire duplicate-prevention
- * strategy:
+ * Generic condition evaluator shared by every alert type. Alert documents
+ * hold the lifecycle history; the latest tracker/snapshot supplies the
+ * current condition. Reconciliation below handles changes during awaits.
  *
  *   condition true  + no active alert  -> create one
  *   condition true  + active alert     -> no-op (still true, no duplicate)
@@ -75,30 +73,64 @@ const resolveAlertDoc = async (alertDoc) => {
  * `conditionMet: null` is for readings where the device didn't report the
  * relevant value - "unknown" must never be read as "recovered".
  */
-const evaluateCondition = async ({
-    vehicle,
-    tracker,
-    type,
-    conditionMet,
-    context,
-}) => {
-    if (conditionMet === null) {
-        return {};
+// Read the authoritative condition after the alert lookup and again after
+// mutation. If state changed during a database await, reconcile before
+// returning events. This also works across multiple server processes.
+const evaluateCondition = async ({ vehicle, tracker, type, conditionMet, context, readCurrent }) => {
+    if (conditionMet === null) return {};
+    let created, resolved;
+    for (;;) {
+        const existing = await findActiveAlert(vehicle, type);
+        // A request from a replaced tracker must not resolve its successor's alert.
+        if (existing?.tracker && String(existing.tracker) !== String(tracker)) return { created, resolved };
+        const current = readCurrent ? await readCurrent() : { conditionMet, context };
+        if (current.conditionMet === null) return { created, resolved };
+        // An active condition after enable/assignment belongs to the new session.
+        // Retire the previous row before creating its successor (unique index).
+        if (current.conditionMet && existing &&
+            (existing.alertSession ?? null) !== (current.alertSession ?? null)) {
+            const result = await resolveAlertDoc(existing);
+            if (result) resolved = result;
+            continue;
+        }
+        if (current.conditionMet && !existing) {
+            created = await createAlert({ vehicle, tracker, type, context: current.context, alertSession: current.alertSession });
+        } else if (!current.conditionMet && existing) {
+            const result = await resolveAlertDoc(existing);
+            if (result) {
+                resolved = result;
+                if (String(created?._id) === String(result._id)) created = null;
+            }
+        }
+        const latest = readCurrent ? await readCurrent() : current;
+        if (JSON.stringify(latest) === JSON.stringify(current)) {
+            // Another evaluator may already have resolved the row we created.
+            if (created && !(await Alert.exists({ _id: created._id, status: ALERT_STATUS.ACTIVE }))) created = null;
+            return { created, resolved };
+        }
     }
+};
 
-    const existing = await findActiveAlert(vehicle, type);
+const readTelemetryCondition = (tracker, field, predicate) => async () => {
+    const assigned = await Tracker.findOne({ _id: tracker._id, vehicle: tracker.vehicle, status: TRACKER_STATUS.ACTIVE }).select("alertSession").lean();
+    const trackable = assigned && await Vehicle.exists({ _id: tracker.vehicle, status: { $ne: VEHICLE_STATUS.ARCHIVED } });
+    if (!trackable) return { conditionMet: false, context: {} };
+    const state = await VehicleTrackingState.findOne({ vehicle: tracker.vehicle, tracker: tracker._id }).lean();
+    return {
+        conditionMet: whenKnown(state?.[field], predicate),
+        alertSession: assigned.alertSession ?? null,
+        context: field === "batteryLevel" ? { batteryLevel: state?.batteryLevel } : {},
+    };
+};
 
-    if (conditionMet && !existing) {
-        const created = await createAlert({ vehicle, tracker, type, context });
-        return created ? { created } : {};
-    }
-
-    if (!conditionMet && existing) {
-        const resolved = await resolveAlertDoc(existing);
-        return { resolved };
-    }
-
-    return {};
+const readCommunicationCondition = (tracker, allowCreate) => async () => {
+    const current = await Tracker.findOne({ _id: tracker._id, vehicle: tracker.vehicle, status: TRACKER_STATUS.ACTIVE }).lean();
+    const trackable = current && await Vehicle.exists({ _id: tracker.vehicle, status: { $ne: VEHICLE_STATUS.ARCHIVED } });
+    if (!trackable || !current.lastSeenAt) return { conditionMet: false, context: {} };
+    const offline = Date.now() - new Date(current.lastSeenAt).getTime() > getGpsStaleThresholdMs(current.protocol);
+    return { conditionMet: offline ? (allowCreate ? true : null) : false,
+        alertSession: current.alertSession ?? null,
+        context: offline ? { lastSeenAt: current.lastSeenAt } : {} };
 };
 
 // null when the device didn't report the value, otherwise the predicate.
@@ -112,9 +144,9 @@ const collectResults = (results) => ({
 
 /*
  * Called from trackingService.ingestTelemetry for a reading that advanced
- * the vehicle's latest state - alerts are evaluated from the
- * already-normalized reading, never from a raw device payload, and an older
- * out-of-order reading never flips the current alert state. GPS_OFFLINE is
+ * the vehicle's latest state. The reading identifies which fields were
+ * reported; their values are reread from the persisted snapshot so a slow
+ * older evaluation cannot flip the current alert state. GPS_OFFLINE is
  * a communication concern, handled by evaluateCommunicationAlerts below.
  */
 export const evaluateTelemetryAlerts = async (tracker, normalizedTelemetry) => {
@@ -130,6 +162,7 @@ export const evaluateTelemetryAlerts = async (tracker, normalizedTelemetry) => {
             type: ALERT_TYPE.GPS_LOST,
             conditionMet: whenKnown(gpsFix, (value) => value === false),
             context: {},
+            readCurrent: readTelemetryCondition(tracker, "gpsFix", value => value === false),
         })
     );
 
@@ -143,6 +176,7 @@ export const evaluateTelemetryAlerts = async (tracker, normalizedTelemetry) => {
                 (value) => value < LOW_BATTERY_THRESHOLD_PERCENT
             ),
             context: { batteryLevel },
+            readCurrent: readTelemetryCondition(tracker, "batteryLevel", value => value < LOW_BATTERY_THRESHOLD_PERCENT),
         })
     );
 
@@ -153,6 +187,7 @@ export const evaluateTelemetryAlerts = async (tracker, normalizedTelemetry) => {
             type: ALERT_TYPE.IGNITION_ON,
             conditionMet: whenKnown(ignition, (value) => value === true),
             context: {},
+            readCurrent: readTelemetryCondition(tracker, "ignition", value => value === true),
         })
     );
 
@@ -177,14 +212,17 @@ export const evaluateCommunicationAlerts = async (tracker) => {
         type: ALERT_TYPE.GPS_OFFLINE,
         conditionMet: false,
         context: {},
+        readCurrent: readCommunicationCondition(tracker, false),
     });
 
     return collectResults([result]);
 };
 
 /*
- * Resolves every ACTIVE alert raised by this tracker and/or for the given
- * vehicle - used when a tracker is unassigned, reassigned, disabled, or its
+ * Resolves ACTIVE alerts for the supplied tracker/vehicle relationship.
+ * When both IDs are supplied, both must match. A single ID still supports
+ * tracker-wide cleanup or vehicle-wide cleanup on archival.
+ * Used when a tracker is unassigned, reassigned, disabled, or its
  * vehicle archived, so no alert is left active for a relationship that no
  * longer exists. Each alert is resolved with a conditional update, so an
  * alert resolved concurrently elsewhere is simply skipped. History is kept
@@ -193,24 +231,28 @@ export const evaluateCommunicationAlerts = async (tracker) => {
 export const resolveActiveAlertsForTracker = async ({
     trackerId = null,
     vehicleId = null,
+    alertSession = undefined,
 }) => {
-    const scopes = [];
+    const scope = {};
 
     if (trackerId) {
-        scopes.push({ tracker: trackerId });
+        scope.tracker = trackerId;
     }
 
     if (vehicleId) {
-        scopes.push({ vehicle: vehicleId });
+        scope.vehicle = vehicleId;
     }
 
-    if (scopes.length === 0) {
+    if (Object.keys(scope).length === 0) {
         return [];
     }
 
+    // Null also matches legacy alerts that predate session tracking.
+    if (alertSession !== undefined) scope.alertSession = alertSession;
+
     const activeAlerts = await Alert.find({
         status: ALERT_STATUS.ACTIVE,
-        $or: scopes,
+        ...scope,
     })
         .select("_id")
         .lean();
@@ -290,17 +332,20 @@ export const detectOfflineTrackers = async () => {
     const created = [];
 
     for (const tracker of staleTrackers) {
-        const { created: newAlert } = await evaluateCondition({
+        const { created: newAlert, resolved } = await evaluateCondition({
             vehicle: tracker.vehicle,
             tracker: tracker._id,
             type: ALERT_TYPE.GPS_OFFLINE,
             conditionMet: true,
             context: { lastSeenAt: tracker.lastSeenAt },
+            readCurrent: readCommunicationCondition(tracker, true),
         });
 
         if (newAlert) {
             created.push(newAlert);
         }
+        // The sweep can compensate for a heartbeat racing its alert insert.
+        if (resolved) broadcastResolvedAlert(resolved);
     }
 
     return created;
@@ -430,7 +475,7 @@ export const resolveAlertManually = async (user, alertId) => {
         throw createError("Alert is already resolved.", 409);
     }
 
-    await resolveAlertDoc(alert);
-
-    return alert.toObject();
+    const resolved = await resolveAlertDoc(alert);
+    if (!resolved) throw createError("Alert is already resolved.", 409);
+    return resolved.toObject();
 };

@@ -19,6 +19,7 @@ import {
     grantRenewalAttempt as grantRenewalAttemptApi,
     requestRenewalAttempt as requestRenewalAttemptApi,
 } from "../api/userApi";
+import { refreshSocketCredentials } from "../lib/socket";
 
 export const fetchProfile = async () => {
     return await getProfile();
@@ -33,7 +34,9 @@ export const uploadProfileImage = async (file) => {
 };
 
 export const updatePassword = async (passwordData) => {
-    return await changePassword(passwordData);
+    const result = await changePassword(passwordData);
+    refreshSocketCredentials();
+    return result;
 };
 
 export const fetchUsers = async () => {

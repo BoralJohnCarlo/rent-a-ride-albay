@@ -1,33 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { io } from "socket.io-client";
-
 import useAuth from "../auth/useAuth";
+import { getSocket, setSocketAuthenticated } from "../../lib/socket";
 
-const SOCKET_URL =
-    import.meta.env.VITE_SOCKET_URL ||
-    (
-        import.meta.env.VITE_API_URL || "http://localhost:5000/api"
-    ).replace(/\/api\/?$/, "");
-
-/*
- * One shared Socket.IO connection for the whole app - created lazily on
- * first use, never recreated per component render/mount. Auth relies
- * entirely on the existing httpOnly JWT cookie (withCredentials), same as
- * lib/axios.js - never localStorage, never a second auth mechanism.
- */
-let sharedSocket = null;
-
-const getSocket = () => {
-    if (!sharedSocket) {
-        sharedSocket = io(SOCKET_URL, {
-            withCredentials: true,
-            autoConnect: false,
-        });
-    }
-
-    return sharedSocket;
-};
-
+// Authentication and credential renewal control one shared connection.
 const useSocket = () => {
     const { isAuthenticated, initialized } = useAuth();
     const [connected, setConnected] = useState(
@@ -88,15 +63,7 @@ const useSocket = () => {
             return;
         }
 
-        const socket = getSocket();
-
-        if (isAuthenticated) {
-            if (!socket.connected) {
-                socket.connect();
-            }
-        } else if (socket.connected) {
-            socket.disconnect();
-        }
+        setSocketAuthenticated(isAuthenticated);
     }, [isAuthenticated, initialized]);
 
     const emitWithAck = useCallback((event, payload) => {

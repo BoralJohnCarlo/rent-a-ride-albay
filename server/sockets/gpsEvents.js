@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import User from "../models/User.js";
 
 import { vehicleRoom } from "./rooms.js";
 import { canAccessVehicle } from "../services/vehicleAccessService.js";
@@ -16,6 +17,7 @@ const respond = (ack, result) => {
  */
 export const registerGpsEvents = (socket) => {
     const pendingSubscriptions = new Map();
+    socket.on("disconnect", () => pendingSubscriptions.clear());
     socket.on("gps:subscribe", async (payload, ack) => {
         const vehicleId = payload?.vehicleId;
 
@@ -30,7 +32,16 @@ export const registerGpsEvents = (socket) => {
         pendingSubscriptions.set(vehicleId, request);
         let authorized;
         try {
-            authorized = await canAccessVehicle(socket.user, vehicleId);
+            // A connected socket's user document is a handshake snapshot.
+            // Never authorize a new GPS room using a role that was revoked.
+            const currentUser = await User.findById(socket.user._id);
+            if (!currentUser || currentUser.isSuspended || currentUser.role !== socket.user.role) {
+                pendingSubscriptions.delete(vehicleId);
+                respond(ack, { success: false, message: "Your account permissions changed. Please reconnect." });
+                socket.disconnect(true);
+                return;
+            }
+            authorized = await canAccessVehicle(currentUser, vehicleId);
         } catch {
             if (pendingSubscriptions.get(vehicleId) === request) pendingSubscriptions.delete(vehicleId);
             return respond(ack, { success: false, message: "Unable to authorize GPS subscription." });

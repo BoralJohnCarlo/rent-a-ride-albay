@@ -34,6 +34,7 @@ import Tracker from "../../models/Tracker.js";
 import {
     ingestTelemetry,
     recordHeartbeat,
+    recoverVehicleTrackingState,
 } from "../trackingService.js";
 import {
     createAikaClient,
@@ -82,11 +83,23 @@ export const parseAikaPositionTime = (value) => {
     }
 
     const [, year, month, day, hour, minute, second] = match.map(Number);
-    const date = new Date(
-        Date.UTC(year, month - 1, day, hour, minute, second)
-    );
-
-    return Number.isNaN(date.getTime()) ? null : date;
+    // setUTCFullYear preserves four-digit years below 0100 (Date.UTC maps
+    // those to 1900–1999). Compare every component because Date normalizes
+    // impossible calendar dates and overflowing times instead of rejecting them.
+    const date = new Date(0);
+    date.setUTCFullYear(year, month - 1, day);
+    date.setUTCHours(hour, minute, second, 0);
+    if (
+        date.getUTCFullYear() !== year ||
+        date.getUTCMonth() !== month - 1 ||
+        date.getUTCDate() !== day ||
+        date.getUTCHours() !== hour ||
+        date.getUTCMinutes() !== minute ||
+        date.getUTCSeconds() !== second
+    ) {
+        return null;
+    }
+    return date;
 };
 
 export const parseAikaIgnition = (status) => {
@@ -184,18 +197,18 @@ export const resolveAikaLastContact = (tracking, now = new Date()) => {
     return new Date(now.getTime() - offlineMs);
 };
 
-const findLatestRecordedAt = async (trackerId) => {
-    const latest = await Telemetry.findOne({ tracker: trackerId })
+const findLatestTelemetry = async (trackerId, vehicleId) => {
+    const latest = await Telemetry.findOne({ tracker: trackerId, vehicle: vehicleId })
         .sort({ recordedAt: -1 })
-        .select("recordedAt")
         .lean();
 
-    return latest?.recordedAt ?? null;
+    return latest ?? null;
 };
 
 /*
  * One poll cycle. Returns { action, ... } describing what happened:
  *   ingested   - new positionTime, sent through ingestTelemetry
+ *   recovered  - saved history repaired a missing/outdated live snapshot
  *   heartbeat  - same position, but AIKA says the device is online
  *   offline    - same position and no recent contact - nothing written
  *                (the offline sweep raises GPS_OFFLINE from lastSeenAt)
@@ -234,14 +247,18 @@ export const pollAikaOnce = async ({ client, now = () => new Date() }) => {
         return { action: "skipped", reason: "unassigned", online: Boolean(lastContact) };
     }
 
-    if (reading) {
-        const latestRecordedAt = await findLatestRecordedAt(tracker._id);
+    // A cloud response alone does not prove the device is communicating.
+    if (!lastContact) return { action: "offline" };
+
+    let recovered = false;
+    if (reading && (!tracker.assignedAt || reading.recordedAt >= tracker.assignedAt)) {
+        const latest = await findLatestTelemetry(tracker._id, tracker.vehicle);
 
         // AIKA keeps returning the last fix until there's a new one - only
         // a strictly newer positionTime becomes history.
-        if (!latestRecordedAt || reading.recordedAt > latestRecordedAt) {
+        if (!latest || reading.recordedAt > latest.recordedAt) {
             try {
-                const result = await ingestTelemetry(tracker, reading);
+                const result = await ingestTelemetry(tracker, reading, { receivedAt: lastContact });
 
                 return {
                     action: "ingested",
@@ -256,12 +273,13 @@ export const pollAikaOnce = async ({ client, now = () => new Date() }) => {
                 throw error;
             }
         }
+        recovered = await recoverVehicleTrackingState(tracker, latest);
     }
 
     if (lastContact) {
-        await recordHeartbeat(tracker, lastContact);
+        await recordHeartbeat(tracker, lastContact, { gpsFix: parseGpsFix(tracking.isGPS) });
 
-        return { action: "heartbeat", lastContact };
+        return { action: recovered ? "recovered" : "heartbeat", lastContact };
     }
 
     return { action: "offline" };

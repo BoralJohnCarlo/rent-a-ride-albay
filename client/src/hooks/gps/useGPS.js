@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 import useSocket from "../shared/useSocket";
 import { getCurrentVehicleTracking } from "../../api/telemetryApi";
-import { acquireGpsSubscription } from "../../utils/gpsSubscription";
+import { acquireGpsSubscription, subscribeGpsAndRefresh } from "../../utils/gpsSubscription";
 import {
     telemetryReceived,
     heartbeatReceived,
@@ -27,8 +27,10 @@ export const normalizeTrackingState = (state) => ({
     ignition: state.ignition,
     batteryLevel: state.batteryLevel,
     gpsFix: state.gpsFix,
+    gpsFixUpdatedAt: state.gpsFixUpdatedAt ?? state.receivedAt,
     recordedAt: state.recordedAt,
     receivedAt: state.receivedAt,
+    lastSeenAt: state.lastSeenAt,
     source: state.source ?? null,
 });
 
@@ -56,6 +58,7 @@ const useGPS = (vehicleId, { seed = true } = {}) => {
     } = useSocket();
 
     const telemetry = useSelector(selectVehicleTelemetry(vehicleId));
+    const assignedTrackerId = useSelector(state => state.gps.assignedTrackerByVehicleId[vehicleId]);
     const [initializing, setInitializing] = useState(
         Boolean(vehicleId) && seed
     );
@@ -94,7 +97,7 @@ const useGPS = (vehicleId, { seed = true } = {}) => {
         return () => {
             cancelled = true;
         };
-    }, [vehicleId, seed, dispatch]);
+    }, [vehicleId, seed, dispatch, assignedTrackerId]);
 
     useEffect(() => {
         if (!vehicleId) {
@@ -129,8 +132,18 @@ const useGPS = (vehicleId, { seed = true } = {}) => {
             return undefined;
         }
 
-        return acquireGpsSubscription(socket, vehicleId, subscribeToVehicle, unsubscribeFromVehicle);
-    }, [socket, vehicleId, connected, subscribeToVehicle, unsubscribeFromVehicle]);
+        let cancelled = false;
+        const subscribeAndRefresh = (id) => subscribeGpsAndRefresh(
+            id, subscribeToVehicle, async (subscribedId) => {
+                const response = await getCurrentVehicleTracking(subscribedId);
+                if (!cancelled && response?.data) {
+                    dispatch(telemetryReceived(normalizeTrackingState(response.data)));
+                }
+            }, () => !cancelled
+        );
+        const release = acquireGpsSubscription(socket, vehicleId, subscribeAndRefresh, unsubscribeFromVehicle);
+        return () => { cancelled = true; release(); };
+    }, [socket, vehicleId, connected, subscribeToVehicle, unsubscribeFromVehicle, dispatch]);
 
     const resubscribe = useCallback(() => {
         if (!vehicleId) {

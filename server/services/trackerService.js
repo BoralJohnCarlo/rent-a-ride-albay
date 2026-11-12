@@ -5,6 +5,7 @@ import Vehicle from "../models/Vehicle.js";
 import createError from "../utils/createError.js";
 import { resolveActiveAlertsForTracker } from "./alertService.js";
 import { broadcastResolvedAlert } from "../sockets/broadcastAlerts.js";
+import { broadcastVehicleAssignmentChanged } from "../sockets/broadcastTelemetry.js";
 import {
     TRACKER_STATUS,
     TRACKER_PROTOCOL,
@@ -15,6 +16,16 @@ import { VEHICLE_STATUS } from "../constants/vehicleConstants.js";
 const generateDeviceKey = () => crypto.randomBytes(24).toString("hex");
 
 const issuesDeviceKey = (protocol) => DEVICE_KEY_PROTOCOLS.includes(protocol);
+
+const handleAssignmentConflict = (error) => {
+    if (error?.name === "DocumentNotFoundError") {
+        throw createError("Tracker changed during this request. Refresh and try again.", 409);
+    }
+    if (error?.code === 11000 && error.keyPattern?.vehicle) {
+        throw createError("This vehicle already has an assigned tracker.", 409);
+    }
+    throw error;
+};
 
 /*
  * Status is derived, never chosen freely: a disabled (INACTIVE) tracker
@@ -28,6 +39,17 @@ const statusAfterAssignmentChange = (tracker, vehicleId) =>
     tracker.status === TRACKER_STATUS.INACTIVE
         ? TRACKER_STATUS.INACTIVE
         : deriveEnabledStatus(vehicleId);
+
+// Mongoose includes these original values in the save's atomic update filter.
+// Reject stale assignment, enable, or disable edits when lifecycle state changes.
+const guardAssignmentChange = (tracker) => {
+    tracker.$where = {
+        status: tracker.status,
+        vehicle: tracker.vehicle ?? null,
+        assignedAt: tracker.assignedAt ?? null,
+        alertSession: tracker.alertSession ?? null,
+    };
+};
 
 // deviceKey is select:false, but strip it defensively from every response
 // built from a document that may have selected it.
@@ -124,6 +146,8 @@ export const getTrackerById = async (trackerId) => {
 };
 
 export const createTracker = async (trackerData, adminId) => {
+    // Do not accept assignments before the database constraint is ready.
+    await Tracker.init();
     const protocol = trackerData.protocol || TRACKER_PROTOCOL.HTTP_SIMULATOR;
 
     if (trackerData.vehicle) {
@@ -148,8 +172,9 @@ export const createTracker = async (trackerData, adminId) => {
             createdBy: adminId,
             updatedBy: adminId,
         },
-    });
+    }).catch(handleAssignmentConflict);
 
+    broadcastVehicleAssignmentChanged(tracker.vehicle);
     const result = toSafeTracker(tracker);
 
     // The plaintext key is returned exactly once, here.
@@ -167,23 +192,33 @@ export const assignTrackerToVehicle = async (
     vehicleId,
     adminId
 ) => {
+    await Tracker.init();
     const tracker = await findTrackerOrThrow(trackerId);
 
     await ensureVehicleAssignable(vehicleId);
     await ensureVehicleUnassigned(vehicleId, tracker._id);
 
     const previousVehicleId = tracker.vehicle;
+    const previousAlertSession = tracker.alertSession ?? null;
 
+    guardAssignmentChange(tracker);
+    if (String(previousVehicleId) !== String(vehicleId)) {
+        tracker.assignedAt = new Date();
+        tracker.alertSession = crypto.randomUUID();
+    }
     tracker.vehicle = vehicleId;
     tracker.status = statusAfterAssignmentChange(tracker, vehicleId);
     tracker.audit.updatedBy = adminId;
 
-    await tracker.save();
+    await tracker.save().catch(handleAssignmentConflict);
 
+    broadcastVehicleAssignmentChanged(previousVehicleId);
+    if (String(previousVehicleId) !== String(vehicleId)) broadcastVehicleAssignmentChanged(vehicleId);
     if (previousVehicleId && String(previousVehicleId) !== String(vehicleId)) {
         await resolveAndBroadcastAlerts({
             trackerId: tracker._id,
             vehicleId: previousVehicleId,
+            alertSession: previousAlertSession,
         });
     }
 
@@ -198,16 +233,21 @@ export const unassignTracker = async (trackerId, adminId) => {
     }
 
     const previousVehicleId = tracker.vehicle;
+    const previousAlertSession = tracker.alertSession ?? null;
 
+    guardAssignmentChange(tracker);
     tracker.vehicle = null;
+    tracker.alertSession = crypto.randomUUID();
     tracker.status = statusAfterAssignmentChange(tracker, null);
     tracker.audit.updatedBy = adminId;
 
-    await tracker.save();
+    await tracker.save().catch(handleAssignmentConflict);
 
+    broadcastVehicleAssignmentChanged(previousVehicleId);
     await resolveAndBroadcastAlerts({
         trackerId: tracker._id,
         vehicleId: previousVehicleId,
+        alertSession: previousAlertSession,
     });
 
     return toSafeTracker(tracker);
@@ -225,14 +265,17 @@ export const disableTracker = async (trackerId, adminId) => {
         throw createError("Tracker is already disabled.", 409);
     }
 
+    guardAssignmentChange(tracker);
     tracker.status = TRACKER_STATUS.INACTIVE;
     tracker.audit.updatedBy = adminId;
 
-    await tracker.save();
+    await tracker.save().catch(handleAssignmentConflict);
 
+    broadcastVehicleAssignmentChanged(tracker.vehicle);
     await resolveAndBroadcastAlerts({
         trackerId: tracker._id,
         vehicleId: tracker.vehicle,
+        alertSession: tracker.alertSession ?? null,
     });
 
     return toSafeTracker(tracker);
@@ -250,15 +293,18 @@ export const enableTracker = async (trackerId, adminId) => {
         throw createError("Tracker is already enabled.", 409);
     }
 
+    guardAssignmentChange(tracker);
     if (tracker.vehicle && !(await isVehicleTrackable(tracker.vehicle))) {
         tracker.vehicle = null;
     }
 
     tracker.status = deriveEnabledStatus(tracker.vehicle);
+    tracker.alertSession = crypto.randomUUID();
     tracker.audit.updatedBy = adminId;
 
-    await tracker.save();
+    await tracker.save().catch(handleAssignmentConflict);
 
+    broadcastVehicleAssignmentChanged(tracker.vehicle);
     return toSafeTracker(tracker);
 };
 
@@ -313,17 +359,22 @@ export const regenerateDeviceKey = async (trackerId, adminId) => {
  * active GPS alerts. Telemetry history is kept.
  */
 export const releaseTrackersForVehicle = async (vehicleId, adminId = null) => {
-    const trackers = await Tracker.find({ vehicle: vehicleId });
-
-    for (const tracker of trackers) {
-        tracker.vehicle = null;
-        tracker.status = statusAfterAssignmentChange(tracker, null);
-        tracker.audit.updatedBy = adminId;
-
-        await tracker.save();
-    }
+    // Match the current assignment at write time. Derive status from the same
+    // document so a completed reassignment or disable cannot be overwritten.
+    const result = await Tracker.updateMany({ vehicle: vehicleId }, [{
+        $set: {
+            vehicle: null,
+            status: { $cond: [
+                { $eq: ["$status", TRACKER_STATUS.INACTIVE] },
+                TRACKER_STATUS.INACTIVE,
+                TRACKER_STATUS.UNASSIGNED,
+            ] },
+            "audit.updatedBy": { $literal: Tracker.schema.path("audit.updatedBy").cast(adminId) },
+        },
+    }], { updatePipeline: true });
 
     await resolveAndBroadcastAlerts({ vehicleId });
 
-    return trackers.length;
+    broadcastVehicleAssignmentChanged(vehicleId);
+    return result.matchedCount;
 };

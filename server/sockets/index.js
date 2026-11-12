@@ -5,6 +5,7 @@ import authenticateSocket from "./socketAuthMiddleware.js";
 import { registerGpsEvents } from "./gpsEvents.js";
 import { registerSupportEvents } from "./supportEvents.js";
 import { ADMIN_ROOM, userRoom } from "./rooms.js";
+import { disconnectAtTokenExpiry } from "./socketExpiry.js";
 
 let ioInstance = null;
 
@@ -28,6 +29,7 @@ export const initSocketServer = (httpServer) => {
     io.use(authenticateSocket);
 
     io.on("connection", (socket) => {
+        if (!disconnectAtTokenExpiry(socket)) return;
         // Fleet-wide alert events (alerts:new/alerts:resolved) target this
         // room in addition to the relevant vehicle's room - admins always
         // see every alert, not just ones for vehicles they've subscribed to

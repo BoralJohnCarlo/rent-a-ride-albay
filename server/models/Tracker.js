@@ -66,6 +66,12 @@ const trackerSchema = new mongoose.Schema(
             default: null,
         },
 
+        // Set on assignment changes so cached fixes from the previous vehicle
+        // cannot become the new vehicle's location.
+        assignedAt: { type: Date, default: null },
+        // Changes on enable/assignment so delayed cleanup cannot touch new alerts.
+        alertSession: { type: String, default: null },
+
         deviceKey: {
             type: String,
             default: null,
@@ -120,7 +126,14 @@ const trackerSchema = new mongoose.Schema(
     }
 );
 
-trackerSchema.index({ vehicle: 1 });
+// Null/unassigned trackers are excluded; disabled assigned trackers still
+// reserve their vehicle. A distinct name permits upgrading the old plain index.
+export const TRACKER_ASSIGNMENT_INDEX_OPTIONS = {
+    name: "unique_tracker_vehicle_assignment",
+    unique: true,
+    partialFilterExpression: { vehicle: { $type: "objectId" } },
+};
+trackerSchema.index({ vehicle: 1 }, TRACKER_ASSIGNMENT_INDEX_OPTIONS);
 
 trackerSchema.pre("save", async function () {
     if (!this.isModified("deviceKey") || !this.deviceKey) {

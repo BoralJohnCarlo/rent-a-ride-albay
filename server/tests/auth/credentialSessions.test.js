@@ -1,3 +1,4 @@
+import "../helpers/mockEmail.js";
 import { after, before, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import jwt from "jsonwebtoken";
@@ -74,7 +75,8 @@ test("HTTP and socket authentication reject old versions even with the same JWT 
 test("legacy users and tokens keep working until the next password change", async () => {
     const user = await createUser();
     await User.updateOne({ _id: user._id }, { $unset: { credentialVersion: "" } });
-    const legacyToken = jwt.sign({ id: String(user._id), role: user.role }, process.env.JWT_SECRET);
+    // Production legacy tokens had an expiry, but no credentialVersion.
+    const legacyToken = jwt.sign({ id: String(user._id), role: user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
     assert.equal((await httpAccess(legacyToken)).accepted, true);
     assert.equal(await socketAccess(legacyToken), null);
     const updated = await changeUserPassword(user._id, originalPassword, "ReplacementPass123");
