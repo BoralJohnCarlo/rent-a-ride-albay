@@ -194,6 +194,9 @@ const driverSchema = new mongoose.Schema(
             },
         ],
 
+        // Serialize booking eligibility checks with concurrent driver edits.
+        bookingRevision: { type: Number, default: 0, select: false },
+
         schedule: {
             workingDays: {
                 type: [String],

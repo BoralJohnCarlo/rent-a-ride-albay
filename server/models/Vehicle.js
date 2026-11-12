@@ -608,6 +608,10 @@ const vehicleSchema = new mongoose.Schema(
             default: false,
         },
 
+        // Internal write used to serialize booking creation with eligibility
+        // updates to this document, including updates outside booking guards.
+        bookingRevision: { type: Number, default: 0, select: false },
+
         isPendingInspection: {
             type: Boolean,
             default: false,

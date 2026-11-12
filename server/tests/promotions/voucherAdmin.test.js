@@ -20,12 +20,14 @@ import {
     getVoucherDateState,
     updateVoucherById,
     validateVoucherForUser,
+    claimVoucherUsage,
 } from "../../services/voucherService.js";
 
 import {
     connectTestDb,
     disconnectTestDb,
 } from "../helpers/testDb.js";
+import { businessDayStart, toBusinessDateKey } from "../../utils/businessTime.js";
 
 /* Users are inserted raw: only _id and role matter here. */
 const insertUser = async (role) => {
@@ -68,6 +70,19 @@ describe("admin voucher management", () => {
             Voucher.deleteMany({}),
         ])
     );
+
+    it("claims eligible vouchers throughout their inclusive Manila start/end day", async () => {
+        const customer = await insertUser("customer");
+        const today = businessDayStart(toBusinessDateKey());
+        const voucher = await Voucher.create({
+            ...baseVoucher(), code: `DAY${new mongoose.Types.ObjectId()}`,
+            startDate: today, endDate: new Date(today.getTime() + DAY - 1),
+            assignmentType: VOUCHER_ASSIGNMENT_TYPE.SPECIFIC_USERS, assignedTo: [customer],
+        });
+        assert.equal(await claimVoucherUsage(voucher._id, customer, new mongoose.Types.ObjectId()), true);
+        assert.equal(await claimVoucherUsage(voucher._id, new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()), false);
+        assert.equal((await Voucher.findById(voucher._id)).usageCount, 1);
+    });
 
     it("saves the status chosen on create (it used to always go live)", async () => {
         const voucher = await createVoucher(

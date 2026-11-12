@@ -1534,12 +1534,14 @@ const ensureCustomerLicenseForDateChange = async (booking, end, settings = null,
  * restriction consistently, not just the category/transmission match.
  */
 const ensureCustomerHasDriversLicenseForSelfDrive = async (
-    customerId
+    customerId,
+    session = null
 ) => {
     const customer = await User.findById(
         customerId
     )
         .select("hasDriversLicense")
+        .session(session)
         .lean();
 
     if (customer?.hasDriversLicense === false) {
@@ -1572,7 +1574,8 @@ const VEHICLE_TYPE_TO_LICENSE_CODE = {
  */
 const ensureCustomerCanDriveVehicle = async (
     customerId,
-    vehicle
+    vehicle,
+    session = null
 ) => {
     const customer = await User.findById(
         customerId
@@ -1580,6 +1583,7 @@ const ensureCustomerCanDriveVehicle = async (
         .select(
             "licenseCodes carTransmission motorcycleTransmission"
         )
+        .session(session)
         .lean();
 
     const licenseCodes = customer?.licenseCodes;
@@ -2084,7 +2088,7 @@ const refreshVehicleReservationStatus = async (
 const validateDriverSelection = async (
     driverOption,
     driverId,
-    { allowUnassigned = false, validThrough = null } = {}
+    { allowUnassigned = false, validThrough = null, session = null } = {}
 ) => {
     if (
         driverOption ===
@@ -2121,8 +2125,15 @@ const validateDriverSelection = async (
         );
     }
 
-    const driver =
-        await Driver.findById(driverId);
+    // A transactional write makes driver edits serialize with eligibility
+    // validation, just as the vehicle write does during booking creation.
+    const driver = session
+        ? await Driver.findOneAndUpdate(
+            { _id: driverId },
+            { $inc: { bookingRevision: 1 } },
+            { session, returnDocument: "after", timestamps: false }
+        )
+        : await Driver.findById(driverId);
 
     if (!driver) {
         throw createError(
@@ -2142,7 +2153,7 @@ const validateDriverSelection = async (
         );
     }
 
-    if (!(await isDriverBookable(driver))) {
+    if (!(await isDriverBookable(driver, session))) {
         throw createError(
             "Selected driver is not available.",
             400
@@ -2964,6 +2975,41 @@ const createBooking = async (
             async (session) => {
                 // Preflight checks above provide quick feedback; these checks
                 // under the resource guards decide whether the slot is saved.
+                const currentCustomer = await User.findOneAndUpdate(
+                    { _id: currentUserId },
+                    { $inc: { bookingRevision: 1 } },
+                    { session, returnDocument: "after", timestamps: false }
+                ).select("role isSuspended");
+                if (!currentCustomer) throw createError("User not found.", 401);
+                if (currentCustomer.isSuspended) {
+                    throw createError("Your account has been suspended.", 403);
+                }
+                if (currentCustomer.role !== "customer") {
+                    throw createError("Only customers can create bookings.", 403);
+                }
+                const checkSelfDriveLicense = driverOption === BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER &&
+                    settings.customerBookingSettings?.licenseRestrictionEnabled !== false;
+                await ensureCustomerLicenseNotExpired(currentUserId, {
+                    validThrough: checkSelfDriveLicense ? end : null, session,
+                });
+                // Write the vehicle itself as well: eligibility writers do not
+                // all use booking guards. A concurrent edit must commit first
+                // (and be revalidated on retry) or wait until this booking does.
+                const currentVehicle = await Vehicle.findOneAndUpdate(
+                    { _id: vehicle._id },
+                    { $inc: { bookingRevision: 1 } },
+                    { session, returnDocument: "after", timestamps: false }
+                );
+                if (!currentVehicle) throw createError("Vehicle not found.", 404);
+                validateVehicleBookingEligibility(currentVehicle);
+                await validateVehicleDateAvailability(currentVehicle, start, end);
+                if (checkSelfDriveLicense) {
+                    await ensureCustomerHasDriversLicenseForSelfDrive(currentUserId, session);
+                    await ensureCustomerCanDriveVehicle(currentUserId, currentVehicle, session);
+                }
+                await validateDriverSelection(driverOption, driverId, {
+                    allowUnassigned: adminAssignsDriver, validThrough: end, session,
+                });
                 await ensureNoBookingConflict(vehicle._id, start, end, null, { session });
                 if (driverOption === BOOKING_DRIVER_OPTIONS.WITH_DRIVER) {
                     await ensureNoDriverBookingConflict(driverId, start, end, null, { session });
@@ -2974,9 +3020,9 @@ const createBooking = async (
                     null, { session }
                 );
                 if (voucherDiscount?.voucher && !(await claimVoucherUsage(
-                    voucherDiscount.voucher, currentUserId, bookingId, session
+                    voucherDiscount.voucher, currentUserId, bookingId, session, voucherDiscount
                 ))) {
-                    throw createError("You have already used this voucher.", 400);
+                    throw createError("This voucher changed or is no longer available. Please review your booking and try again.", 409);
                 }
 
                 const [createdBooking] =

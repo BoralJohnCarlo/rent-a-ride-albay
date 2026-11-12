@@ -597,6 +597,10 @@ describe("claimVoucherUsage", () => {
         await Voucher.collection.insertOne({
             _id: voucherId,
             code: `TEST${voucherId}`,
+            status: "active",
+            assignmentType: "all_customers",
+            startDate: new Date(Date.now() - DAY),
+            endDate: new Date(Date.now() + DAY),
             maxUsagesPerUser: 1,
             usageCount: 0,
             usedBy: [],

@@ -14,7 +14,7 @@ import {
 } from "../constants/voucherConstants.js";
 
 import { notifyUsers } from "./notificationService.js";
-import { toBusinessDateKey } from "../utils/businessTime.js";
+import { toBusinessDateKey, businessDayStart, addDaysToDateKey } from "../utils/businessTime.js";
 
 /*
  * A voucher's start/end are calendar days in Philippine time: valid from the
@@ -1173,7 +1173,7 @@ const recordVoucherUsage =
     };
 
 /*
- * Records a customer's use of a voucher only if they still have a use left,
+ * Records a customer's use only while the voucher is eligible and has uses left,
  * in one conditional write. validateVoucherForUser checks the same limit, but
  * two bookings submitted together both pass that check — and a single-use
  * voucher (e.g. early-return credit) would be spent twice. Returns whether the
@@ -1185,17 +1185,36 @@ const claimVoucherUsage =
         voucherId,
         userId,
         bookingId,
-        session = null
+        session = null,
+        expectedVoucher = null
     ) => {
         const userObjectId =
             new mongoose.Types.ObjectId(
                 String(userId)
             );
 
+        const usedAt = new Date();
+        const today = toBusinessDateKey(usedAt);
+
         const claimed =
             await Voucher.findOneAndUpdate(
                 {
                     _id: voucherId,
+                    status: VOUCHER_STATUS.ACTIVE,
+                    // Same inclusive Manila calendar-day rules as validation.
+                    startDate: { $lt: businessDayStart(addDaysToDateKey(today, 1)) },
+                    endDate: { $gte: businessDayStart(today) },
+                    $or: [
+                        { assignmentType: VOUCHER_ASSIGNMENT_TYPE.ALL_CUSTOMERS },
+                        { assignmentType: VOUCHER_ASSIGNMENT_TYPE.SPECIFIC_USERS, assignedTo: userObjectId },
+                    ],
+                    // Prevent a stale quote claiming an edited promotion.
+                    ...(expectedVoucher ? {
+                        code: expectedVoucher.code,
+                        type: expectedVoucher.type,
+                        discountMethod: expectedVoucher.discountMethod,
+                        discountValue: expectedVoucher.discountValue,
+                    } : {}),
                     $expr: {
                         $lt: [
                             {
@@ -1235,7 +1254,7 @@ const claimVoucherUsage =
                             booking:
                                 bookingId,
                             usedAt:
-                                new Date(),
+                                usedAt,
                         },
                     },
                 },

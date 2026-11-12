@@ -108,13 +108,13 @@ export const isOutOnRental = (field, id, { excludeBookingId = null, session = nu
  * bookings — time conflicts already cover the first — so an Unavailable
  * driver still counts as bookable while they have an ongoing rental.
  */
-export const isDriverBookable = async (driver) =>
+export const isDriverBookable = async (driver, session = null) =>
     driver.availability === DRIVER_AVAILABILITY.AVAILABLE ||
     Boolean(
         await Rental.exists({
             driver: driver._id,
             status: RENTAL_STATUS.ONGOING,
-        })
+        }).session(session)
     );
 
 /*

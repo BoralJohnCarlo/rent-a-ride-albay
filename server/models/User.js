@@ -337,6 +337,9 @@ emailVerificationExpires: {
             select: false,
         },
 
+        // Private write used to serialize booking eligibility with profile edits.
+        bookingRevision: { type: Number, default: 0, select: false },
+
         // Per-account, so the choice follows the user to every device.
         notificationPreferences: {
             soundVolume: {

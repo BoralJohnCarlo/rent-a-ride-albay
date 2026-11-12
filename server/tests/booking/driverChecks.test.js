@@ -258,7 +258,7 @@ describe("booking creation transactions", () => {
 
     // Force both requests past the preflight limit check before either can
     // save. Only checks using the transaction's session may decide the winner.
-    const synchronizePreflight = (method = "countDocuments", predicate = () => true) => {
+    const synchronizePreflight = (method = "find", predicate = (query) => method !== "find" || Boolean(query.getFilter().customer)) => {
         const original = Booking[method];
         let arrivals = 0;
         let release;
@@ -294,6 +294,224 @@ describe("booking creation transactions", () => {
             driverAssignmentSettings: { requireAdminDriverAssignment: true },
             customerBookingSettings: { maxConcurrentBookings: 10 },
         });
+    });
+
+    for (const change of ["disabled", "archived", "available later", "blocked", "deleted"]) {
+        it(`rejects a vehicle ${change} after preflight without saving a booking or payment`, async () => {
+            const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+            const originalStartSession = mongoose.startSession;
+            let injected = false;
+            mock.method(mongoose, "startSession", async function (...args) {
+                if (!injected) {
+                    injected = true;
+                    if (change === "deleted") await Vehicle.deleteOne({ _id: vehicle });
+                    else {
+                        const changes = {
+                            disabled: { "availability.bookingEnabled": false },
+                            archived: { status: VEHICLE_STATUS.ARCHIVED },
+                            "available later": { "availability.availableFrom": manilaMorning(10) },
+                            blocked: { "availability.blockedDates": [{ startDate: manilaMorning(4), endDate: manilaMorning(8), reason: "Test" }] },
+                        };
+                        await Vehicle.updateOne({ _id: vehicle }, { $set: changes[change] });
+                    }
+                }
+                return originalStartSession.apply(this, args);
+            });
+            await assert.rejects(book(vehicle), /disabled|Archived|not available|blocked|not found/i);
+            assert.equal(injected, true);
+            assert.equal(await Booking.countDocuments({ vehicle }), 0);
+            assert.equal(await Payment.countDocuments({}), 0);
+        });
+    }
+
+    it("retries and rejects a disable committed after the booking transaction starts", async () => {
+        const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        const originalUpdate = Vehicle.collection.findOneAndUpdate;
+        let injected = false;
+        mock.method(Vehicle.collection, "findOneAndUpdate", async function (...args) {
+            if (!injected && args[1]?.$inc?.bookingRevision && args[2]?.session) {
+                injected = true;
+                await Vehicle.updateOne({ _id: vehicle }, { $set: { "availability.bookingEnabled": false } });
+            }
+            return originalUpdate.apply(this, args);
+        });
+        await assert.rejects(book(vehicle), /booking is currently disabled/i);
+        assert.equal(injected, true);
+        assert.equal(await Booking.countDocuments({ vehicle }), 0);
+        assert.equal(await Payment.countDocuments({}), 0);
+    });
+
+    for (const change of ["suspended", "archived", "unavailable", "license expired", "license ends early", "deleted"]) {
+        it(`rejects a driver ${change} after preflight without saving a booking or payment`, async () => {
+            await setAdminAssignment(false);
+            const driver = await insertDriver();
+            const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+            const originalStartSession = mongoose.startSession;
+            let injected = false;
+            mock.method(mongoose, "startSession", async function (...args) {
+                if (!injected) {
+                    injected = true;
+                    if (change === "deleted") await Driver.deleteOne({ _id: driver });
+                    else {
+                        const changes = {
+                            suspended: { status: DRIVER_STATUS.SUSPENDED },
+                            archived: { "archive.isArchived": true },
+                            unavailable: { availability: DRIVER_AVAILABILITY.UNAVAILABLE },
+                            "license expired": { "license.expiryDate": new Date(Date.now() - DAY) },
+                            "license ends early": { "license.expiryDate": manilaMorning(6) },
+                        };
+                        await Driver.updateOne({ _id: driver }, { $set: changes[change] });
+                    }
+                }
+                return originalStartSession.apply(this, args);
+            });
+            await assert.rejects(book(vehicle, customerId, { driver }), /not active|not available|license.*expir|not found/i);
+            assert.equal(injected, true);
+            assert.equal(await Booking.countDocuments({ vehicle }), 0);
+            assert.equal(await Payment.countDocuments({}), 0);
+        });
+    }
+
+    it("retries and rejects a driver suspension committed after the transaction starts", async () => {
+        await setAdminAssignment(false);
+        const driver = await insertDriver();
+        const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        const originalUpdate = Driver.collection.findOneAndUpdate;
+        let injected = false;
+        mock.method(Driver.collection, "findOneAndUpdate", async function (...args) {
+            if (!injected && args[1]?.$inc?.bookingRevision && args[2]?.session) {
+                injected = true;
+                await Driver.updateOne({ _id: driver }, { $set: { status: DRIVER_STATUS.SUSPENDED } });
+            }
+            return originalUpdate.apply(this, args);
+        });
+        await assert.rejects(book(vehicle, customerId, { driver }), /driver is not active/i);
+        assert.equal(injected, true);
+        assert.equal(await Booking.countDocuments({ vehicle }), 0);
+        assert.equal(await Payment.countDocuments({}), 0);
+    });
+
+    for (const change of ["license expired", "license ends early", "no license", "wrong category", "wrong transmission", "suspended", "role changed", "deleted"]) {
+        it(`rejects a customer ${change} after preflight without saving a booking or payment`, async () => {
+            const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 }, specifications: { transmission: "Manual" } });
+            await User.updateOne({ _id: customerId }, { $set: {
+                hasDriversLicense: true, licenseCodes: ["B"], carTransmission: ["manual"],
+                licenseExpirationDate: new Date(Date.now() + 365 * DAY),
+            } });
+            const originalStartSession = mongoose.startSession;
+            let injected = false;
+            mock.method(mongoose, "startSession", async function (...args) {
+                if (!injected) {
+                    injected = true;
+                    if (change === "deleted") await User.deleteOne({ _id: customerId });
+                    else {
+                        const changes = {
+                            "license expired": { licenseExpirationDate: new Date(Date.now() - DAY) },
+                            "license ends early": { licenseExpirationDate: manilaMorning(6) },
+                            "no license": { hasDriversLicense: false },
+                            "wrong category": { licenseCodes: ["A"] },
+                            "wrong transmission": { carTransmission: ["automatic"] },
+                            suspended: { isSuspended: true },
+                            "role changed": { role: "operator" },
+                        };
+                        await User.updateOne({ _id: customerId }, { $set: changes[change] });
+                    }
+                }
+                return originalStartSession.apply(this, args);
+            });
+            await assert.rejects(book(vehicle, customerId, { driverOption: BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER }),
+                /license.*expir|only book vehicles with a driver|license does not cover|automatic-transmission|suspended|Only customers|not found/i);
+            assert.equal(injected, true);
+            assert.equal(await Booking.countDocuments({ vehicle }), 0);
+            assert.equal(await Payment.countDocuments({}), 0);
+        });
+    }
+
+    it("retries and rejects a customer suspension committed after the transaction starts", async () => {
+        const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        const originalUpdate = User.collection.findOneAndUpdate;
+        let injected = false;
+        mock.method(User.collection, "findOneAndUpdate", async function (...args) {
+            if (!injected && args[1]?.$inc?.bookingRevision && args[2]?.session) {
+                injected = true;
+                await User.updateOne({ _id: customerId }, { $set: { isSuspended: true } });
+            }
+            return originalUpdate.apply(this, args);
+        });
+        await assert.rejects(book(vehicle), { statusCode: 403 });
+        assert.equal(injected, true);
+        assert.equal(await Booking.countDocuments({ vehicle }), 0);
+        assert.equal(await Payment.countDocuments({}), 0);
+    });
+
+    it("keeps with-driver and unrestricted self-drive license exemptions", async () => {
+        await User.updateOne({ _id: customerId }, { $set: { hasDriversLicense: false } });
+        assert.ok((await book(await insertVehicle()))._id);
+        await Settings.updateOne({}, { $set: { "customerBookingSettings.licenseRestrictionEnabled": false } });
+        assert.ok((await book(await insertVehicle(), customerId, { driverOption: BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER }))._id);
+    });
+
+    for (const change of ["disabled", "expired", "upcoming", "assignment revoked", "discount edited", "type edited", "deleted"]) {
+        it(`rejects a voucher ${change} after preflight and rolls back the booking`, async () => {
+            const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+            const voucher = await Voucher.create({
+                code: `RECHECK${newId()}`, name: "Recheck", type: "reservation_fee", discountMethod: "fixed", discountValue: 100,
+                startDate: new Date(Date.now() - DAY), endDate: new Date(Date.now() + 30 * DAY),
+            });
+            const originalStartSession = mongoose.startSession;
+            let injected = false;
+            mock.method(mongoose, "startSession", async function (...args) {
+                if (!injected) {
+                    injected = true;
+                    if (change === "deleted") await Voucher.deleteOne({ _id: voucher._id });
+                    else {
+                        const changes = {
+                            disabled: { status: "inactive" },
+                            expired: { endDate: new Date(Date.now() - 2 * DAY) },
+                            upcoming: { startDate: new Date(Date.now() + 2 * DAY) },
+                            "assignment revoked": { assignmentType: "specific_users", assignedTo: [] },
+                            "discount edited": { discountValue: 200 },
+                            "type edited": { type: "total" },
+                        };
+                        await Voucher.updateOne({ _id: voucher._id }, { $set: changes[change] });
+                    }
+                }
+                return originalStartSession.apply(this, args);
+            });
+            await assert.rejects(book(vehicle, customerId, {
+                voucherCode: voucher.code, expectedPricing: { totalAmount: 5200, upfrontAmount: 400 },
+            }), { statusCode: 409 });
+            assert.equal(injected, true);
+            assert.equal(await Booking.countDocuments({ vehicle }), 0);
+            assert.equal(await Payment.countDocuments({}), 0);
+            const saved = await Voucher.findById(voucher._id);
+            if (saved) {
+                assert.equal(saved.usageCount, 0);
+                assert.equal(saved.usedBy.length, 0);
+            }
+        });
+    }
+
+    it("retries and rejects a voucher disabled after the transaction starts", async () => {
+        const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        const voucher = await Voucher.create({
+            code: `DISABLE${newId()}`, name: "Disable", type: "reservation_fee", discountMethod: "fixed", discountValue: 100,
+            startDate: new Date(Date.now() - DAY), endDate: new Date(Date.now() + 30 * DAY),
+        });
+        const originalUpdate = Voucher.collection.findOneAndUpdate;
+        let injected = false;
+        mock.method(Voucher.collection, "findOneAndUpdate", async function (...args) {
+            if (!injected && args[1]?.$inc?.usageCount && args[2]?.session) {
+                injected = true;
+                await Voucher.updateOne({ _id: voucher._id }, { $set: { status: "inactive" } });
+            }
+            return originalUpdate.apply(this, args);
+        });
+        await assert.rejects(book(vehicle, customerId, { voucherCode: voucher.code }), { statusCode: 409 });
+        assert.equal(injected, true);
+        assert.equal(await Booking.countDocuments({ vehicle }), 0);
+        assert.equal(await Payment.countDocuments({}), 0);
+        assert.equal((await Voucher.findById(voucher._id)).usageCount, 0);
     });
 
     it("keeps one simultaneous booking and payment for the same vehicle", async () => {
