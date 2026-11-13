@@ -68,6 +68,8 @@ const serviceLocationSchema =
                 type: Boolean,
                 default: true,
             },
+            // Serialize booking review checks with concurrent location edits.
+            bookingRevision: { type: Number, default: 0, select: false },
         },
         {
             timestamps: true,

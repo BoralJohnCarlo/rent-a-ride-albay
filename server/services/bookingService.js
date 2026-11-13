@@ -196,6 +196,7 @@ import {
     areDriversOfferedForVehicle,
     getExtensionDriverCharge,
     resolveDriverDailyRate,
+    getDriverPricingSettings,
 } from "./driverPricingService.js";
 
 import ManualRefund from "../models/ManualRefund.js";
@@ -1027,6 +1028,36 @@ const validateServiceLocation = async (
     }
 
     return serviceLocation;
+};
+
+// Lock in a stable order when pickup/return differ, and only once when shared.
+// Compare the reviewed identity and applicable fee before saving either side.
+const lockReviewedServiceLocations = async (pickup, dropoff, { driverOption, enableDistanceFeeCalculation, session }) => {
+    const selected = new Map([pickup, dropoff].filter(Boolean).map(location => [String(location._id), location]));
+    const current = new Map();
+    const fields = ["name", "region", "province", "city", "barangay", "address", "latitude", "longitude", "isDefault"];
+    for (const id of [...selected.keys()].sort()) {
+        const location = await ServiceLocation.findOneAndUpdate(
+            { _id: id }, { $inc: { bookingRevision: 1 } },
+            { session, returnDocument: "after", timestamps: false }
+        );
+        const reviewed = selected.get(id);
+        if (!location?.enabled || fields.some(field => field === "isDefault"
+            ? Boolean(location[field]) !== Boolean(reviewed[field])
+            : (location[field] ?? null) !== (reviewed[field] ?? null))) {
+            throw createError("Your pickup or return location changed or is no longer available. Please reload and review your booking.", 409);
+        }
+        current.set(id, location);
+    }
+    const resolved = [pickup, dropoff].map(location => location ? current.get(String(location._id)) : null);
+    if (driverOption !== BOOKING_DRIVER_OPTIONS.WITH_DRIVER && !enableDistanceFeeCalculation) {
+        for (const [index, field] of [[0, "pickupFee"], [1, "returnFee"]]) {
+            if (Number(resolved[index]?.[field] || 0) !== Number([pickup, dropoff][index]?.[field] || 0)) {
+                throw createError("Pickup or return pricing changed. Please reload and review your booking.", 409);
+            }
+        }
+    }
+    return resolved;
 };
 
 const findDefaultServiceLocation = async ({ requireCoordinates = true } = {}) => {
@@ -2975,6 +3006,22 @@ const createBooking = async (
             async (session) => {
                 // Preflight checks above provide quick feedback; these checks
                 // under the resource guards decide whether the slot is saved.
+                const currentSettings = await getBookingLocationPolicy(session);
+                // These changes affect the customer's choices or reviewed quote.
+                // Reject rather than silently changing driver assignment/pricing.
+                if (currentSettings.allowOnlyDefaultLocation !== settings.allowOnlyDefaultLocation ||
+                    currentSettings.enableDistanceFeeCalculation !== settings.enableDistanceFeeCalculation ||
+                    (driverOption === BOOKING_DRIVER_OPTIONS.WITH_DRIVER &&
+                        JSON.stringify(getDriverPricingSettings(currentSettings)) !== JSON.stringify(getDriverPricingSettings(settings)))) {
+                    throw createError("Booking options have changed. Please reload and review your booking.", 409);
+                }
+                const currentBookingHours = currentSettings.bookingSettings?.bookingHours ?? null;
+                validatePickupSchedule(start, end, {
+                    requireFuture: true,
+                    bookingHours: currentBookingHours,
+                    pickupHours: currentSettings.bookingSettings?.pickupHours ?? null,
+                    earliestPickupMs: getEarliestPickupMs(Date.now(), currentBookingHours),
+                });
                 const currentCustomer = await User.findOneAndUpdate(
                     { _id: currentUserId },
                     { $inc: { bookingRevision: 1 } },
@@ -2988,7 +3035,7 @@ const createBooking = async (
                     throw createError("Only customers can create bookings.", 403);
                 }
                 const checkSelfDriveLicense = driverOption === BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER &&
-                    settings.customerBookingSettings?.licenseRestrictionEnabled !== false;
+                    currentSettings.customerBookingSettings?.licenseRestrictionEnabled !== false;
                 await ensureCustomerLicenseNotExpired(currentUserId, {
                     validThrough: checkSelfDriveLicense ? end : null, session,
                 });
@@ -3001,6 +3048,7 @@ const createBooking = async (
                     { session, returnDocument: "after", timestamps: false }
                 );
                 if (!currentVehicle) throw createError("Vehicle not found.", 404);
+                ensureDriverOptionOffered(driverOption, currentVehicle, currentSettings);
                 validateVehicleBookingEligibility(currentVehicle);
                 await validateVehicleDateAvailability(currentVehicle, start, end);
                 if (checkSelfDriveLicense) {
@@ -3008,15 +3056,19 @@ const createBooking = async (
                     await ensureCustomerCanDriveVehicle(currentUserId, currentVehicle, session);
                 }
                 await validateDriverSelection(driverOption, driverId, {
-                    allowUnassigned: adminAssignsDriver, validThrough: end, session,
+                    allowUnassigned: isAdminDriverAssignment(currentSettings), validThrough: end, session,
                 });
+                const [currentPickupLocation, currentReturnLocation] = await lockReviewedServiceLocations(
+                    pickupServiceLocation, returnServiceLocation,
+                    { driverOption, enableDistanceFeeCalculation: currentSettings.enableDistanceFeeCalculation, session }
+                );
                 await ensureNoBookingConflict(vehicle._id, start, end, null, { session });
                 if (driverOption === BOOKING_DRIVER_OPTIONS.WITH_DRIVER) {
                     await ensureNoDriverBookingConflict(driverId, start, end, null, { session });
                 }
                 await ensureCustomerBookingLimitNotExceeded(
                     currentUserId, start, end,
-                    settings.customerBookingSettings?.maxConcurrentBookings,
+                    currentSettings.customerBookingSettings?.maxConcurrentBookings,
                     null, { session }
                 );
                 if (voucherDiscount?.voucher && !(await claimVoucherUsage(
@@ -3053,14 +3105,14 @@ const createBooking = async (
 
                         pickupLocation:
                             buildBookingLocation(
-                                pickupServiceLocation,
+                                currentPickupLocation,
                                 bookingData.pickupLocation,
                                 distanceFees.pickupDistanceFee
                             ),
 
                         returnLocation:
                             buildBookingLocation(
-                                returnServiceLocation,
+                                currentReturnLocation,
                                 bookingData.returnLocation,
                                 distanceFees.returnDistanceFee
                             ),

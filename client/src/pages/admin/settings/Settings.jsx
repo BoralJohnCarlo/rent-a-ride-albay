@@ -1,6 +1,7 @@
 import {
     AlertTriangle,
     ArrowRight,
+    BellRing,
     Car,
     FileText,
     Fingerprint,
@@ -82,6 +83,15 @@ const COLOR_STYLES = {
 };
 
 const SETTINGS_ITEMS = [
+    {
+        key: "browser-notifications",
+        keywords: ["alerts", "push", "permissions", "browser", "account"],
+        label: "Browser Notifications",
+        description: "Manage important alerts for your account on this browser.",
+        icon: BellRing,
+        path: "/admin/settings/browser-notifications",
+        color: "blue",
+    },
     {
         key: "bookings",
         keywords: ["turnaround", "buffer", "cleaning", "time between rentals", "back-to-back", "availability", "schedule"],

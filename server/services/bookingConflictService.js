@@ -43,8 +43,8 @@ const bufferedWindow = (startDate, endDate, bufferMs) => ({
     windowEnd: new Date(toDate(endDate).getTime() + bufferMs),
 });
 
-const resolveBufferMs = async (bufferMs) =>
-    Number.isFinite(bufferMs) ? bufferMs : getTurnaroundBufferMs();
+const resolveBufferMs = async (bufferMs, session = null) =>
+    Number.isFinite(bufferMs) ? bufferMs : getTurnaroundBufferMs(session);
 
 /*
  * The booking behind an unreturned rental of this vehicle/driver that would
@@ -144,7 +144,7 @@ export const hasBookingConflict = async (
     excludeBookingId = null,
     { bufferMs, session = null } = {}
 ) => {
-    const buffer = await resolveBufferMs(bufferMs);
+    const buffer = await resolveBufferMs(bufferMs, session);
     const { windowStart, windowEnd } = bufferedWindow(
         startDate,
         endDate,
@@ -207,7 +207,7 @@ export const ensureNoBookingConflict = async (
     excludeBookingId = null,
     { session = null } = {}
 ) => {
-    const bufferMs = await getTurnaroundBufferMs();
+    const bufferMs = await getTurnaroundBufferMs(session);
 
     const conflictingBooking =
         await hasBookingConflict(
@@ -313,7 +313,7 @@ export const hasDriverBookingConflict = async (
         return null;
     }
 
-    const buffer = await resolveBufferMs(bufferMs);
+    const buffer = await resolveBufferMs(bufferMs, session);
     const { windowStart, windowEnd } = bufferedWindow(
         startDate,
         endDate,
@@ -377,7 +377,7 @@ export const ensureNoDriverBookingConflict = async (
         return;
     }
 
-    const bufferMs = await getTurnaroundBufferMs();
+    const bufferMs = await getTurnaroundBufferMs(session);
 
     const conflictingBooking =
         await hasDriverBookingConflict(

@@ -42,6 +42,7 @@ import Drivers from "../pages/admin/Drivers/Drivers";
 import Bookings from "../pages/admin/Bookings/Bookings";
 import Payments from "../pages/admin/Payments/Payments";
 import Settings from "../pages/admin/settings/Settings";
+import BrowserNotificationSettings from "../components/settings/BrowserNotificationSettings";
 import ServiceLocations from "../pages/admin/settings/ServiceLocations";
 import PenaltySettings from "../pages/admin/settings/PenaltySettings";
 import RefundSettings from "../pages/admin/settings/RefundSettings";
@@ -290,6 +291,10 @@ const AppRoutes = () => {
                               path="settings"
                               element={<Settings />}
                           >
+                               <Route
+                                   path="browser-notifications"
+                                   element={<BrowserNotificationSettings />}
+                               />
                                <Route
                                    path="service-locations"
                                    element={<ServiceLocations />}

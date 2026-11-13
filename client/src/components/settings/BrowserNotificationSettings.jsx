@@ -32,6 +32,22 @@ export default function BrowserNotificationSettings() {
         load();
         return cancelLoad;
     }, [load, cancelLoad, user?._id]);
+    useEffect(() => {
+        let timer;
+        const refreshOnReturn = () => {
+            if (busy || document.visibilityState === "hidden") return;
+            clearTimeout(timer);
+            // Returning to a tab can emit both focus and visibility events.
+            timer = setTimeout(() => { void load(); }, 150);
+        };
+        window.addEventListener("focus", refreshOnReturn);
+        document.addEventListener("visibilitychange", refreshOnReturn);
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener("focus", refreshOnReturn);
+            document.removeEventListener("visibilitychange", refreshOnReturn);
+        };
+    }, [load, busy, user?._id]);
     const disable = async () => {
         setBusy(true);
         setMessage("");
@@ -63,7 +79,6 @@ export default function BrowserNotificationSettings() {
         {!loadError && state?.supported && state.configured && <button type="button" disabled={busy || loading || (!state.enabled && state.permission === "denied")} onClick={toggle} className="mt-4 rounded-xl bg-yellow-400 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">{busy ? "Saving..." : state.enabled ? "Disable browser notifications" : "Enable browser notifications"}</button>}
         {loadError && <button type="button" onClick={load} disabled={loading || busy} className="mt-4 rounded-xl bg-yellow-400 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">Retry loading settings</button>}
         {loadError && <button type="button" onClick={disable} disabled={loading || busy} className="ml-3 mt-4 rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200">Disable on this browser</button>}
-        {!loadError && state?.supported && <button type="button" onClick={load} disabled={loading || busy} className="ml-3 mt-4 rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200">Refresh status</button>}
         <p role="status" className="mt-3 text-sm text-gray-600 dark:text-gray-300">{loading ? "Loading..." : message || (state?.enabled ? "Important browser notifications are enabled for this account." : "")}</p>
     </section>;
 }

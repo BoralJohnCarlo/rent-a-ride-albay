@@ -108,10 +108,9 @@ export const getEarliestBookingPickupMs = async (nowMs = Date.now()) =>
     getEarliestPickupMs(nowMs, await getBookingHours());
 
 /* The turnaround buffer in ms, for the booking conflict checks. */
-export const getTurnaroundBufferMs = async () => {
-    const settings = await Settings.findOne()
-        .select("bookingSettings")
-        .lean();
+export const getTurnaroundBufferMs = async (session = null) => {
+    const query = Settings.findOne().select("bookingSettings");
+    const settings = await (session ? query.session(session) : query).lean();
 
     return (
         resolveBookingSettings(settings?.bookingSettings)
@@ -294,9 +293,10 @@ export const resolveRefundSettings = (refundSettings) => ({
 });
 
 export const getBookingLocationPolicy =
-    async () => {
+    async (session = null) => {
+        const query = Settings.findOne();
         const settings =
-            await Settings.findOne()
+            await (session ? query.session(session) : query)
                 .lean();
 
         if (!settings) {

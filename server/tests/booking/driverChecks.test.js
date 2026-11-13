@@ -9,6 +9,7 @@ import Notification from "../../models/Notification.js";
 import Payment from "../../models/Payment.js";
 import Rental from "../../models/Rental.js";
 import Settings from "../../models/Settings.js";
+import ServiceLocation from "../../models/ServiceLocation.js";
 import User from "../../models/User.js";
 import Vehicle from "../../models/Vehicle.js";
 import Voucher from "../../models/Voucher.js";
@@ -211,6 +212,7 @@ beforeEach(async () => {
             Payment,
             Rental,
             Settings,
+            ServiceLocation,
             User,
             Vehicle,
             Voucher,
@@ -512,6 +514,184 @@ describe("booking creation transactions", () => {
         assert.equal(await Booking.countDocuments({ vehicle }), 0);
         assert.equal(await Payment.countDocuments({}), 0);
         assert.equal((await Voucher.findById(voucher._id)).usageCount, 0);
+    });
+
+    const changePolicyBeforeTransaction = (changes) => {
+        const originalStartSession = mongoose.startSession;
+        let injected = false;
+        mock.method(mongoose, "startSession", async function (...args) {
+            if (!injected) {
+                injected = true;
+                await Settings.updateOne({}, { $set: changes });
+            }
+            return originalStartSession.apply(this, args);
+        });
+        return () => injected;
+    };
+
+    it("enforces a customer booking limit lowered after preflight", async () => {
+        await book(await insertVehicle());
+        const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        const injected = changePolicyBeforeTransaction({ "customerBookingSettings.maxConcurrentBookings": 1 });
+        await assert.rejects(book(vehicle), /maximum allowed/);
+        assert.equal(injected(), true);
+        assert.equal(await Booking.countDocuments({ customer: customerId }), 1);
+        assert.equal(await Booking.countDocuments({ vehicle }), 0);
+        assert.equal(await Payment.countDocuments({}), 0);
+    });
+
+    it("enforces license restrictions enabled after preflight", async () => {
+        await Settings.updateOne({}, { $set: { "customerBookingSettings.licenseRestrictionEnabled": false } });
+        await User.updateOne({ _id: customerId }, { $set: { hasDriversLicense: false } });
+        const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        const injected = changePolicyBeforeTransaction({ "customerBookingSettings.licenseRestrictionEnabled": true });
+        await assert.rejects(book(vehicle, customerId, { driverOption: BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER }), /only book vehicles with a driver/);
+        assert.equal(injected(), true);
+        assert.equal(await Booking.countDocuments({}), 0);
+        assert.equal(await Payment.countDocuments({}), 0);
+    });
+
+    for (const [label, changes, expected] of [
+        ["pickup hours", { "bookingSettings.pickupHours": { earliestTime: "12:00", latestTime: "18:00" } }, /pickup.*between|pickup.*hours/i],
+        ["driver assignment", { "driverAssignmentSettings.requireAdminDriverAssignment": false }, /Booking options have changed/],
+        ["driver pricing", { "driverPricingSettings.globalDailyRate": 500 }, /Booking options have changed/],
+        ["default-only locations", { allowOnlyDefaultLocation: true }, /Booking options have changed/],
+        ["distance fee pricing", { enableDistanceFeeCalculation: true }, /Booking options have changed/],
+    ]) {
+        it(`rejects incompatible ${label} policy changed after preflight`, async () => {
+            const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+            const injected = changePolicyBeforeTransaction(changes);
+            await assert.rejects(book(vehicle), expected);
+            assert.equal(injected(), true);
+            assert.equal(await Booking.countDocuments({}), 0);
+            assert.equal(await Payment.countDocuments({}), 0);
+        });
+    }
+
+    it("enforces motorcycle driver restrictions changed after preflight", async () => {
+        const vehicle = await insertVehicle({ vehicleType: "Motorcycle" });
+        const injected = changePolicyBeforeTransaction({ "driverAssignmentSettings.motorcycleDriversEnabled": false });
+        await assert.rejects(book(vehicle), /Motorcycles are self-drive only/);
+        assert.equal(injected(), true);
+        assert.equal(await Booking.countDocuments({}), 0);
+    });
+
+    it("allows a booking that still satisfies a changed customer limit", async () => {
+        const vehicle = await insertVehicle();
+        const injected = changePolicyBeforeTransaction({ "customerBookingSettings.maxConcurrentBookings": 1 });
+        assert.ok((await book(vehicle))._id);
+        assert.equal(injected(), true);
+        assert.equal(await Booking.countDocuments({}), 1);
+    });
+
+    it("uses a turnaround buffer increased after preflight", async () => {
+        const vehicle = await insertVehicle();
+        await book(vehicle);
+        const nextStart = new Date(manilaMorning(7).getTime() + 3 * HOUR);
+        const injected = changePolicyBeforeTransaction({ "bookingSettings.turnaroundBufferMinutes": 240 });
+        await assert.rejects(book(vehicle, customerId, {
+            startDate: nextStart.toISOString(),
+            endDate: new Date(nextStart.getTime() + 2 * DAY).toISOString(),
+        }), /already booked.*4 hours/);
+        assert.equal(injected(), true);
+        assert.equal(await Booking.countDocuments({ vehicle }), 1);
+    });
+
+    const insertOffice = () => ServiceLocation.create({
+        name: "Office", region: "Bicol", province: "Albay", city: "Legazpi",
+        latitude: 13.1391, longitude: 123.7438, pickupFee: 100, returnFee: 75,
+    });
+    const officePayload = location => ({ serviceLocationId: String(location._id), type: "Office", address: "Legazpi" });
+
+    for (const side of ["pickup", "return"]) {
+        for (const change of ["disabled", "deleted", "fee changed", "address changed", "coordinates changed"]) {
+            it(`rejects a ${side} location ${change} after preflight without saving a booking or payment`, async () => {
+                const pickup = await insertOffice();
+                const dropoff = await insertOffice();
+                const target = side === "pickup" ? pickup : dropoff;
+                const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+                const originalStartSession = mongoose.startSession;
+                let injected = false;
+                mock.method(mongoose, "startSession", async function (...args) {
+                    if (!injected) {
+                        injected = true;
+                        if (change === "deleted") await ServiceLocation.deleteOne({ _id: target._id });
+                        else {
+                            const changes = {
+                                disabled: { enabled: false },
+                                "fee changed": { [side === "pickup" ? "pickupFee" : "returnFee"]: 300 },
+                                "address changed": { city: "Daraga" },
+                                "coordinates changed": { latitude: 14 },
+                            };
+                            await ServiceLocation.updateOne({ _id: target._id }, { $set: changes[change] });
+                        }
+                    }
+                    return originalStartSession.apply(this, args);
+                });
+                await assert.rejects(book(vehicle, customerId, {
+                    driverOption: BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER,
+                    pickupLocation: officePayload(pickup), returnLocation: officePayload(dropoff),
+                    expectedPricing: { totalAmount: 5475, upfrontAmount: 600 },
+                }), { statusCode: 409 });
+                assert.equal(injected, true);
+                assert.equal(await Booking.countDocuments({ vehicle }), 0);
+                assert.equal(await Payment.countDocuments({}), 0);
+            });
+        }
+    }
+
+    it("retries and rejects a location disabled after the transaction starts", async () => {
+        const office = await insertOffice();
+        const vehicle = await insertVehicle();
+        const originalUpdate = ServiceLocation.collection.findOneAndUpdate;
+        let injected = false;
+        mock.method(ServiceLocation.collection, "findOneAndUpdate", async function (...args) {
+            if (!injected && args[1]?.$inc?.bookingRevision && args[2]?.session) {
+                injected = true;
+                await ServiceLocation.updateOne({ _id: office._id }, { $set: { enabled: false } });
+            }
+            return originalUpdate.apply(this, args);
+        });
+        await assert.rejects(book(vehicle, customerId, {
+            pickupLocation: officePayload(office), returnLocation: officePayload(office),
+        }), { statusCode: 409 });
+        assert.equal(injected, true);
+        assert.equal(await Booking.countDocuments({}), 0);
+        assert.equal(await Payment.countDocuments({}), 0);
+    });
+
+    it("preserves reviewed fees and addresses for a shared pickup/return location", async () => {
+        const office = await insertOffice();
+        const vehicle = await insertVehicle({ pricing: { dailyRate: 2400, reservationFee: 500 } });
+        const saved = await book(vehicle, customerId, {
+            driverOption: BOOKING_DRIVER_OPTIONS.WITHOUT_DRIVER,
+            pickupLocation: officePayload(office), returnLocation: officePayload(office),
+            expectedPricing: { totalAmount: 5475, upfrontAmount: 600 },
+        });
+        assert.equal(saved.pricing.pickupDistanceFee, 100);
+        assert.equal(saved.pricing.returnDistanceFee, 75);
+        assert.equal(saved.pickupLocation.city, "Legazpi");
+        assert.equal((await Payment.findOne({ booking: saved._id })).amount, 600);
+    });
+
+    it("preserves the with-driver location-fee exemption when configured fees change", async () => {
+        const office = await insertOffice();
+        const vehicle = await insertVehicle();
+        const originalStartSession = mongoose.startSession;
+        let injected = false;
+        mock.method(mongoose, "startSession", async function (...args) {
+            if (!injected) {
+                injected = true;
+                await ServiceLocation.updateOne({ _id: office._id }, { $set: { pickupFee: 300, returnFee: 300 } });
+            }
+            return originalStartSession.apply(this, args);
+        });
+        const saved = await book(vehicle, customerId, {
+            pickupLocation: officePayload(office), returnLocation: officePayload(office),
+        });
+        assert.equal(injected, true);
+        assert.equal(saved.pricing.pickupDistanceFee, 0);
+        assert.equal(saved.pricing.returnDistanceFee, 0);
     });
 
     it("keeps one simultaneous booking and payment for the same vehicle", async () => {
