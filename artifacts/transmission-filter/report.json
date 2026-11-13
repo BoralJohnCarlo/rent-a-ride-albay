@@ -1,0 +1,130 @@
+[
+  {
+    "route": "/vehicles",
+    "theme": "light",
+    "width": 360,
+    "height": 800,
+    "body": 360,
+    "errors": []
+  },
+  {
+    "route": "/vehicles",
+    "theme": "dark",
+    "width": 360,
+    "height": 800,
+    "body": 360,
+    "errors": []
+  },
+  {
+    "route": "/vehicles",
+    "theme": "light",
+    "width": 375,
+    "height": 667,
+    "body": 375,
+    "errors": []
+  },
+  {
+    "route": "/vehicles",
+    "theme": "dark",
+    "width": 375,
+    "height": 667,
+    "body": 375,
+    "errors": []
+  },
+  {
+    "route": "/vehicles",
+    "theme": "light",
+    "width": 667,
+    "height": 375,
+    "body": 667,
+    "errors": []
+  },
+  {
+    "route": "/vehicles",
+    "theme": "dark",
+    "width": 667,
+    "height": 375,
+    "body": 667,
+    "errors": []
+  },
+  {
+    "route": "/vehicles",
+    "theme": "light",
+    "width": 1280,
+    "height": 900,
+    "body": 1270,
+    "errors": []
+  },
+  {
+    "route": "/vehicles",
+    "theme": "dark",
+    "width": 1280,
+    "height": 900,
+    "body": 1270,
+    "errors": []
+  },
+  {
+    "route": "/available",
+    "theme": "light",
+    "width": 360,
+    "height": 800,
+    "body": 360,
+    "errors": []
+  },
+  {
+    "route": "/available",
+    "theme": "dark",
+    "width": 360,
+    "height": 800,
+    "body": 360,
+    "errors": []
+  },
+  {
+    "route": "/available",
+    "theme": "light",
+    "width": 375,
+    "height": 667,
+    "body": 375,
+    "errors": []
+  },
+  {
+    "route": "/available",
+    "theme": "dark",
+    "width": 375,
+    "height": 667,
+    "body": 375,
+    "errors": []
+  },
+  {
+    "route": "/available",
+    "theme": "light",
+    "width": 667,
+    "height": 375,
+    "body": 667,
+    "errors": []
+  },
+  {
+    "route": "/available",
+    "theme": "dark",
+    "width": 667,
+    "height": 375,
+    "body": 667,
+    "errors": []
+  },
+  {
+    "route": "/available",
+    "theme": "light",
+    "width": 1280,
+    "height": 900,
+    "body": 1270,
+    "errors": []
+  },
+  {
+    "route": "/available",
+    "theme": "dark",
+    "width": 1280,
+    "height": 900,
+    "body": 1270,
+    "errors": []
+  }
+]

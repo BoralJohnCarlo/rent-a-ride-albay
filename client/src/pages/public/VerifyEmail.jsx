@@ -148,12 +148,13 @@ const VerifyEmail = () => {
                         overflow-hidden
                         rounded-2xl
                         border
-                        border-white/80
+                        border-white/80 dark:border-gray-700
                         bg-white
                         p-8
                         text-center
                         shadow-2xl
                         shadow-black/30
+                        dark:bg-gray-900
                     "
                 >
                     <div
@@ -215,7 +216,7 @@ const VerifyEmail = () => {
                             text-2xl
                             font-bold
                             tracking-tight
-                            text-gray-950
+                            text-gray-950 dark:text-gray-100
                         "
                     >
                         {status ===
@@ -239,6 +240,7 @@ const VerifyEmail = () => {
                             text-sm
                             leading-6
                             text-gray-500
+                            dark:text-gray-400
                         "
                     >
                         {message}
@@ -262,6 +264,7 @@ const VerifyEmail = () => {
                                     border-4
                                     border-gray-200
                                     border-t-yellow-400
+                                    dark:border-gray-700 dark:border-t-yellow-400
                                 "
                             />
                         </div>
@@ -283,6 +286,7 @@ const VerifyEmail = () => {
                                     gap-2
                                     text-xs
                                     text-gray-500
+                                    dark:text-gray-400
                                 "
                             >
                                 <ShieldCheck
@@ -350,8 +354,9 @@ const VerifyEmail = () => {
                                     font-medium
                                     text-gray-600
                                     transition-colors
-                                    hover:text-gray-950
+                                    hover:text-gray-950 dark:hover:text-white
                                     hover:underline
+                                    dark:text-gray-300
                                 "
                             >
                                 Back to Login

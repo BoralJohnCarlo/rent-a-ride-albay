@@ -1,0 +1,62 @@
+[
+  {
+    "route": "/admin/gps",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Map\nTrackers\nAlerts\nLive\nHistory\nConnecting...\nOn the road\n0\nAll vehicles\n2\n\nNo vehicles are on the road right now.\n\n© OpenStreetMap contributors\nMap\n",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/gps",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Map\nTrackers\nAlerts\nLive\nHistory\nConnecting...\nOn the road\n0\nAll vehicles\n2\n\nNo vehicles are on the road right now.\n\n© OpenStreetMap contributors\nMap\n",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/customer-service",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Inbox\nOffline\nNeeds reply\nAll\nOpen\nIn progress\nResolved\nClosed\n\nNo conversations\n\nCustomer chats will show up here.",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/customer-service",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Inbox\nOffline\nNeeds reply\nAll\nOpen\nIn progress\nResolved\nClosed\n\nNo conversations\n\nCustomer chats will show up here.\n\nPick a conversation\n\nYou're all c",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/audit-vehicle-styles",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "No Vehicle Image\n\nUpload an image later\n\nToyota Innova 2.8 Automatic\n\nVH-000002\n\nAvailable\nCompany\nCar\nAutomatic\nDiesel\n7 Seats\n₱4,000.00\n/DAY\n\nNo Veh",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/audit-vehicle-styles",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "No Vehicle Image\n\nUpload an image later\n\nToyota Innova 2.8 Automatic\n\nVH-000002\n\nAvailable\nCompany\nCar\nAutomatic\nDiesel\n7 Seats\n₱4,000.00\n/DAY\n\nNo Veh",
+    "lightPanels": []
+  }
+]

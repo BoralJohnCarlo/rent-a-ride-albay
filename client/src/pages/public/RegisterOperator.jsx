@@ -1763,7 +1763,7 @@ const RegisterOperator = () => {
                                     </div>
 
                                     <div className="mt-2">
-                                        <p className="text-[11px] font-semibold text-gray-900">{FORM_STEPS[currentStep].title}</p>
+                                        <p className="text-[11px] font-semibold text-gray-900 dark:text-gray-100">{FORM_STEPS[currentStep].title}</p>
                                         <p className="text-[9px] text-gray-500 dark:text-gray-400">
                                             {FORM_STEPS[currentStep].description}
                                         </p>

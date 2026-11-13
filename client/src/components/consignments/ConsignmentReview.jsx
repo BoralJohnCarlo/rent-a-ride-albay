@@ -22,7 +22,7 @@ const ReviewSection = ({
     children,
 }) => (
     <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900 dark:border-gray-700 dark:bg-gray-900">
-        <h3 className="border-b pb-2 text-lg font-semibold text-gray-900">
+        <h3 className="border-b pb-2 text-lg font-semibold text-gray-900 dark:text-gray-100 dark:border-gray-700">
             {title}
         </h3>
 
@@ -36,7 +36,7 @@ const DocumentImageTile = ({
     label,
 }) => (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-        <div className="group relative aspect-video bg-gray-100">
+        <div className="group relative aspect-video bg-gray-100 dark:bg-gray-800">
             {url ? (
                 <button
                     type="button"
@@ -63,7 +63,7 @@ const DocumentImageTile = ({
             )}
         </div>
 
-        <p className="p-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+        <p className="p-3 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
             {label}
         </p>
     </div>
@@ -75,11 +75,11 @@ const ReviewField = ({
     className = "",
 }) => (
     <div className={className}>
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+        <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
             {label}
         </p>
 
-        <p className="mt-1 break-words text-sm text-gray-900">
+        <p className="mt-1 break-words text-sm text-gray-900 dark:text-gray-100">
             {value || EMPTY_VALUE}
         </p>
     </div>
@@ -389,9 +389,9 @@ const ConsignmentReview = ({
                         </p>
                     </div>
                 )}
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 p-5 dark:bg-gray-950 dark:border-gray-700">
                     <div>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                             Application Code
                         </p>
 
@@ -565,7 +565,7 @@ const ConsignmentReview = ({
 
                 <ReviewSection title="Application Timeline">
                     {timelineEvents.length === 0 ? (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                             No timeline events recorded
                             yet.
                         </p>
@@ -587,7 +587,7 @@ const ConsignmentReview = ({
                                                 timelineEvent.event}
                                         </p>
 
-                                        <p className="text-xs text-gray-500">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
                                             {formatDate(
                                                 timelineEvent.createdAt,
                                                 {
@@ -606,7 +606,7 @@ const ConsignmentReview = ({
                                         )}
 
                                         {timelineEvent.remarks && (
-                                            <p className="mt-1 text-sm italic text-gray-500">
+                                            <p className="mt-1 text-sm italic text-gray-500 dark:text-gray-400">
                                                 “
                                                 {
                                                     timelineEvent.remarks
@@ -782,7 +782,7 @@ const ConsignmentReview = ({
                 <ReviewSection title="Emergency Contacts">
                     {emergencyContacts.length ===
                     0 ? (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                             No emergency contacts
                             provided.
                         </p>
@@ -797,7 +797,7 @@ const ConsignmentReview = ({
                                         key={
                                             index
                                         }
-                                        className="space-y-4 rounded-xl border border-gray-200 p-4"
+                                        className="space-y-4 rounded-xl border border-gray-200 p-4 dark:border-gray-700"
                                     >
                                         <ReviewField
                                             label="Full Name"
@@ -942,7 +942,7 @@ const ConsignmentReview = ({
                 <ReviewSection title="Pricing">
                     <div className="grid gap-5 md:grid-cols-3">
                         <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                 Daily Total Price
                             </p>
 
@@ -951,23 +951,23 @@ const ConsignmentReview = ({
                                     (Number(pricing.dailyRate) || 0) +
                                     (Number(pricing.reservationFee) || 0)
                                 }
-                                className="mt-1 text-lg font-semibold text-gray-900"
+                                className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100"
                             />
                         </div>
 
                         <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                 Base Daily Rate
                             </p>
 
                             <Price
                                 value={pricing.dailyRate}
-                                className="mt-1 text-lg font-semibold text-gray-900"
+                                className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100"
                             />
                         </div>
 
                         <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                 Reservation Fee
                             </p>
 
@@ -975,7 +975,7 @@ const ConsignmentReview = ({
                                 value={
                                     pricing.reservationFee
                                 }
-                                className="mt-1 text-lg font-semibold text-gray-900"
+                                className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100"
                             />
                         </div>
                     </div>
@@ -984,22 +984,22 @@ const ConsignmentReview = ({
                 <ReviewSection title="Description">
                     <div className="space-y-5">
                         <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                 Public Description
                             </p>
 
-                            <p className="mt-2 whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-900">
+                            <p className="mt-2 whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-900 dark:bg-gray-950 dark:text-gray-100 dark:border-gray-700">
                                 {description.public ||
                                     EMPTY_VALUE}
                             </p>
                         </div>
 
                         <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                 Internal Description
                             </p>
 
-                            <p className="mt-2 whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-900">
+                            <p className="mt-2 whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-900 dark:bg-gray-950 dark:text-gray-100 dark:border-gray-700">
                                 {description.internal ||
                                     EMPTY_VALUE}
                             </p>
@@ -1009,7 +1009,7 @@ const ConsignmentReview = ({
 
                 <ReviewSection title="Vehicle Images">
                     {images.length === 0 ? (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                             No vehicle images
                             available.
                         </p>
@@ -1028,7 +1028,7 @@ const ConsignmentReview = ({
                                         }
                                         className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
                                     >
-                                        <div className="aspect-video bg-gray-100">
+                                        <div className="aspect-video bg-gray-100 dark:bg-gray-800">
                                             {image.url ? (
                                                 <img
                                                     src={
@@ -1092,7 +1092,7 @@ const ConsignmentReview = ({
                     <div className="space-y-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                     Verification Status
                                 </p>
                                 <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">

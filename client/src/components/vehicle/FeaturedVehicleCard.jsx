@@ -669,6 +669,7 @@ const FeaturedVehicleCard = ({
                     border-blue-500
                     bg-white
                     shadow-2xl
+                    dark:bg-gray-900
                 "
             >
                 <div className="flex flex-col lg:flex-row">
@@ -680,6 +681,7 @@ const FeaturedVehicleCard = ({
                             overflow-hidden
                             bg-gray-100
                             lg:w-96
+                            dark:bg-gray-800
                         "
                     >
                         {item.image ? (
@@ -706,6 +708,7 @@ const FeaturedVehicleCard = ({
                                     gap-3
                                     bg-gray-50
                                     text-gray-400
+                                    dark:bg-gray-950
                                 "
                             >
                                 <ImageOff
@@ -714,7 +717,7 @@ const FeaturedVehicleCard = ({
                                 />
 
                                 <div className="text-center">
-                                    <p className="font-medium text-gray-500">
+                                    <p className="font-medium text-gray-500 dark:text-gray-400">
                                         No Vehicle Image
                                     </p>
 
@@ -749,6 +752,7 @@ const FeaturedVehicleCard = ({
                                         font-bold
                                         tracking-tight
                                         text-gray-900
+                                        dark:text-gray-100
                                     "
                                 >
                                     {item.name}
@@ -761,6 +765,7 @@ const FeaturedVehicleCard = ({
                                         font-medium
                                         tracking-wide
                                         text-gray-500
+                                        dark:text-gray-400
                                     "
                                 >
                                     {item.vehicleCode}
@@ -887,6 +892,7 @@ const FeaturedVehicleCard = ({
                                 gap-y-2
                                 text-sm
                                 text-gray-600
+                                dark:text-gray-300
                             "
                         >
                             <span>
@@ -924,7 +930,7 @@ const FeaturedVehicleCard = ({
                                     rounded-full
                                     border
                                     border-green-200
-                                    bg-green-100/70
+                                    bg-green-100/70 dark:bg-green-950/40 dark:border-green-800
                                     px-5
                                     py-2
                                     shadow-sm
@@ -949,7 +955,7 @@ const FeaturedVehicleCard = ({
                                         text-3xl
                                         font-black
                                         tracking-tight
-                                        text-green-800
+                                        text-green-800 dark:text-green-300
                                     "
                                 />
 
@@ -960,7 +966,7 @@ const FeaturedVehicleCard = ({
                                         font-semibold
                                         uppercase
                                         tracking-wide
-                                        text-green-700
+                                        text-green-700 dark:text-green-400
                                     "
                                 >
                                     /day
@@ -1016,6 +1022,7 @@ const FeaturedVehicleCard = ({
                                         border-t
                                         border-gray-200
                                         pt-7
+                                        dark:border-gray-700
                                     "
                                 >
                                     <div className="flex flex-wrap gap-3">
@@ -1055,10 +1062,11 @@ const FeaturedVehicleCard = ({
                                             border-t
                                             border-gray-200
                                             pt-7
+                                            dark:border-gray-700
                                         "
                                     >
                                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                                            <h3 className="text-sm font-bold uppercase tracking-wide text-gray-500">
+                                            <h3 className="text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                                 Booking
                                                 Availability
                                             </h3>

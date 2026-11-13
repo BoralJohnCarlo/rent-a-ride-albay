@@ -86,7 +86,7 @@ const ApproveConsignmentForm = ({
                         }
                         disabled={disabled}
                         placeholder="Daily Rate (₱)"
-                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-700 dark:bg-gray-900"
+                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:disabled:bg-gray-800"
                     />
 
                     <input
@@ -105,7 +105,7 @@ const ApproveConsignmentForm = ({
                         }
                         disabled={disabled}
                         placeholder="Reservation Fee (₱)"
-                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-700 dark:bg-gray-900"
+                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:disabled:bg-gray-800"
                     />
                 </div>
             </div>
@@ -205,7 +205,7 @@ const ApproveConsignmentForm = ({
                                         ? "Amount in ₱"
                                         : "Percentage (%)"
                                 }
-                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-700 dark:bg-gray-900"
+                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:disabled:bg-gray-800"
                             />
                         </div>
 
@@ -221,9 +221,9 @@ const ApproveConsignmentForm = ({
             </div>
 
             <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
+                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Approval Remarks
-                    <span className="ml-1 text-xs font-normal text-gray-500">
+                    <span className="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
                         (Optional)
                     </span>
                 </label>
@@ -239,7 +239,7 @@ const ApproveConsignmentForm = ({
                     }
                     disabled={disabled}
                     placeholder="Enter additional remarks about this approval."
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-gray-100"
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-gray-100 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-600 dark:disabled:bg-gray-800"
                 />
             </div>
         </div>

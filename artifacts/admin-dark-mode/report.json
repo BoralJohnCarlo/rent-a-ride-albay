@@ -1,0 +1,532 @@
+[
+  {
+    "route": "/admin",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Welcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\nFleet\nBookings\nREPORTING PERIOD\nLast 30 Days\n\nCustomers\n\n128\n\n",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "RENT-A-RIDE ALBAY\nWelcome back, Alexandra!\n\nHere's what's happening with your car rental business today.\n\n\"More Journeys. Brighter Destinations.\"\n\nMan",
+    "lightPanels": [
+      {
+        "tag": "SECTION",
+        "cls": "\n                relative\n                overflow-hidden\n                rounded-2xl\n                border\n                border-gray-200\n                bg-white\n                p-6\n                text-gray-900\n                shadow-sm\n                dark:border-gray-800\n                dark:bg-[linear-gradient(160deg,#0f1e3d_0%,#16234a_55%,#1c2c5c_100%)]\n                dark:text-white\n                \n            ",
+        "text": "Revenue OverviewTotal revenue and growth for last 30 days.0%₱1,250,000.00vs previous perio"
+      }
+    ]
+  },
+  {
+    "route": "/admin/bookings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Newest first\n\nACTIVE NOW\n\n0\n\nCANCELLED\n\n0\n\nREJECTED\n\n0\n\nEXPIRED\n\n0\n\nNO-SHOWS\n\n0\n\nCONFIRMED VALUE\n\n₱0\n\nBOOKINGS TO MANAGE\n\nPending, paid, and approved ",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/bookings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Newest first\nFilters\nExport to Excel\n\nACTIVE NOW\n\n0\n\nVehicles currently out\n\nCANCELLED\n\n0\n\nCancelled bookings\n\nREJECTED\n\n0\n\nRejected bookings\n\nEXPIRED",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/users",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Users\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/users",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Users\n2\nPartners\n0\nBlacklisted\n0\nMA\nMaria Alexandra Dela Cruz\n\ncustomer@example.test\n\nCustomer\nUnverified\n\nPHONE\n\n09171234567\n\nJOINED\n\nOct 1, 2026\n\nID",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/vehicles",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Add Vehicle\n\nTOTAL FLEET\n\n3\n\nACTIVE\n\n3\n\nARCHIVED\n\n0\n\nCOMPANY-OWNED\n\n0\n\nCONSIGNED\n\n0\n\nCATEGORIES\n\n0\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automati",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/vehicles",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Filters\nExport to Excel\nTable\nCards\nAdd Vehicle\nExpand All\nCollapse All\n\nTOTAL FLEET\n\n3\n\nAll vehicles\n\nACTIVE\n\n3\n\nCurrently listed\n\nARCHIVED\n\n0\n\nHidde",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/consignments",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Applications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved Partners\n\n3\n\n",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/consignments",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Table\nCards\nApplications\n1\nPartners\nAppointments\nInspection Calendar\nPending Vehicles\n3\n\n0\n\nDrafts\n\n1\n\nAwaiting Review\n\n0\n\nUnder Review\n\n0\n\nApproved P",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/drivers",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "All\n0\nActive\n0\nSuspended\n0\nArchived\n0\nAdd Driver\nWeekly Schedule\n\nWho's working which day, based on each driver's recurring schedule.\n\nMONDAY\n\nNo driv",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/drivers",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "All\n0\nActive\n0\nSuspended\n0\nArchived\n0\nAdd Driver\nWeekly Schedule\n\nWho's working which day, based on each driver's recurring schedule.\n\nMONDAY\n\nNo driv",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/gps",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": false,
+    "errors": [
+      "Uncaught TypeError: Cannot read properties of null (reading 'on')"
+    ],
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/gps",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": false,
+    "errors": [
+      "Uncaught TypeError: Cannot read properties of null (reading 'on')"
+    ],
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/payments",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "All methods\nAll types\nPayments\n0\nRefunds\n0\nOwed Refunds\n0\nEarly Returns\n0\nAll\n0\nPending\n0\nVerified\n0\nRefunded\n0\nCancelled\n0\n\nCOLLECTED\n\n₱0.00\n\nPayment",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/payments",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "All methods\nAll types\nExport to Excel\nPayments\n0\nRefunds\n0\nOwed Refunds\n0\nEarly Returns\n0\nAll\n0\nPending\n0\nVerified\n0\nRefunded\n0\nCancelled\n0\n\nCOLLECTED",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/promotions",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Vouchers\nDiscounts\nCreate Voucher\n\n0 vouchers\n\nNo vouchers found\n\nCreate a voucher to get started.",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/promotions",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Vouchers\nDiscounts\nCreate Voucher\n\n0 vouchers\n\nNo vouchers found\n\nCreate a voucher to get started.",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/customer-service",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": false,
+    "errors": [
+      "Uncaught TypeError: Cannot read properties of null (reading 'on')"
+    ],
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/customer-service",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": false,
+    "errors": [
+      "Uncaught TypeError: Cannot read properties of null (reading 'on')"
+    ],
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/reviews",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Filters\n\nNo reviews have been submitted yet.",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/reviews",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Filters\n\nNo reviews have been submitted yet.",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Browser Notifications\n\nManage important alerts for your account on this browser.\n\nManage\nBookings\n\nSet the turnaround buffer: the minimum time between",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Browser Notifications\n\nManage important alerts for your account on this browser.\n\nManage\nBookings\n\nSet the turnaround buffer: the minimum time between",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/BookingSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Turnaround Buffer\n\nThe minimum time between one rental's due-back time and the next pickup of the same vehicle or driver, for cleaning and inspection.",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/BookingSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Turnaround Buffer\n\nThe minimum time between one rental's due-back time and the next pickup of the same vehicle or driver, for cleaning and inspection.",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/CommissionSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Platform Commission\n\nThe default rate used for every partner's payouts. When approving a consignment, an admin can still give that specific vehicle it",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/CommissionSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Platform Commission\n\nThe default rate used for every partner's payouts. When approving a consignment, an admin can still give that specific vehicle it",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/CustomerSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Concurrent Booking Limit\n\nLimit how many vehicles a customer can have booked for overlapping dates at the same time.\n\nMaximum bookings per customer\n\nS",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/CustomerSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Concurrent Booking Limit\n\nLimit how many vehicles a customer can have booked for overlapping dates at the same time.\n\nMaximum bookings per customer\n\nS",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/DestinationSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Explore Albay Destinations\n\n0 of 0 shown on the Explore page · 0/3 in the home page widget\n\nView page\nAdd destination\n\nMark up to 3 destinations with ",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/DestinationSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Explore Albay Destinations\n\n0 of 0 shown on the Explore page · 0/3 in the home page widget\n\nView page\nAdd destination\n\nMark up to 3 destinations with ",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/DriverSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Driver Pricing\n\nSet the daily fee added to bookings made with a driver.\n\nPricing mode\nGlobal rate for all drivers\nGlobal daily rate (PHP)\n\nIndividual ",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/DriverSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Driver Pricing\n\nSet the daily fee added to bookings made with a driver.\n\nPricing mode\nGlobal rate for all drivers\nGlobal daily rate (PHP)\n\nIndividual ",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/LegalDocumentSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Terms & Policies\n\nEdit a draft, preview it, then publish it as a new version. Published versions never change, so every booking keeps the terms its cu",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/LegalDocumentSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Terms & Policies\n\nEdit a draft, preview it, then publish it as a new version. Published versions never change, so every booking keeps the terms its cu",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/PenaltySettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Changes here apply to new bookings right away. Existing bookings keep the rules from when they were booked, and only get a change when it's better for",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/PenaltySettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Changes here apply to new bookings right away. Existing bookings keep the rules from when they were booked, and only get a change when it's better for",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/RefundSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Changes here apply to new bookings right away. Existing bookings keep the rules from when they were booked, and only get a change when it's better for",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/RefundSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Changes here apply to new bookings right away. Existing bookings keep the rules from when they were booked, and only get a change when it's better for",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/RegistrationSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Proof of Billing Address\n\nAsk customers and partners for one image of a utility bill or bank statement when they register.\n\nRequire proof of billing a",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/RegistrationSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Proof of Billing Address\n\nAsk customers and partners for one image of a utility bill or bank statement when they register.\n\nRequire proof of billing a",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/ServiceLocations",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Service Locations\n\nManage pickup and return locations for vehicle rentals.\n\nAdd Location\nNo Results\n\nNo records found.\n\nDistance Fee Rules\n\nConfigure ",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/ServiceLocations",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Service Locations\n\nManage pickup and return locations for vehicle rentals.\n\nAdd Location\nNo Results\n\nNo records found.\n\nDistance Fee Rules\n\nConfigure ",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/TestimonialSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Homepage Testimonials\n\n0 of 0 shown on the homepage. Add your own or feature a customer's booking review.\n\nUse a customer review\nAdd testimonial\n\nNo t",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/TestimonialSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Homepage Testimonials\n\n0 of 0 shown on the homepage. Add your own or feature a customer's booking review.\n\nUse a customer review\nAdd testimonial\n\nNo t",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/ThemeSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Admin & operator buttons\n\nShared primary action colors in light and dark mode. Text adjusts for readability. Status actions keep their own colors.\n\nBu",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/ThemeSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Admin & operator buttons\n\nShared primary action colors in light and dark mode. Text adjusts for readability. Status actions keep their own colors.\n\nBu",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/ValidIdRenewalSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Renewal Configuration\n\nSet how many times users can renew their valid ID per year and the renewal period.\n\nMaximum Renewals Per Year\n\nMaximum number o",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/ValidIdRenewalSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Renewal Configuration\n\nSet how many times users can renew their valid ID per year and the renewal period.\n\nMaximum Renewals Per Year\n\nMaximum number o",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/VehicleRegistrationSettings",
+    "theme": "dark",
+    "body": 375,
+    "width": 375,
+    "main": true,
+    "errors": [],
+    "text": "Renewal Configuration\n\nSet how many times an operator can renew a vehicle's registration per period, and how many renewal attempts they're allowed. Ad",
+    "lightPanels": []
+  },
+  {
+    "route": "/admin/settings/VehicleRegistrationSettings",
+    "theme": "dark",
+    "body": 1280,
+    "width": 1280,
+    "main": true,
+    "errors": [],
+    "text": "Renewal Configuration\n\nSet how many times an operator can renew a vehicle's registration per period, and how many renewal attempts they're allowed. Ad",
+    "lightPanels": []
+  }
+]

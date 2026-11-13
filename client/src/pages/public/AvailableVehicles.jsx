@@ -35,6 +35,7 @@ import { getVehicles } from "../../store/vehicles/vehicleSlice";
 import { checkVehiclesAvailabilityBulk } from "../../api/vehicleApi";
 import {
     BOOKABLE_VEHICLE_STATUS_FILTER,
+    TRANSMISSION_FILTER_OPTIONS,
     isVehicleBookable,
     overlapsVehicleMaintenance,
 } from "../../constants/vehicleConstants";
@@ -202,6 +203,12 @@ const AvailableVehicles = () => {
         searchParams.get("type") || ""
     );
 
+    const [transmission, setTransmission] = useState(
+        () => TRANSMISSION_FILTER_OPTIONS.find(
+            (option) => option.value === searchParams.get("transmission")
+        )?.value || ""
+    );
+
     const [seatRange, setSeatRange] = useState([2, 2]);
     const [seatRangeTouched, setSeatRangeTouched] = useState(false);
 
@@ -241,10 +248,11 @@ const AvailableVehicles = () => {
         if (returnDate) next.return = returnDate;
         if (category) next.category = category;
         if (vehicleType) next.type = vehicleType;
+        if (transmission) next.transmission = transmission;
 
         setSearchParams(next, { replace: true });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pickupDate, returnDate, category, vehicleType]);
+    }, [pickupDate, returnDate, category, vehicleType, transmission]);
 
     /* --- derived data --- */
 
@@ -388,6 +396,13 @@ const AvailableVehicles = () => {
                 return false;
             }
 
+            if (
+                transmission &&
+                vehicle?.specifications?.transmission !== transmission
+            ) {
+                return false;
+            }
+
             const seats = Number(vehicle?.specifications?.seatingCapacity);
             if (
                 !Number.isFinite(seats) ||
@@ -467,6 +482,7 @@ const AvailableVehicles = () => {
         conflictingVehicleIds,
         category,
         vehicleType,
+        transmission,
         seatRange,
         priceRange,
         sortBy,
@@ -529,6 +545,7 @@ const AvailableVehicles = () => {
     const hasActiveFilters =
         Boolean(category) ||
         Boolean(vehicleType) ||
+        Boolean(transmission) ||
         seatRangeTouched ||
         sortBy !== "featured" ||
         priceTouched;
@@ -541,6 +558,7 @@ const AvailableVehicles = () => {
     const resetFilters = () => {
         setCategory("");
         setVehicleType("");
+        setTransmission("");
         setSeatRange([2, maxSeats]);
         setSeatRangeTouched(false);
         setSortBy("featured");
@@ -548,6 +566,11 @@ const AvailableVehicles = () => {
     };
 
     const activeFilterChips = [
+        transmission && {
+            key: "transmission",
+            label: transmission,
+            onClear: () => setTransmission(""),
+        },
         category && {
             key: "category",
             label: categoryLabel || "Category",
@@ -988,8 +1011,8 @@ const AvailableVehicles = () => {
                         </Field>
                     </div>
 
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <details className="group relative">
+                    <div className="relative mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <details className="group">
                             <summary className="flex h-9 cursor-pointer list-none items-center rounded-full border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:border-yellow-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                                 Seats
                                 {seatRangeTouched && (
@@ -998,7 +1021,7 @@ const AvailableVehicles = () => {
                                     </span>
                                 )}
                             </summary>
-                            <div className="absolute left-0 z-50 mt-2 w-[min(16rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white p-4 shadow-xl sm:left-1/2 sm:-translate-x-1/2 dark:border-gray-700 dark:bg-gray-900">
+                            <div className="absolute left-0 z-50 mt-2 w-[min(16rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white p-4 shadow-xl dark:border-gray-700 dark:bg-gray-900">
                                 <div className="mb-2 flex items-center justify-between text-xs font-bold text-gray-700 dark:text-gray-200">
                                     <span>Number of seats</span>
                                     {seatRangeTouched && (
@@ -1030,7 +1053,7 @@ const AvailableVehicles = () => {
                             </div>
                         </details>
 
-                        <details className="group relative">
+                        <details className="group">
                             <summary className="flex h-9 cursor-pointer list-none items-center rounded-full border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:border-yellow-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                                 Price / day
                                 {priceTouched && (
@@ -1040,7 +1063,7 @@ const AvailableVehicles = () => {
                                     </span>
                                 )}
                             </summary>
-                            <div className="absolute right-0 z-50 mt-2 w-[min(16rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white p-4 shadow-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 dark:border-gray-700 dark:bg-gray-900">
+                            <div className="absolute left-0 z-50 mt-2 w-[min(16rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white p-4 shadow-xl dark:border-gray-700 dark:bg-gray-900">
                                 <div className="mb-2 flex items-center justify-between text-xs font-bold text-gray-700 dark:text-gray-200">
                                     <span>Daily price range</span>
                                     {priceTouched && (
@@ -1062,6 +1085,15 @@ const AvailableVehicles = () => {
                                 />
                             </div>
                         </details>
+
+                        <Select
+                            bare
+                            aria-label="Transmission"
+                            value={transmission}
+                            onChange={(event) => setTransmission(event.target.value)}
+                            options={TRANSMISSION_FILTER_OPTIONS}
+                            className="h-9 max-w-[10rem] rounded-full border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:border-yellow-400 focus-visible:border-yellow-500 focus-visible:ring-2 focus-visible:ring-yellow-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                        />
 
                         <div className="flex min-w-0 basis-full sm:basis-0 flex-1 flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 dark:border-gray-800 dark:bg-gray-800/50">
                             <div className="inline-flex items-baseline gap-1.5 text-sm text-gray-500 dark:text-gray-400">

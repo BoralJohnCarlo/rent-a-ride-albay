@@ -12,8 +12,8 @@ const FilterSidebar = ({
                 .filter(Boolean)
                 .join(" ")}
         >
-            <div className="mb-5 border-b border-gray-200 pb-3">
-                <h2 className="text-lg font-semibold text-gray-900">
+            <div className="mb-5 border-b border-gray-200 pb-3 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {title}
                 </h2>
             </div>

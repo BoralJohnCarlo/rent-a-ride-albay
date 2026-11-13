@@ -409,7 +409,7 @@ const handleSubmit = (event) => {
 
             <div>
 
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                     {
                         FORM_STEPS[
                             currentStep
@@ -417,7 +417,7 @@ const handleSubmit = (event) => {
                     }
                 </h2>
 
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     {
                         FORM_STEPS[
                             currentStep
@@ -427,7 +427,7 @@ const handleSubmit = (event) => {
 
             </div>
 
-            <span className="text-sm font-medium text-gray-500">
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
                 Step {currentStep + 1} of{" "}
                 {
                     FORM_STEPS.length
@@ -436,7 +436,7 @@ const handleSubmit = (event) => {
 
         </div>
 
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200">
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
 
             <motion.div
                 className="h-full rounded-full bg-blue-600"
@@ -603,7 +603,7 @@ const handleSubmit = (event) => {
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
 
-            <h3 className="mb-5 text-lg font-semibold text-gray-900">
+            <h3 className="mb-5 text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Contact Information
             </h3>
 
@@ -660,7 +660,7 @@ const handleSubmit = (event) => {
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
 
-            <h3 className="mb-5 text-lg font-semibold text-gray-900">
+            <h3 className="mb-5 text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Profile Image
             </h3>
 
@@ -695,11 +695,11 @@ const handleSubmit = (event) => {
                 </div>
 
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         Partner Account
                     </h3>
 
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                         Review the partner information before creating the account.
                     </p>
                 </div>
@@ -714,7 +714,7 @@ const handleSubmit = (event) => {
                         First Name
                     </p>
 
-                    <p className="mt-1 font-medium text-gray-900">
+                    <p className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                         {formData.firstName || "-"}
                     </p>
 
@@ -726,7 +726,7 @@ const handleSubmit = (event) => {
                         Last Name
                     </p>
 
-                    <p className="mt-1 font-medium text-gray-900">
+                    <p className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                         {formData.lastName || "-"}
                     </p>
 
@@ -745,7 +745,7 @@ const handleSubmit = (event) => {
                     className="text-blue-600"
                 />
 
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     Login Account
                 </h3>
 
@@ -755,7 +755,7 @@ const handleSubmit = (event) => {
                 Email Address
             </p>
 
-            <p className="mt-1 font-medium text-gray-900">
+            <p className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                 {formData.email || "-"}
             </p>
 
@@ -770,7 +770,7 @@ const handleSubmit = (event) => {
                     className="text-blue-600"
                 />
 
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     Contact Information
                 </h3>
 
@@ -784,7 +784,7 @@ const handleSubmit = (event) => {
                         Phone Number
                     </p>
 
-                    <p className="mt-1 font-medium text-gray-900">
+                    <p className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                         {formData.phoneNumber || "-"}
                     </p>
 
@@ -796,7 +796,7 @@ const handleSubmit = (event) => {
                         Alternative Contact
                     </p>
 
-                    <p className="mt-1 font-medium text-gray-900">
+                    <p className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                         {formData.alternativeContact || "-"}
                     </p>
 
@@ -815,7 +815,7 @@ const handleSubmit = (event) => {
                     className="text-blue-600"
                 />
 
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     Profile Image
                 </h3>
 
@@ -834,7 +834,7 @@ const handleSubmit = (event) => {
                     className="h-32 w-32 rounded-xl border object-cover"
                 />
             ) : (
-                <div className="flex h-32 w-32 items-center justify-center rounded-xl border border-dashed border-gray-300 text-sm text-gray-400">
+                <div className="flex h-32 w-32 items-center justify-center rounded-xl border border-dashed border-gray-300 text-sm text-gray-400 dark:border-gray-600">
                     No Image
                 </div>
             )}

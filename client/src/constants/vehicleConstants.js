@@ -175,6 +175,11 @@ export const TRANSMISSION_TYPE_VALUES = Object.values(
     TRANSMISSION_TYPES
 );
 
+export const TRANSMISSION_FILTER_OPTIONS = [
+    { value: "", label: "All transmissions" },
+    ...TRANSMISSION_TYPE_VALUES.map((value) => ({ value, label: value })),
+];
+
 export const FUEL_TYPES = {
     GASOLINE: "Gasoline",
     DIESEL: "Diesel",

@@ -192,7 +192,7 @@ const VehicleCategoryTable = ({
         renderDetails={(category) => (
             
     <div className="p-6">
-        <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+        <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Vehicles in this Category
         </h4>
 
@@ -204,11 +204,11 @@ const VehicleCategoryTable = ({
     className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
 >
     <div>
-        <p className="font-medium text-gray-900">
+        <p className="font-medium text-gray-900 dark:text-gray-100">
             {vehicle.brand} {vehicle.model}
         </p>
 
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {vehicle.vehicleCode} • {vehicle.plateNumber}
         </p>
 
@@ -234,7 +234,7 @@ const VehicleCategoryTable = ({
                     category
                 )
             }
-        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
     >
         Remove
                 </button>
@@ -242,7 +242,7 @@ const VehicleCategoryTable = ({
                     
                 ))
             ) : (
-                <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+                <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:text-gray-400 dark:border-gray-600">
                     No vehicles are currently assigned to this category.
                 </div>
             )}

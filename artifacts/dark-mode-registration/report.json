@@ -1,0 +1,74 @@
+[
+  {
+    "route": "/register",
+    "theme": "light",
+    "width": 375,
+    "body": 375,
+    "errors": [],
+    "heading": "Personal Information",
+    "color": "oklch(0.21 0.034 264.665)"
+  },
+  {
+    "route": "/register",
+    "theme": "dark",
+    "width": 375,
+    "body": 375,
+    "errors": [],
+    "heading": "Personal Information",
+    "color": "oklch(0.967 0.003 264.542)"
+  },
+  {
+    "route": "/register",
+    "theme": "light",
+    "width": 1280,
+    "body": 1270,
+    "errors": [],
+    "heading": "Personal Information",
+    "color": "oklch(0.21 0.034 264.665)"
+  },
+  {
+    "route": "/register",
+    "theme": "dark",
+    "width": 1280,
+    "body": 1270,
+    "errors": [],
+    "heading": "Personal Information",
+    "color": "oklch(0.967 0.003 264.542)"
+  },
+  {
+    "route": "/register-operator",
+    "theme": "light",
+    "width": 375,
+    "body": 375,
+    "errors": [],
+    "heading": "Personal Information",
+    "color": "oklch(0.21 0.034 264.665)"
+  },
+  {
+    "route": "/register-operator",
+    "theme": "dark",
+    "width": 375,
+    "body": 375,
+    "errors": [],
+    "heading": "Personal Information",
+    "color": "oklch(0.967 0.003 264.542)"
+  },
+  {
+    "route": "/register-operator",
+    "theme": "light",
+    "width": 1280,
+    "body": 1270,
+    "errors": [],
+    "heading": "Personal Information",
+    "color": "oklch(0.21 0.034 264.665)"
+  },
+  {
+    "route": "/register-operator",
+    "theme": "dark",
+    "width": 1280,
+    "body": 1270,
+    "errors": [],
+    "heading": "Personal Information",
+    "color": "oklch(0.967 0.003 264.542)"
+  }
+]

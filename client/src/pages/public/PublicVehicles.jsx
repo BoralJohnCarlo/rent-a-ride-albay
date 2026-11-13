@@ -42,6 +42,7 @@ import DiscountBadge from "../../components/vehicle/DiscountBadge";
 import OriginalPrice from "../../components/vehicle/OriginalPrice";
 import {
     BOOKABLE_VEHICLE_STATUS_FILTER,
+    TRANSMISSION_FILTER_OPTIONS,
     isVehicleBookable,
 } from "../../constants/vehicleConstants";
 
@@ -79,6 +80,8 @@ const PublicVehicles = () => {
         useState("");
 
     const [category, setCategory] = useState("");
+
+    const [transmission, setTransmission] = useState("");
 
     const [seatRange, setSeatRange] = useState([2, 2]);
     const [seatRangeTouched, setSeatRangeTouched] = useState(false);
@@ -173,6 +176,13 @@ const PublicVehicles = () => {
                 return false;
             }
 
+            if (
+                transmission &&
+                vehicle?.specifications?.transmission !== transmission
+            ) {
+                return false;
+            }
+
             const seats = Number(vehicle?.specifications?.seatingCapacity);
             if (
                 !Number.isFinite(seats) ||
@@ -241,6 +251,7 @@ const PublicVehicles = () => {
         vehicles,
         search,
         vehicleType,
+        transmission,
         category,
         seatRange,
         priceRange,
@@ -250,6 +261,7 @@ const PublicVehicles = () => {
     const clearFilters = () => {
         setSearch("");
         setVehicleType("");
+        setTransmission("");
         setCategory("");
         setSeatRange([2, maxSeats]);
         setSeatRangeTouched(false);
@@ -262,6 +274,7 @@ const PublicVehicles = () => {
         search.trim() ||
             category ||
             vehicleType ||
+            transmission ||
             seatRangeTouched ||
             priceTouched ||
             sortBy !== "default"
@@ -422,6 +435,12 @@ const PublicVehicles = () => {
                                 />
                             </div>
                         </details>
+                        <CompactSelect
+                            label="Transmission"
+                            value={transmission}
+                            onChange={setTransmission}
+                            options={TRANSMISSION_FILTER_OPTIONS}
+                        />
                     </div>
 
                     <div

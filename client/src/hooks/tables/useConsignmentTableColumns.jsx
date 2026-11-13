@@ -43,11 +43,11 @@ const useConsignmentTableColumns = ({
 
                     return (
                         <div className="space-y-1">
-                            <p className="font-semibold text-gray-900">
+                            <p className="font-semibold text-gray-900 dark:text-gray-100">
                                 {item.title}
                             </p>
 
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                                 {item.consignmentCode}
                             </p>
 
@@ -79,7 +79,7 @@ const useConsignmentTableColumns = ({
 
                     return (
                         <div>
-                            <p className="font-medium text-gray-900">
+                            <p className="font-medium text-gray-900 dark:text-gray-100">
                                 {item.applicantName}
                             </p>
 
@@ -98,7 +98,7 @@ const useConsignmentTableColumns = ({
                                 </button>
                             )}
 
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                                 {item.vehicleType}
                             </p>
                         </div>

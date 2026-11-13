@@ -21,7 +21,7 @@ const ConsignmentSummaryCard = ({
 
     return (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <div className="aspect-video overflow-hidden bg-gray-100">
+            <div className="aspect-video overflow-hidden bg-gray-100 dark:bg-gray-800">
                 {image ? (
                     <img
                         src={image}
@@ -37,11 +37,11 @@ const ConsignmentSummaryCard = ({
 
             <div className="space-y-5 p-6">
                 <div>
-                    <h3 className="text-xl font-semibold text-gray-900">
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                         {title}
                     </h3>
 
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         {consignmentCode || "—"}
                     </p>
                 </div>
@@ -58,24 +58,24 @@ const ConsignmentSummaryCard = ({
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 border-t pt-5 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 border-t pt-5 sm:grid-cols-2 dark:border-gray-700">
                     <div>
-                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             Plate Number
                         </p>
 
-                        <p className="mt-1 font-medium text-gray-900">
+                        <p className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                             {plateNumber ||
                                 "—"}
                         </p>
                     </div>
 
                     <div>
-                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             Submitted
                         </p>
 
-                        <p className="mt-1 font-medium text-gray-900">
+                        <p className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                             {submittedAt
                                 ? formatDate(
                                       submittedAt

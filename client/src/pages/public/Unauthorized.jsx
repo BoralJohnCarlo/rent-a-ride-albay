@@ -16,7 +16,7 @@ const Unauthorized = () => {
     const navigate = useNavigate();
 
     return (
-        <main className="min-h-screen bg-gray-50">
+        <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
             <Section
                 spacing="XL"
                 className="flex min-h-screen items-center"
@@ -65,6 +65,7 @@ const Unauthorized = () => {
                                 bg-yellow-100
                                 text-yellow-600
                                 shadow-sm
+                                dark:bg-yellow-900/40
                             "
                         >
                             <ShieldAlert
@@ -94,6 +95,7 @@ const Unauthorized = () => {
                                 tracking-tight
                                 text-gray-900
                                 sm:text-5xl
+                                dark:text-gray-100
                             "
                         >
                             Unauthorized Access
@@ -108,6 +110,7 @@ const Unauthorized = () => {
                                 leading-7
                                 text-gray-600
                                 sm:text-lg
+                                dark:text-gray-300
                             "
                         >
                             You do not have permission to
@@ -151,6 +154,7 @@ const Unauthorized = () => {
                                     focus:ring-2
                                     focus:ring-yellow-500
                                     focus:ring-offset-2
+                                    dark:focus:ring-offset-gray-900
                                 "
                             >
                                 <Home size={17} />
@@ -187,6 +191,7 @@ const Unauthorized = () => {
                                     focus:ring-2
                                     focus:ring-yellow-500
                                     focus:ring-offset-2
+                                    dark:bg-gray-900 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-100 dark:hover:border-gray-500 dark:focus:ring-offset-gray-900
                                 "
                             >
                                 <ArrowLeft size={17} />
@@ -207,6 +212,7 @@ const Unauthorized = () => {
                                 py-4
                                 text-left
                                 shadow-sm
+                                dark:bg-gray-900 dark:border-gray-700
                             "
                         >
                             <p
@@ -227,6 +233,7 @@ const Unauthorized = () => {
                                     text-sm
                                     leading-6
                                     text-gray-500
+                                    dark:text-gray-400
                                 "
                             >
                                 Your account may not have

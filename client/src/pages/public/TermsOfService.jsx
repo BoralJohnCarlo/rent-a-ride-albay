@@ -56,7 +56,7 @@ const TermsOfService = () => {
         <>
             <Section
                 spacing="XL"
-                className="bg-gray-50"
+                className="bg-gray-50 dark:bg-gray-950"
             >
                 <PageContainer>
                     <motion.div
@@ -104,6 +104,7 @@ const TermsOfService = () => {
                                 text-sm
                                 font-semibold
                                 text-yellow-700
+                                dark:bg-yellow-950/30 dark:border-yellow-800 dark:text-yellow-300
                             "
                         >
                             <FileText size={16} />
@@ -118,6 +119,7 @@ const TermsOfService = () => {
                                 tracking-tight
                                 text-gray-900
                                 sm:text-5xl
+                                dark:text-gray-100
                             "
                         >
                             {renderTitle(
@@ -136,6 +138,7 @@ const TermsOfService = () => {
                                     leading-7
                                     text-gray-600
                                     sm:text-lg
+                                    dark:text-gray-300
                                 "
                             >
                                 {document.intro}
@@ -143,7 +146,7 @@ const TermsOfService = () => {
                         )}
 
                         {document && (
-                            <p className="mt-4 text-xs font-medium text-gray-500">
+                            <p className="mt-4 text-xs font-medium text-gray-500 dark:text-gray-400">
                                 Version {document.version}
                                 {document.publishedAt &&
                                     ` · Effective ${formatLegalDate(
@@ -157,19 +160,19 @@ const TermsOfService = () => {
 
             <Section
                 spacing="XL"
-                className="bg-white"
+                className="bg-white dark:bg-gray-900"
             >
                 <PageContainer>
                     <div className="mx-auto max-w-4xl">
                         {!document && (
-                            <div className="flex flex-col items-center gap-3 rounded-3xl border border-gray-200 bg-white px-6 py-14 text-center">
+                            <div className="flex flex-col items-center gap-3 rounded-3xl border border-gray-200 bg-white px-6 py-14 text-center dark:bg-gray-900 dark:border-gray-700">
                                 {error ? (
                                     <>
                                         <AlertCircle
                                             size={24}
                                             className="text-red-500"
                                         />
-                                        <p className="text-sm text-gray-600">
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">
                                             {error}
                                         </p>
                                         <button
@@ -182,7 +185,7 @@ const TermsOfService = () => {
                                         </button>
                                     </>
                                 ) : (
-                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-yellow-500" />
+                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-yellow-500 dark:border-gray-700 dark:border-t-yellow-500" />
                                 )}
                             </div>
                         )}
@@ -214,6 +217,7 @@ const TermsOfService = () => {
                                 p-6
                                 shadow-sm
                                 sm:p-7
+                                dark:bg-yellow-950/30 dark:border-yellow-800
                             "
                         >
                             <div className="flex items-start gap-4">
@@ -245,6 +249,7 @@ const TermsOfService = () => {
                                             tracking-tight
                                             text-gray-900
                                             sm:text-lg
+                                            dark:text-gray-100
                                         "
                                     >
                                         {document.notice.title}
@@ -257,6 +262,7 @@ const TermsOfService = () => {
                                             text-sm
                                             leading-7
                                             text-gray-600
+                                            dark:text-gray-300
                                         "
                                     >
                                         {document.notice.body}
@@ -306,6 +312,7 @@ const TermsOfService = () => {
                                             hover:border-gray-300
                                             hover:shadow-lg
                                             sm:p-7
+                                            dark:bg-gray-900 dark:border-gray-700 dark:hover:border-gray-600
                                         "
                                     >
                                         <div className="flex items-start gap-5">
@@ -340,6 +347,7 @@ const TermsOfService = () => {
                                                         tracking-tight
                                                         text-gray-900
                                                         sm:text-xl
+                                                        dark:text-gray-100
                                                     "
                                                 >
                                                     {title}
@@ -355,6 +363,7 @@ const TermsOfService = () => {
                                                                 text-sm
                                                                 leading-7
                                                                 text-gray-600
+                                                                dark:text-gray-300
                                                             "
                                                         >
                                                             {paragraph}
@@ -467,6 +476,7 @@ const TermsOfService = () => {
                                             focus:ring-yellow-500
                                             focus:ring-offset-2
                                             focus:ring-offset-gray-950
+                                            dark:focus:ring-offset-gray-900
                                         "
                                     >
                                         Contact Us

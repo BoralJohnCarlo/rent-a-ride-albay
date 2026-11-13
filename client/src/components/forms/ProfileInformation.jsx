@@ -16,11 +16,11 @@ const ProfileInformation = ({
                 />
 
                 <div className="text-center">
-                    <h2 className="text-xl font-semibold text-gray-900">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                         Profile Information
                     </h2>
 
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                         Update your personal information.
                     </p>
                 </div>
