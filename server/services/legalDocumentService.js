@@ -646,6 +646,13 @@ export const resolveAcceptedLegalVersion = async (
  * then even after the settings change.
  */
 export const buildTermsPolicySnapshot = (settings) => ({
+    boundary: {
+        alertsEnabled: settings?.boundarySettings?.alertsEnabled !== false,
+        penaltiesEnabled: settings?.boundarySettings?.penaltiesEnabled === true,
+        warningDistanceKm: settings?.boundarySettings?.warningDistanceKm ?? 2,
+        gracePeriodMinutes: settings?.boundarySettings?.gracePeriodMinutes ?? 15,
+        penaltyAmount: settings?.boundarySettings?.penaltyAmount ?? 500,
+    },
     cancellationPolicy: settings?.refundSettings?.cancellationPolicy,
     requireCancellationReason:
         settings?.refundSettings?.requireCancellationReason ?? true,

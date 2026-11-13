@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { BOUNDARY_DEFAULTS } from "../utils/boundaryPolicy.js";
 
 import {
     DEFAULT_TURNAROUND_BUFFER_MINUTES,
@@ -10,6 +11,15 @@ import {
 
 const settingsSchema = new mongoose.Schema(
     {
+        boundarySettings: {
+            alertsEnabled: { type: Boolean, default: BOUNDARY_DEFAULTS.alertsEnabled },
+            penaltiesEnabled: { type: Boolean, default: BOUNDARY_DEFAULTS.penaltiesEnabled },
+            warningDistanceKm: { type: Number, min: 0.5, max: 20, default: 2 },
+            gracePeriodMinutes: { type: Number, min: 5, max: 1440, default: 15 },
+            penaltyAmount: { type: Number, min: 0, max: 100000, default: 500 },
+            bufferMeters: { type: Number, min: 50, max: 1000, default: 200 },
+            confirmationSeconds: { type: Number, min: 30, max: 600, default: 60 },
+        },
         allowOnlyDefaultLocation: {
             type: Boolean,
             default: false,

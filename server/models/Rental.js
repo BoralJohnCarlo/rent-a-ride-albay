@@ -1219,6 +1219,17 @@ const rentalSchema = new mongoose.Schema(
             default: () => ({}),
         },
 
+        boundaryExemption: {
+            until: Date, reason: String,
+            approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+            approvedAt: Date,
+        },
+        boundaryExemptionHistory: [{
+            until: Date, reason: String, action: { type: String, enum: ["approved", "revoked"] },
+            performedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, performedAt: Date,
+        }],
+        boundaryPenaltyIncident: { type: mongoose.Schema.Types.ObjectId, default: null },
+
         return: {
             type: inspectionSchema,
             default: () => ({}),

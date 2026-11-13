@@ -73,6 +73,7 @@ const notificationSchema = new mongoose.Schema(
         dismissed: { type: Boolean, default: false },
         // Saved with the notification so a crash cannot lose the enqueue intent.
         pushPending: { type: Boolean, default: false },
+        pushCancelled: { type: Boolean, default: false },
         metadata: {
             reference: {
                 type: String,

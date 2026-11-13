@@ -1,6 +1,7 @@
 import inspectionSettingRoutes from './inspectionSettingRoutes.js';
 import pendingVehicleRoutes from './pendingVehicleRoutes.js';
 import express from "express";
+import boundaryRoutes from "./boundaryRoutes.js";
 
 import authRoutes from "./authRoutes.js";
 import userRoutes from "./userRoutes.js";
@@ -63,6 +64,7 @@ router.use("/bookings", bookingRoutes);
 router.use("/refunds", refundRoutes);
 router.use("/early-returns", earlyReturnRoutes);
 router.use("/rentals", rentalRoutes);
+router.use("/boundary", boundaryRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/statistics", statisticsRoutes);
 router.use("/notifications", notificationRoutes);

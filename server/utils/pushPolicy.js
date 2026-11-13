@@ -8,13 +8,16 @@ const events = {
 events.customer.push("Upcoming Pickup", "Rental Return Reminder", "Rental Overdue", "Your Booking Is Back On");
 events.operator.push("Withdrawal Completed", "Withdrawal Failed", "Rental Overdue");
 events.admin.push("vehicleRegistrationRenewalRequest", "Vehicle Registration Expired", "Vehicle Registration Expiring Soon", "Reschedule Requested", "Rental Extension Requested");
+for (const role of ["customer", "operator", "admin"]) events[role].push("Boundary Alert");
 
 export const shouldPush = (role, notification) =>
+    !notification.pushCancelled &&
     // Maintenance completion stays in-app; only an interruption needs a push.
     !(notification.type === "Vehicle Maintenance" && notification.title === "Vehicle Back in Service") &&
     (events[role] || []).some((event) => event === notification.type || event === notification.title);
 
 export const pushPath = (role, notification) => {
+    if (role === "admin" && notification.type === "Boundary Alert") return "/admin/settings/penalties";
     const id = String(notification.metadata?.relatedId || "");
     if (role === "customer" && notification.metadata?.relatedModel === "Booking" && /^[a-f\d]{24}$/i.test(id)) return `/customer/bookings/${id}`;
     // The inbox already resolves categories to the correct role-specific screens.

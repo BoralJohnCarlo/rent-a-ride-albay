@@ -1,4 +1,5 @@
 import createError from "../utils/createError.js";
+import { assertReviewedBoundaryPolicy } from "../utils/boundaryPolicy.js";
 import { assertBookingQuoteMatches } from "../utils/bookingQuote.js";
 import { getPeakConcurrentBookings } from "../utils/bookingConcurrency.js";
 import { getActiveAllocatedPriceChangeRefund } from "../utils/bookingRefundAllocations.js";
@@ -2424,7 +2425,7 @@ const populateBooking = async (
                   booking: booking._id,
               })
                   .select(
-                      "rentalCode vehicle lateReturn earlyReturn financial.lateCharges financial.balance financial.finalAmount financial.amountPaid status actualEndDate bookingPeriod pickup.fuelLevel return.date vehicleOutcome securityDeposit.required securityDeposit.status penaltyHistory refunds"
+                      "rentalCode vehicle lateReturn earlyReturn charges boundaryPenaltyIncident financial.otherCharges financial.lateCharges financial.balance financial.finalAmount financial.amountPaid status actualEndDate bookingPeriod pickup.fuelLevel return.date vehicleOutcome securityDeposit.required securityDeposit.status penaltyHistory refunds"
                   )
                   .populate(
                       "penaltyHistory.performedBy",
@@ -2700,6 +2701,7 @@ const createBooking = async (
               settings
           )
         : null;
+    assertReviewedBoundaryPolicy(settings.boundarySettings, bookingData.boundaryPolicy);
 
     // While admins assign drivers, the customer's pick (if any) is ignored:
     // the booking waits for one at approval.
@@ -2997,6 +2999,7 @@ const createBooking = async (
     try {
         booking = await withBookingCreationTransaction(
             [
+                "boundary-policy",
                 `customer:${currentUserId}`,
                 `vehicle:${vehicle._id}`,
                 ...(driverOption === BOOKING_DRIVER_OPTIONS.WITH_DRIVER && driverId
@@ -3007,6 +3010,7 @@ const createBooking = async (
                 // Preflight checks above provide quick feedback; these checks
                 // under the resource guards decide whether the slot is saved.
                 const currentSettings = await getBookingLocationPolicy(session);
+                assertReviewedBoundaryPolicy(currentSettings.boundarySettings, bookingData.boundaryPolicy);
                 // These changes affect the customer's choices or reviewed quote.
                 // Reject rather than silently changing driver assignment/pricing.
                 if (currentSettings.allowOnlyDefaultLocation !== settings.allowOnlyDefaultLocation ||
@@ -3513,7 +3517,7 @@ const getBookings = async (
             booking: { $in: bookingIds },
         })
             .select(
-                "booking rentalCode vehicle lateReturn earlyReturn financial.lateCharges financial.balance financial.finalAmount financial.amountPaid status actualEndDate bookingPeriod pickup.fuelLevel return.date vehicleOutcome securityDeposit.required securityDeposit.status penaltyHistory refunds"
+                "booking rentalCode vehicle lateReturn earlyReturn charges boundaryPenaltyIncident financial.otherCharges financial.lateCharges financial.balance financial.finalAmount financial.amountPaid status actualEndDate bookingPeriod pickup.fuelLevel return.date vehicleOutcome securityDeposit.required securityDeposit.status penaltyHistory refunds"
             )
             .populate(
                 "penaltyHistory.performedBy",

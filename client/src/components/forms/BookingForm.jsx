@@ -52,6 +52,7 @@ import DriverOptionCards from "../booking/DriverOptionCards";
 import PaymentMethodPicker from "../booking/PaymentMethodPicker";
 import VoucherTickets from "../booking/VoucherTickets";
 import LocationPicker from "../maps/LocationPicker";
+import { BoundaryPolicyNotice } from "../booking/BoundaryNotice";
 import BookingDateRangeCalendar from "../vehicle/BookingDateRangeCalendar";
 
 import useServiceLocation from "../../hooks/serviceLocations/useServiceLocation";
@@ -416,6 +417,7 @@ const BookingForm = ({
     // and the pickup window.
     const {
         ready: settingsReady,
+        boundary,
         error: settingsError,
         retry: retrySettings,
         allowOnlyDefaultLocation,
@@ -1906,6 +1908,7 @@ const BookingForm = ({
 
     const buildPayload = () => {
         const payload = {
+            boundaryPolicy: boundary,
             vehicle:
                 vehicle?._id ??
                 vehicle?.id,
@@ -3382,6 +3385,7 @@ const BookingForm = ({
                          </>
                      )}
 
+                    {currentStep === 1 && <BoundaryPolicyNotice policy={boundary} />}
                     {currentStep ===
                         1 && (
                         <TermsAgreement

@@ -4,6 +4,7 @@ import { AlertCircle, FileCheck2 } from "lucide-react";
 import Button from "../common/Button";
 import Modal from "../common/Modal";
 import TermsAgreement from "../booking/TermsAgreement";
+import { BoundaryPolicyNotice } from "../booking/BoundaryNotice";
 import LegalDocumentPreview from "./LegalDocumentPreview";
 
 import { useLegalDocumentVersion } from "../../hooks/legal/useLegalDocument";
@@ -63,6 +64,7 @@ export const AcceptedTermsModal = ({
                 </Button>
             }
         >
+            <BoundaryPolicyNotice policy={snapshot?.boundary} />
             {loading ? (
                 <div className="flex justify-center py-12">
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-yellow-500 dark:border-gray-700 dark:border-t-yellow-400" />

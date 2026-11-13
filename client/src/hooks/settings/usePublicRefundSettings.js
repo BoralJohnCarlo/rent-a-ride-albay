@@ -39,6 +39,7 @@ import {
 } from "../../constants/bookingStatus";
 
 const DEFAULTS = {
+    boundary: null,
     allowOnlyDefaultLocation: false,
     enableDistanceFeeCalculation: false,
     requireCancellationReason: true,
@@ -74,6 +75,7 @@ const DEFAULTS = {
  * did when they booked.
  */
 export const normalizePublicSettings = (data = {}) => ({
+    boundary: data.boundary ?? null,
     allowOnlyDefaultLocation: data.allowOnlyDefaultLocation === true,
     enableDistanceFeeCalculation:
         typeof data.enableDistanceFeeCalculation === "boolean"

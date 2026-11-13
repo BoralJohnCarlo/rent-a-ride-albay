@@ -224,6 +224,7 @@ export const resolveNotificationPath = (notification, role) => {
 
     const category = (notification?.category || "").toLowerCase();
     const { relatedModel, relatedId } = notification?.metadata || {};
+    if (role === "admin" && notification?.type === "Boundary Alert") return "/admin/settings/penalties";
 
     // Deep-link to the exact record where the page supports it.
     if (role === "customer" && relatedModel === "Booking" && relatedId) {

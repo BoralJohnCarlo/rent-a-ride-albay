@@ -204,6 +204,8 @@ const RentalFinancialSummary = ({
         getSecurityDeposit(rental);
 
     const refundTotals = getRefundTotals(rental);
+    const boundaryCharge = (rental.charges || []).filter(charge => rental.boundaryPenaltyIncident &&
+        String(charge.referenceId) === String(rental.boundaryPenaltyIncident)).reduce((sum, charge) => sum + Number(charge.amount || 0), 0);
 
     return (
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -359,7 +361,11 @@ const RentalFinancialSummary = ({
                             </div>
                         )}
 
-                        {rental.financial?.otherCharges >
+                        {boundaryCharge > 0 && <div className="flex items-start justify-between gap-3 text-sm">
+                            <span className="text-gray-600 dark:text-gray-300">Outside Albay boundary penalty</span>
+                            <span className="shrink-0 font-semibold text-gray-900 dark:text-white">{formatAmount(boundaryCharge)}</span>
+                        </div>}
+                        {Number(rental.financial?.otherCharges || 0) - boundaryCharge >
                             0 && (
                             <div className="flex items-center justify-between text-sm">
                                 <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
@@ -373,8 +379,7 @@ const RentalFinancialSummary = ({
 
                                 <span className="font-semibold text-gray-900 dark:text-white">
                                     {formatAmount(
-                                        rental.financial
-                                            .otherCharges
+                                        Number(rental.financial.otherCharges || 0) - boundaryCharge
                                     )}
                                 </span>
                             </div>

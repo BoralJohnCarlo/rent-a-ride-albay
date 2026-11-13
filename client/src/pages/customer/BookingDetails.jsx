@@ -53,6 +53,7 @@ import useToast from "../../hooks/toast/useToast";
 import usePublicRefundSettings from "../../hooks/settings/usePublicRefundSettings";
 import DriverChangeRequestCard from "../../components/booking/DriverChangeRequestCard";
 import AcceptedTerms from "../../components/legal/AcceptedTerms";
+import BoundaryNotice from "../../components/booking/BoundaryNotice";
 import PolicySourceNote from "../../components/legal/PolicySourceNote";
 
 /* ------------------------------------------------------------------ */
@@ -634,6 +635,7 @@ const BookingDetails = () => {
     return (
         <main className="min-h-screen bg-[#F7F5F1] px-4 pt-20 pb-12 dark:bg-gray-950 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl">
+                <BoundaryNotice key={booking?.rental?._id} rentalId={booking?.rental?._id} />
                 <Link
                     to="/customer/bookings"
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-[#14161B]/60 transition-colors hover:text-[#14161B] dark:text-white/50 dark:hover:text-white"
@@ -959,6 +961,11 @@ const BookingDetails = () => {
                                         </div>
                                     )}
 
+                                    {(booking.rental?.charges || []).filter(charge => booking.rental?.boundaryPenaltyIncident && String(charge.referenceId) === String(booking.rental.boundaryPenaltyIncident)).map(charge => (
+                                        <div key={charge._id} className="flex justify-between gap-3 text-sm text-[#C1502E] dark:text-red-400">
+                                            <span>Outside Albay boundary penalty</span><span>{formatCurrency(charge.amount)}</span>
+                                        </div>
+                                    ))}
                                     <div className="border-t border-[#14161B]/10 pt-2 dark:border-white/10">
                                         <div className="flex justify-between">
                                             <span className="font-semibold text-[#14161B] dark:text-white">
@@ -966,7 +973,7 @@ const BookingDetails = () => {
                                             </span>
                                             <span className="font-bold text-[#14161B] dark:text-white">
                                                 {formatCurrency(
-                                                    booking.pricing?.totalAmount
+                                                    booking.rental?.financial?.finalAmount ?? booking.pricing?.totalAmount
                                                 )}
                                             </span>
                                         </div>

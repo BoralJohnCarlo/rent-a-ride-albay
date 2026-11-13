@@ -414,6 +414,19 @@ describe("transaction IDs", () => {
 });
 
 describe("booking statement", () => {
+    it("lists a boundary penalty separately without double counting other charges", async () => {
+        const bookingId = await createBooking();
+        const incidentId = newId();
+        await createRental(bookingId, {
+            boundaryPenaltyIncident: incidentId,
+            charges: [{ type: "Other", amount: 500, referenceId: incidentId }, { type: "Other", amount: 100 }],
+            financial: { baseRentalCharge: 4800, reservationFee: 500, otherCharges: 600, finalAmount: 5900, balance: 5900 },
+        });
+        const statement = await getBookingStatement(bookingId, customer());
+        assert.ok(statement.charges.some(item => item.label === "Outside Albay boundary penalty" && item.amount === 500));
+        assert.ok(statement.charges.some(item => item.label === "Other charges" && item.amount === 100));
+        assert.equal(statement.totals.charges, 5900);
+    });
     it("adds a booked booking's charges up to its total, voucher included", async () => {
         const bookingId = await createBooking({
             pricing: {

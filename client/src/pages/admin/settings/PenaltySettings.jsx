@@ -21,6 +21,7 @@ import useRental from "../../../hooks/rentals/useRental";
 import useToast from "../../../hooks/toast/useToast";
 import StackedTable from "../../../components/tables/StackedTable";
 import LockedTermsNotice from "../../../components/admin/LockedTermsNotice";
+import BoundarySettings from "../../../components/admin/BoundarySettings";
 
 const CHARGING_UNIT_OPTIONS = [
     { value: "Hour", label: "Per Hour" },
@@ -295,6 +296,7 @@ const PenaltySettings = () => {
     return (
         <div className="space-y-6">
             <LockedTermsNotice />
+            <BoundarySettings />
 
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                 <div className="mb-6 flex items-center gap-3">

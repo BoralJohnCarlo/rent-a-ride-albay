@@ -1,0 +1,50 @@
+[
+  {
+    "width": 320,
+    "height": 640,
+    "dark": false,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "height": 640,
+    "dark": true,
+    "overflow": false
+  },
+  {
+    "width": 375,
+    "height": 667,
+    "dark": false,
+    "overflow": false
+  },
+  {
+    "width": 375,
+    "height": 667,
+    "dark": true,
+    "overflow": false
+  },
+  {
+    "width": 667,
+    "height": 375,
+    "dark": false,
+    "overflow": false
+  },
+  {
+    "width": 667,
+    "height": 375,
+    "dark": true,
+    "overflow": false
+  },
+  {
+    "width": 440,
+    "height": 956,
+    "dark": false,
+    "overflow": false
+  },
+  {
+    "width": 440,
+    "height": 956,
+    "dark": true,
+    "overflow": false
+  }
+]

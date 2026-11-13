@@ -1,0 +1,7 @@
+﻿{
+    "commit":  "680e32e62baeccbcd8845d3b1387bc67c1baf78a",
+    "retrieved":  "2026-11-13",
+    "attribution":  "NAMRIA and PSA, through OCHA COD-AB; underlying boundaries CC BY 3.0 IGO; derived map faeldon/philippines-json-maps MIT",
+    "source":  "https://raw.githubusercontent.com/faeldon/philippines-json-maps/680e32e62baeccbcd8845d3b1387bc67c1baf78a/latest/geojson/regions/medres/provdists-region-500000000.0.01.json",
+    "resolution":  "1 percent retained vertices; approximate administrative geometry, use buffer and admin review"
+}

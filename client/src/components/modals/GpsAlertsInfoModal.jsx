@@ -22,6 +22,12 @@ const formatDuration = (ms) =>
 
 // What raises / clears each type - mirrors server/services/alertService.js.
 const ALERT_GUIDE = [
+    { type: ALERT_TYPE.BOUNDARY_NEAR, severity: ALERT_SEVERITY.WARNING,
+        raised: "A fresh GPS fix is within the configured warning distance inside Albay. Customers with an active rental receive an advance warning.",
+        cleared: "The vehicle moves safely inland, a crossing is confirmed, or boundary monitoring is disabled." },
+    { type: ALERT_TYPE.BOUNDARY_OUTSIDE, severity: ALERT_SEVERITY.CRITICAL,
+        raised: "Multiple fresh fixes confirm the vehicle is outside Albay beyond the border tolerance. The grace period starts after confirmation.",
+        cleared: "Fresh fixes confirm reentry. Penalties are reviewed separately in Penalty Settings; GPS loss never counts as reentry." },
     {
         type: ALERT_TYPE.GPS_OFFLINE,
         severity: ALERT_SEVERITY.CRITICAL,

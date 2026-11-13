@@ -121,6 +121,37 @@ test("routine and wrong-role events do not enter any role's delivery queue", asy
     assert.equal(await PushDelivery.countDocuments({}), 0);
 });
 
+test("boundary warnings actually reach subscribed customers and link to their booking", async (t) => {
+    const account = await makeUser("customer");
+    await subscribe(account);
+    const bookingId = new mongoose.Types.ObjectId();
+    const notification = await notificationFor(account, { type: "Boundary Alert", title: "Vehicle outside Albay",
+        metadata: { relatedModel: "Booking", relatedId: bookingId } });
+    const sent = [];
+    t.mock.method(pushTransport, "sendNotification", async (_target, payload) => sent.push(JSON.parse(payload)));
+    await sendBrowserPush(account.user, notification);
+    await processPushDeliveries();
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].url, `/customer/bookings/${bookingId}`);
+});
+
+test("a boundary warning cancelled after queueing is not pushed", async (t) => {
+    const account = await makeUser("customer");
+    await subscribe(account);
+    const notification = await notificationFor(account, { type: "Boundary Alert", title: "Vehicle outside Albay" });
+    let sent = 0;
+    t.mock.method(pushTransport, "sendNotification", async () => { sent++; });
+    const paused = t.mock.method(PushDelivery, "findOneAndUpdate", async () => null);
+    await sendBrowserPush(account.user, notification);
+    await processPushDeliveries();
+    paused.mock.restore();
+    assert.equal(await PushDelivery.countDocuments({ notification: notification._id }), 1);
+    await Notification.updateOne({ _id: notification._id }, { $set: { pushCancelled: true } });
+    await processPushDeliveries();
+    assert.equal(sent, 0);
+    assert.equal(await PushDelivery.countDocuments({ notification: notification._id }), 0);
+});
+
 test("unauthenticated callers are rejected and another account cannot read or delete a subscription", async () => {
     assert.equal((await request("GET", "/notifications/push/config")).status, 401);
     const owner = await makeUser("customer");

@@ -4,6 +4,7 @@ export const updateSettingsValidator = [
     ...[
         "bookingSettings",
         "penaltySettings",
+        "boundarySettings",
         "refundSettings",
         "refundSettings.cancellationPolicy",
         "earlyReturnSettings",

@@ -6,6 +6,8 @@ import { WifiOff, MapPinOff, BatteryLow, Power } from "lucide-react";
  * in sync by hand. Never invent a client-only alert type/status here.
  */
 export const ALERT_TYPE = {
+    BOUNDARY_NEAR: "BOUNDARY_NEAR",
+    BOUNDARY_OUTSIDE: "BOUNDARY_OUTSIDE",
     GPS_OFFLINE: "GPS_OFFLINE",
     GPS_LOST: "GPS_LOST",
     LOW_BATTERY: "LOW_BATTERY",
@@ -13,6 +15,8 @@ export const ALERT_TYPE = {
 };
 
 export const ALERT_TYPE_ICONS = {
+    [ALERT_TYPE.BOUNDARY_NEAR]: MapPinOff,
+    [ALERT_TYPE.BOUNDARY_OUTSIDE]: MapPinOff,
     [ALERT_TYPE.GPS_OFFLINE]: WifiOff,
     [ALERT_TYPE.GPS_LOST]: MapPinOff,
     [ALERT_TYPE.LOW_BATTERY]: BatteryLow,
@@ -23,6 +27,8 @@ export const ALERT_TYPE_ICONS = {
 export const LOW_BATTERY_THRESHOLD_PERCENT = 20;
 
 export const ALERT_TYPE_LABELS = {
+    [ALERT_TYPE.BOUNDARY_NEAR]: "Near Albay Boundary",
+    [ALERT_TYPE.BOUNDARY_OUTSIDE]: "Outside Albay",
     [ALERT_TYPE.GPS_OFFLINE]: "GPS Offline",
     [ALERT_TYPE.GPS_LOST]: "GPS Lost",
     [ALERT_TYPE.LOW_BATTERY]: "Low Battery",

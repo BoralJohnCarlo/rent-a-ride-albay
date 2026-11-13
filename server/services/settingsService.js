@@ -1,4 +1,6 @@
 import createError from "../utils/createError.js";
+import { resolveBoundarySettings, validateBoundaryPatch } from "../utils/boundaryPolicy.js";
+import { BOUNDARY_RESOURCE, cancelBoundaryMonitoring, cancelPendingBoundaryPenalties, publishBoundaryAlerts } from "./boundaryService.js";
 
 import Settings from "../models/Settings.js";
 import { validatePayoutSettingsPatch } from "../utils/payoutSettings.js";
@@ -358,6 +360,7 @@ export const getBookingLocationPolicy =
 
         return {
             ...rest,
+            boundarySettings: resolveBoundarySettings(settings.boundarySettings),
             allowOnlyDefaultLocation:
                 bookingLocationPolicy?.allowOnlyDefaultLocation ??
                 allowOnlyDefaultLocation ??
@@ -423,6 +426,31 @@ export const updateBookingLocationPolicy =
     async (policyData) => {
         // Atomic leaf updates preserve other sections during concurrent saves.
         const updateData = { ...policyData };
+        if (Object.hasOwn(policyData, "boundarySettings")) {
+            if (Object.keys(policyData).some(key => key !== "boundarySettings"))
+                throw createError("Save boundary settings separately from other settings.", 400);
+            let patch;
+            try { patch = validateBoundaryPatch(policyData.boundarySettings); }
+            catch (error) { throw createError(error.message, 400); }
+            delete updateData.boundarySettings;
+            for (const [key, value] of Object.entries(patch)) updateData[`boundarySettings.${key}`] = value;
+            // Policy changes and crossing detection share a database guard.
+            let alerts = [];
+            const saved = await withBookingCreationTransaction([BOUNDARY_RESOURCE], async session => {
+                alerts = [];
+                const current = await Settings.findOne().session(session).lean();
+                const next = resolveBoundarySettings({ ...current?.boundarySettings, ...patch });
+                if (!next.alertsEnabled) {
+                    updateData["boundarySettings.penaltiesEnabled"] = false;
+                    alerts = await cancelBoundaryMonitoring(session);
+                } else if (patch.penaltiesEnabled === false) {
+                    await cancelPendingBoundaryPenalties(session);
+                }
+                return Settings.findOneAndUpdate({}, { $set: updateData }, { new: true, upsert: true, runValidators: true, session }).lean();
+            });
+            publishBoundaryAlerts(alerts);
+            return saved;
+        }
         if (Object.hasOwn(policyData, "commissionSettings")) {
             delete updateData.commissionSettings;
             for (const [key, value] of Object.entries(validatePayoutSettingsPatch(policyData.commissionSettings))) {

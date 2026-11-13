@@ -664,6 +664,8 @@ const bookedChargeLines = (booking) => {
 /* Charges for a booking that became a rental: the rental's own figures. */
 const rentalChargeLines = (rental) => {
     const financial = rental.financial || {};
+    const boundaryCharge = (rental.charges || []).filter(charge => rental.boundaryPenaltyIncident &&
+        String(charge.referenceId) === String(rental.boundaryPenaltyIncident)).reduce((sum, charge) => sum + Number(charge.amount || 0), 0);
     const lines = [line("Vehicle rental", financial.baseRentalCharge)];
 
     const optional = [
@@ -674,7 +676,8 @@ const rentalChargeLines = (rental) => {
         ["Extensions", financial.extensionCharges],
         ["Late return charges", financial.lateCharges],
         ["Damage charges", financial.damageCharges],
-        ["Other charges", financial.otherCharges],
+        ["Outside Albay boundary penalty", boundaryCharge],
+        ["Other charges", Math.max(0, Number(financial.otherCharges || 0) - boundaryCharge)],
     ];
 
     for (const [label, amount] of optional) {

@@ -1,4 +1,5 @@
 import Telemetry from "../models/Telemetry.js";
+import { evaluateBoundary } from "./boundaryService.js";
 import Tracker from "../models/Tracker.js";
 import VehicleTrackingState from "../models/VehicleTrackingState.js";
 import Vehicle from "../models/Vehicle.js";
@@ -161,6 +162,8 @@ const publishAdvancedState = async (tracker, trackingState, reading) => {
     } catch (error) {
         console.error("GPS alert evaluation failed:", error);
     }
+    try { await evaluateBoundary(tracker); }
+    catch (error) { console.error("Boundary evaluation failed:", error.message); }
 };
 
 // History may have committed before a transient snapshot-write failure.
@@ -248,6 +251,8 @@ export const recordHeartbeat = async (tracker, receivedAt = new Date(), { gpsFix
                 } catch (error) {
                     console.error("GPS fix alert evaluation failed:", error);
                 }
+                try { await evaluateBoundary(tracker); }
+                catch (error) { console.error("Boundary fix evaluation failed:", error.message); }
             }
         }
         broadcastVehicleHeartbeat(

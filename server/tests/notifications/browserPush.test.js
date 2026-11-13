@@ -10,6 +10,17 @@ import jwt from "jsonwebtoken";
 import { generateVAPIDKeys } from "web-push";
 import { pushConfigured } from "../../services/webPushService.js";
 
+test("boundary alerts reach every authorized role, link to the correct screen and stop after cancellation", () => {
+    const notification = { type: "Boundary Alert", metadata: { relatedModel: "Booking", relatedId: "a".repeat(24) } };
+    for (const role of ["admin", "operator", "customer"]) {
+        assert.equal(shouldPush(role, notification), true);
+        assert.equal(shouldPush(role, { ...notification, pushCancelled: true }), false);
+    }
+    assert.equal(pushPath("customer", notification), `/customer/bookings/${"a".repeat(24)}`);
+    assert.equal(pushPath("admin", notification), "/admin/settings/penalties");
+    assert.equal(shouldPush("stranger", notification), false);
+});
+
 test("push configuration rejects malformed and mismatched keys and invalid contacts without exposing secrets", (t) => {
     const originalEnvironment = { ...process.env };
     t.after(() => { process.env = originalEnvironment; });

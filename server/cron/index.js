@@ -1,4 +1,5 @@
 import cron from "node-cron";
+import { sweepBoundaries } from "../services/boundaryService.js";
 import { sendPickupReminders } from "../services/pickupReminderService.js";
 import { processPushDeliveries } from "../services/webPushService.js";
 
@@ -34,6 +35,7 @@ import { startAikaPoller } from "../services/aika/aikaPoller.js";
  * a failure in one never blocks or delays another.
  */
 const SWEEPS = [
+    { label: "Boundary alerts and notification retry", task: sweepBoundaries, cronExpression: "* * * * *" },
     {
         label: "Browser push retry sweep",
         task: processPushDeliveries,

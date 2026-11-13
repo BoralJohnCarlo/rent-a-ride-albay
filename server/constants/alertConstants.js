@@ -1,6 +1,8 @@
 import { TRACKER_PROTOCOL } from "./telemetryConstants.js";
 
 export const ALERT_TYPE = {
+    BOUNDARY_NEAR: "BOUNDARY_NEAR",
+    BOUNDARY_OUTSIDE: "BOUNDARY_OUTSIDE",
     GPS_OFFLINE: "GPS_OFFLINE",
     GPS_LOST: "GPS_LOST",
     LOW_BATTERY: "LOW_BATTERY",
@@ -73,6 +75,8 @@ export const MIN_GPS_STALE_THRESHOLD_MS = Math.min(
  * number/timestamp without storing full telemetry documents on the alert.
  */
 export const ALERT_DEFINITIONS = {
+    [ALERT_TYPE.BOUNDARY_NEAR]: { severity: ALERT_SEVERITY.WARNING, title: "Near Albay Boundary", buildMessage: () => "The vehicle is approaching the Albay boundary." },
+    [ALERT_TYPE.BOUNDARY_OUTSIDE]: { severity: ALERT_SEVERITY.CRITICAL, title: "Outside Albay", buildMessage: () => "GPS confirms the vehicle is outside Albay. Check the boundary incident before applying a penalty." },
     [ALERT_TYPE.GPS_OFFLINE]: {
         severity: ALERT_SEVERITY.CRITICAL,
         title: "Vehicle Offline",
