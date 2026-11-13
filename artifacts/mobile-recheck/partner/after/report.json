@@ -1,0 +1,2467 @@
+[
+  {
+    "label": "dashboard-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 2523
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Partner Dashboard\n3\nAD\nGood evening, Alexandra!\n\nHere's how your vehicles are doing.\n\nMy Vehicles\nBookings\nConsignments\nREPORTING PERIOD\nLast 30 Days\nWALLET BALANCE\n₱1,250,000\nTOTAL EARNED\n₱1,850,000\nACTIVE BOOKINGS\n346\nMY VEHICLES\n24\nBooking revenue",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 2679
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Partner Dashboard\n3\nAD\nRENT-A-RIDE ALBAY PARTNER\nGood evening, Alexandra!\n\nHere's how your vehicles are doing.\n\n\"More Journeys. Brighter Destinations.\"\n\nMy Vehicles\nBookings\nConsignments\nREPORTING PERIOD\nLast 30 Days\nWALLET BALANCE\n₱1,250,000\nAvailab",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 430,
+      "scroll": 430,
+      "height": 831,
+      "content": 2403
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Partner Dashboard\n3\nAD\nGood evening, Alexandra!\n\nHere's how your vehicles are doing.\n\nMy Vehicles\nBookings\nConsignments\nREPORTING PERIOD\nLast 30 Days\nWALLET BALANCE\n₱1,250,000\nTOTAL EARNED\n₱1,850,000\nACTIVE BOOKINGS\n346\nMY VEHICLES\n24\nBooking revenue",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 2254
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Partner Dashboard\n3\nAD\nRENT-A-RIDE ALBAY PARTNER\nGood evening, Alexandra!\n\nHere's how your vehicles are doing.\n\n\"More Journeys. Brighter Destinations.\"\n\nMy Vehicles\nBookings\nConsignments\nREPORTING PERIOD\nLast 30 Days\nWALLET BALANCE\n₱1,250,000\nAvailab",
+    "errors": [],
+    "wide": [
+      {
+        "tag": "TABLE",
+        "cls": "min-w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700",
+        "text": "Booking management tableBooking #VehicleCustomerRental PeriodTotalPaym"
+      },
+      {
+        "tag": "THEAD",
+        "cls": "bg-gray-50 dark:bg-gray-800",
+        "text": "Booking #VehicleCustomerRental PeriodTotalPaymentStatusView"
+      },
+      {
+        "tag": "TR",
+        "cls": "",
+        "text": "Booking #VehicleCustomerRental PeriodTotalPaymentStatusView"
+      },
+      {
+        "tag": "TBODY",
+        "cls": "divide-y divide-gray-100 bg-white dark:divide-gray-700 dark:bg-gray-900",
+        "text": "—Toyota Innova 2.8 AutomaticABC1234Maria Alexandra Dela Cruz12/10/2026"
+      },
+      {
+        "tag": "TR",
+        "cls": "transition-colors duration-200 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800",
+        "text": "—Toyota Innova 2.8 AutomaticABC1234Maria Alexandra Dela Cruz12/10/2026"
+      },
+      {
+        "tag": "TR",
+        "cls": "transition-colors duration-200 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800",
+        "text": "—Toyota Innova 2.8 AutomaticABC1234Maria Alexandra Dela Cruz12/10/2026"
+      }
+    ]
+  },
+  {
+    "label": "dashboard-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 2523
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Partner Dashboard\n3\nAD\nGood evening, Alexandra!\n\nHere's how your vehicles are doing.\n\nMy Vehicles\nBookings\nConsignments\nREPORTING PERIOD\nLast 30 Days\nWALLET BALANCE\n₱1,250,000\nTOTAL EARNED\n₱1,850,000\nACTIVE BOOKINGS\n346\nMY VEHICLES\n24\nBooking revenue",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "dashboard-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 2254
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Partner Dashboard\n3\nAD\nRENT-A-RIDE ALBAY PARTNER\nGood evening, Alexandra!\n\nHere's how your vehicles are doing.\n\n\"More Journeys. Brighter Destinations.\"\n\nMy Vehicles\nBookings\nConsignments\nREPORTING PERIOD\nLast 30 Days\nWALLET BALANCE\n₱1,250,000\nAvailab",
+    "errors": [],
+    "wide": [
+      {
+        "tag": "TABLE",
+        "cls": "min-w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700",
+        "text": "Booking management tableBooking #VehicleCustomerRental PeriodTotalPaym"
+      },
+      {
+        "tag": "THEAD",
+        "cls": "bg-gray-50 dark:bg-gray-800",
+        "text": "Booking #VehicleCustomerRental PeriodTotalPaymentStatusView"
+      },
+      {
+        "tag": "TR",
+        "cls": "",
+        "text": "Booking #VehicleCustomerRental PeriodTotalPaymentStatusView"
+      },
+      {
+        "tag": "TBODY",
+        "cls": "divide-y divide-gray-100 bg-white dark:divide-gray-700 dark:bg-gray-900",
+        "text": "—Toyota Innova 2.8 AutomaticABC1234Maria Alexandra Dela Cruz12/10/2026"
+      },
+      {
+        "tag": "TR",
+        "cls": "transition-colors duration-200 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800",
+        "text": "—Toyota Innova 2.8 AutomaticABC1234Maria Alexandra Dela Cruz12/10/2026"
+      },
+      {
+        "tag": "TR",
+        "cls": "transition-colors duration-200 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800",
+        "text": "—Toyota Innova 2.8 AutomaticABC1234Maria Alexandra Dela Cruz12/10/2026"
+      }
+    ]
+  },
+  {
+    "label": "bookings-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375,
+      "height": 542,
+      "content": 542
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Bookings & Rentals\n3\nAD\nActive\n2\nUpcoming\n2\nOn the road\n0\nCompleted\n0\nCancelled\n0\nAll\n2\nON THE ROAD\n0\nUPCOMING\n2\nCOMPLETED\n0\nToyota Innova 2.8 Automatic\nBK-000003 · ABC1234\nDec 10 – Dec 13, 2026\nPending\nYour earnings\nAfter the trip\nToyota Innova 2.8 ",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 567
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Bookings & Rentals\n3\nAD\nActive\n2\nUpcoming\n2\nOn the road\n0\nCompleted\n0\nCancelled\n0\nAll\n2\nON THE ROAD\n0\nVehicles out with a renter now\nUPCOMING\n2\nBooked, not yet picked up\nCOMPLETED\n0\nFinished rentals\nToyota Innova 2.8 Automatic\nBK-000003 · ABC1234\nDec",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 440,
+      "scroll": 440,
+      "height": 831,
+      "content": 831
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Bookings & Rentals\n3\nAD\nActive\n2\nUpcoming\n2\nOn the road\n0\nCompleted\n0\nCancelled\n0\nAll\n2\nON THE ROAD\n0\nUPCOMING\n2\nCOMPLETED\n0\nToyota Innova 2.8 Automatic\nBK-000003 · ABC1234\nDec 10 – Dec 13, 2026\nPending\nYour earnings\nAfter the trip\nToyota Innova 2.8 ",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 567
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Bookings & Rentals\n3\nAD\nActive\n2\nUpcoming\n2\nOn the road\n0\nCompleted\n0\nCancelled\n0\nAll\n2\nON THE ROAD\n0\nVehicles out with a renter now\nUPCOMING\n2\nBooked, not yet picked up\nCOMPLETED\n0\nFinished rentals\nToyota Innova 2.8 Automatic\nBK-000003 · ABC1234\nDec",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 360,
+      "scroll": 360,
+      "height": 675,
+      "content": 675
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Bookings & Rentals\n3\nAD\nActive\n2\nUpcoming\n2\nOn the road\n0\nCompleted\n0\nCancelled\n0\nAll\n2\nON THE ROAD\n0\nUPCOMING\n2\nCOMPLETED\n0\nToyota Innova 2.8 Automatic\nBK-000003 · ABC1234\nDec 10 – Dec 13, 2026\nPending\nYour earnings\nAfter the trip\nToyota Innova 2.8 ",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "bookings-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 567
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Bookings & Rentals\n3\nAD\nActive\n2\nUpcoming\n2\nOn the road\n0\nCompleted\n0\nCancelled\n0\nAll\n2\nON THE ROAD\n0\nVehicles out with a renter now\nUPCOMING\n2\nBooked, not yet picked up\nCOMPLETED\n0\nFinished rentals\nToyota Innova 2.8 Automatic\nBK-000003 · ABC1234\nDec",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 796
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Vehicles\n3\nAD\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nVH-000002\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n/DAY\n\n7 Seats\n\nDiesel\n\nNo Image\n\nUpload later\n\nMitsubishi Montero Sport\n\nVH-000008\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 808
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Vehicles\n3\nAD\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nVH-000002\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n/DAY\n\n7 Seats\n\nDiesel\n\nNo Image\n\nUpload later\n\nMitsubishi Montero Sport\n\nVH-000008\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 440,
+      "scroll": 440,
+      "height": 831,
+      "content": 831
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Vehicles\n3\nAD\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nVH-000002\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n/DAY\n\n7 Seats\n\nDiesel\n\nNo Image\n\nUpload later\n\nMitsubishi Montero Sport\n\nVH-000008\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 438
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Vehicles\n3\nAD\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nVH-000002\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n/DAY\n\n7 Seats\n\nDiesel\n\nNo Image\n\nUpload later\n\nMitsubishi Montero Sport\n\nVH-000008\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 796
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Vehicles\n3\nAD\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nVH-000002\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n/DAY\n\n7 Seats\n\nDiesel\n\nNo Image\n\nUpload later\n\nMitsubishi Montero Sport\n\nVH-000008\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "vehicles-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 438
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Vehicles\n3\nAD\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nVH-000002\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n/DAY\n\n7 Seats\n\nDiesel\n\nNo Image\n\nUpload later\n\nMitsubishi Montero Sport\n\nVH-000008\n\nAvailable\nCompany\nCar\nAutomatic\n₱4,000.00\n",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 704
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Consignments\n3\nAD\nAll statuses\nApplications\nAppointments\nNew Application\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nCON-000004\n\nPending\nCar\n\nJuan Miguel Dela Cruz\n\nAutomatic\nDiesel\n₱4,000.00\n/DAY\n\nSubmitted\n\nNov 9, 2026\n\nDashboard\n3\nCon",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 600
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Consignments\n3\nAD\nAll statuses\nApplications\nAppointments\nNew Application\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nCON-000004\n\nPending\nCar\n\nJuan Miguel Dela Cruz\n\nAutomatic\nDiesel\n₱4,000.00\n/DAY\n\nSubmitted\n\nNov 9, 2026\n\nDashboard\n3\nCon",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 440,
+      "scroll": 440,
+      "height": 831,
+      "content": 831
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Consignments\n3\nAD\nAll statuses\nApplications\nAppointments\nNew Application\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nCON-000004\n\nPending\nCar\n\nJuan Miguel Dela Cruz\n\nAutomatic\nDiesel\n₱4,000.00\n/DAY\n\nSubmitted\n\nNov 9, 2026\n\nDashboard\n3\nCon",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 600
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Consignments\n3\nAD\nAll statuses\nApplications\nAppointments\nNew Application\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nCON-000004\n\nPending\nCar\n\nJuan Miguel Dela Cruz\n\nAutomatic\nDiesel\n₱4,000.00\n/DAY\n\nSubmitted\n\nNov 9, 2026\n\nDashboard\n3\nCon",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 704
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Consignments\n3\nAD\nAll statuses\nApplications\nAppointments\nNew Application\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nCON-000004\n\nPending\nCar\n\nJuan Miguel Dela Cruz\n\nAutomatic\nDiesel\n₱4,000.00\n/DAY\n\nSubmitted\n\nNov 9, 2026\n\nDashboard\n3\nCon",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "consignments-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 600
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Consignments\n3\nAD\nAll statuses\nApplications\nAppointments\nNew Application\n\nNo Image\n\nUpload later\n\nToyota Innova 2.8 Automatic\n\nCON-000004\n\nPending\nCar\n\nJuan Miguel Dela Cruz\n\nAutomatic\nDiesel\n₱4,000.00\n/DAY\n\nSubmitted\n\nNov 9, 2026\n\nDashboard\n3\nCon",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "earnings-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 1348
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Earnings\n3\nAD\nMy Earnings\n\nWallet Balance\n\n1250000.00 PHP\n\nWithdraw to GCash\nWithdrawal History\n\n· GCash 09171234567\n\nNov 9, 2026\n\n12500.00 PHP\nPending\n\nPage 1 of 1\n\nPrevious\nNext\n\nTotal Earned\n\n1850000.00 PHP\n\nTotal Paid\n\n600000.00 PHP\n\nScheduled",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "earnings-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 1154
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Earnings\n3\nAD\nMy Earnings\n\nWallet Balance\n\n1250000.00 PHP\n\nWithdraw to GCash\nWithdrawal History\n\n· GCash 09171234567\n\nNov 9, 2026\n\n12500.00 PHP\nPending\n\nPage 1 of 1\n\nPrevious\nNext\n\nTotal Earned\n\n1850000.00 PHP\n\nTotal Paid\n\n600000.00 PHP\n\nScheduled",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "earnings-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 430,
+      "scroll": 430,
+      "height": 831,
+      "content": 1348
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Earnings\n3\nAD\nMy Earnings\n\nWallet Balance\n\n1250000.00 PHP\n\nWithdraw to GCash\nWithdrawal History\n\n· GCash 09171234567\n\nNov 9, 2026\n\n12500.00 PHP\nPending\n\nPage 1 of 1\n\nPrevious\nNext\n\nTotal Earned\n\n1850000.00 PHP\n\nTotal Paid\n\n600000.00 PHP\n\nScheduled",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "earnings-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 1102
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Earnings\n3\nAD\nMy Earnings\n\nWallet Balance\n\n1250000.00 PHP\n\nWithdraw to GCash\nWithdrawal History\n\n· GCash 09171234567\n\nNov 9, 2026\n\n12500.00 PHP\nPending\n\nPage 1 of 1\n\nPrevious\nNext\n\nTotal Earned\n\n1850000.00 PHP\n\nTotal Paid\n\n600000.00 PHP\n\nScheduled",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "earnings-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 1368
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Earnings\n3\nAD\nMy Earnings\n\nWallet Balance\n\n1250000.00 PHP\n\nWithdraw to GCash\nWithdrawal History\n\n· GCash 09171234567\n\nNov 9, 2026\n\n12500.00 PHP\nPending\n\nPage 1 of 1\n\nPrevious\nNext\n\nTotal Earned\n\n1850000.00 PHP\n\nTotal Paid\n\n600000.00 PHP\n\nScheduled",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "earnings-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 1122
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Earnings\n3\nAD\nMy Earnings\n\nWallet Balance\n\n1250000.00 PHP\n\nWithdraw to GCash\nWithdrawal History\n\n· GCash 09171234567\n\nNov 9, 2026\n\n12500.00 PHP\nPending\n\nPage 1 of 1\n\nPrevious\nNext\n\nTotal Earned\n\n1850000.00 PHP\n\nTotal Paid\n\n600000.00 PHP\n\nScheduled",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "tracking-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 1000
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Live Tracking\n3\nAD\nMap\nAlerts\nLive\nHistory\nConnecting...\n\nVehicles are tracked for security. Renter details are never shown here.\n\nOn the road\n0\nAll vehicles\n1\n\nToyota Innova 2.8 Automatic\n\nABC1234\n\nNo Tracker\n\nNo GPS tracker installed yet. Contact t",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "tracking-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 940
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Live Tracking\n3\nAD\nMap\nAlerts\nLive\nHistory\nConnecting...\n\nVehicles are tracked for security. Renter details are never shown here.\n\nOn the road\n0\nAll vehicles\n1\n\nToyota Innova 2.8 Automatic\n\nABC1234\n\nNo Tracker\n\nNo GPS tracker installed yet. Contact t",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "tracking-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 430,
+      "scroll": 430,
+      "height": 831,
+      "content": 984
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Live Tracking\n3\nAD\nMap\nAlerts\nLive\nHistory\nConnecting...\n\nVehicles are tracked for security. Renter details are never shown here.\n\nOn the road\n0\nAll vehicles\n1\n\nToyota Innova 2.8 Automatic\n\nABC1234\n\nNo Tracker\n\nNo GPS tracker installed yet. Contact t",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "tracking-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 940
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Live Tracking\n3\nAD\nMap\nAlerts\nLive\nHistory\nConnecting...\n\nVehicles are tracked for security. Renter details are never shown here.\n\nOn the road\n0\nAll vehicles\n1\n\nToyota Innova 2.8 Automatic\n\nABC1234\n\nNo Tracker\n\nNo GPS tracker installed yet. Contact t",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "tracking-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 1000
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Live Tracking\n3\nAD\nMap\nAlerts\nLive\nHistory\nConnecting...\n\nVehicles are tracked for security. Renter details are never shown here.\n\nOn the road\n0\nAll vehicles\n1\n\nToyota Innova 2.8 Automatic\n\nABC1234\n\nNo Tracker\n\nNo GPS tracker installed yet. Contact t",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "tracking-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 940
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Live Tracking\n3\nAD\nMap\nAlerts\nLive\nHistory\nConnecting...\n\nVehicles are tracked for security. Renter details are never shown here.\n\nOn the road\n0\nAll vehicles\n1\n\nToyota Innova 2.8 Automatic\n\nABC1234\n\nNo Tracker\n\nNo GPS tracker installed yet. Contact t",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "profile-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 2491
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Profile\n3\nAD\nMy Profile\n\nManage your personal information and account details.\n\nAlexandra Dela Cruz\nPARTNER\n\ncustomer@example.test\n\nRent-A-Ride Albay\n\nEdit Profile\n\nPERSONAL DETAILS\n\nPersonal Information\n\nYour basic personal and contact informatio",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "profile-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 2461
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Profile\n3\nAD\nMy Profile\n\nManage your personal information and account details.\n\nAlexandra Dela Cruz\nPARTNER\n\ncustomer@example.test\n\nRent-A-Ride Albay\n\nEdit Profile\n\nPERSONAL DETAILS\n\nPersonal Information\n\nYour basic personal and contact informatio",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "profile-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 430,
+      "scroll": 430,
+      "height": 831,
+      "content": 2447
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Profile\n3\nAD\nMy Profile\n\nManage your personal information and account details.\n\nAlexandra Dela Cruz\nPARTNER\n\ncustomer@example.test\n\nRent-A-Ride Albay\n\nEdit Profile\n\nPERSONAL DETAILS\n\nPersonal Information\n\nYour basic personal and contact informatio",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "profile-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 1740
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Profile\n3\nAD\nMy Profile\n\nManage your personal information and account details.\n\nAlexandra Dela Cruz\nPARTNER\n\ncustomer@example.test\n\nRent-A-Ride Albay\n\nEdit Profile\n\nPERSONAL DETAILS\n\nPersonal Information\n\nYour basic personal and contact informatio",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "profile-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 2491
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Profile\n3\nAD\nMy Profile\n\nManage your personal information and account details.\n\nAlexandra Dela Cruz\nPARTNER\n\ncustomer@example.test\n\nRent-A-Ride Albay\n\nEdit Profile\n\nPERSONAL DETAILS\n\nPersonal Information\n\nYour basic personal and contact informatio",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "profile-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 1740
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "My Profile\n3\nAD\nMy Profile\n\nManage your personal information and account details.\n\nAlexandra Dela Cruz\nPARTNER\n\ncustomer@example.test\n\nRent-A-Ride Albay\n\nEdit Profile\n\nPERSONAL DETAILS\n\nPersonal Information\n\nYour basic personal and contact informatio",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "settings-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 647
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Settings\n3\nAD\nSettings\n\nManage your notification sounds and account security.\n\nBrowser Notifications\nEnable important alerts on this browser for your account.\nManage on this browser\nNotification Sounds\nTurn alert sounds up, down or off for new notifi",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "settings-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 599
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Settings\n3\nAD\nSettings\n\nManage your notification sounds and account security.\n\nBrowser Notifications\nEnable important alerts on this browser for your account.\nManage on this browser\nNotification Sounds\nTurn alert sounds up, down or off for new notifi",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "settings-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 440,
+      "scroll": 440,
+      "height": 831,
+      "content": 831
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Settings\n3\nAD\nSettings\n\nManage your notification sounds and account security.\n\nBrowser Notifications\nEnable important alerts on this browser for your account.\nManage on this browser\nNotification Sounds\nTurn alert sounds up, down or off for new notifi",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "settings-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 449
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Settings\n3\nAD\nSettings\n\nManage your notification sounds and account security.\n\nBrowser Notifications\nEnable important alerts on this browser for your account.\nManage on this browser\nNotification Sounds\nTurn alert sounds up, down or off for new notifi",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "settings-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 360,
+      "scroll": 360,
+      "height": 675,
+      "content": 675
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Settings\n3\nAD\nSettings\n\nManage your notification sounds and account security.\n\nBrowser Notifications\nEnable important alerts on this browser for your account.\nManage on this browser\nNotification Sounds\nTurn alert sounds up, down or off for new notifi",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "settings-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 489
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Settings\n3\nAD\nSettings\n\nManage your notification sounds and account security.\n\nBrowser Notifications\nEnable important alerts on this browser for your account.\nManage on this browser\nNotification Sounds\nTurn alert sounds up, down or off for new notifi",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "notifications-iPhone-SE-portrait",
+    "body": 375,
+    "viewport": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365,
+      "height": 542,
+      "content": 795
+    },
+    "header": {
+      "width": 375,
+      "scroll": 375,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 263,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 315,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Notifications\n3\nAD\n3\nNotifications\n\nUpdates on your vehicles, bookings, consignments and earnings.\n\nMark all read\nClear all\nAll\nUnread\n3\nBookings\nRentals\nPayouts\nConsignments\nVehicles\nReviews\nDocuments\nAccount\nMONDAY, NOV 9\n1\nInspection appointment u",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "notifications-iPhone-SE-landscape",
+    "body": 667,
+    "viewport": 667,
+    "main": {
+      "width": 657,
+      "scroll": 657,
+      "height": 254,
+      "content": 569
+    },
+    "header": {
+      "width": 667,
+      "scroll": 667,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 547,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 599,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Notifications\n3\nAD\n3\nNotifications\n\nUpdates on your vehicles, bookings, consignments and earnings.\n\nMark all read\nClear all\nAll\nUnread\n3\nBookings\nRentals\nPayouts\nConsignments\nVehicles\nReviews\nDocuments\nAccount\nMONDAY, NOV 9\n1\nInspection appointment u",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "notifications-iPhone-16-Pro-Max-portrait",
+    "body": 440,
+    "viewport": 440,
+    "main": {
+      "width": 440,
+      "scroll": 440,
+      "height": 831,
+      "content": 831
+    },
+    "header": {
+      "width": 440,
+      "scroll": 440,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 328,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 380,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Notifications\n3\nAD\n3\nNotifications\n\nUpdates on your vehicles, bookings, consignments and earnings.\n\nMark all read\nClear all\nAll\nUnread\n3\nBookings\nRentals\nPayouts\nConsignments\nVehicles\nReviews\nDocuments\nAccount\nMONDAY, NOV 9\n1\nInspection appointment u",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "notifications-iPhone-16-Pro-Max-landscape",
+    "body": 956,
+    "viewport": 956,
+    "main": {
+      "width": 946,
+      "scroll": 946,
+      "height": 319,
+      "content": 526
+    },
+    "header": {
+      "width": 956,
+      "scroll": 956,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 836,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 888,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Notifications\n3\nAD\n3\nNotifications\n\nUpdates on your vehicles, bookings, consignments and earnings.\n\nMark all read\nClear all\nAll\nUnread\n3\nBookings\nRentals\nPayouts\nConsignments\nVehicles\nReviews\nDocuments\nAccount\nMONDAY, NOV 9\n1\nInspection appointment u",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "notifications-Galaxy-A55-portrait",
+    "body": 360,
+    "viewport": 360,
+    "main": {
+      "width": 350,
+      "scroll": 350,
+      "height": 675,
+      "content": 838
+    },
+    "header": {
+      "width": 360,
+      "scroll": 360,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 248,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 300,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Notifications\n3\nAD\n3\nNotifications\n\nUpdates on your vehicles, bookings, consignments and earnings.\n\nMark all read\nClear all\nAll\nUnread\n3\nBookings\nRentals\nPayouts\nConsignments\nVehicles\nReviews\nDocuments\nAccount\nMONDAY, NOV 9\n1\nInspection appointment u",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "notifications-Galaxy-A55-landscape",
+    "body": 800,
+    "viewport": 800,
+    "main": {
+      "width": 790,
+      "scroll": 790,
+      "height": 239,
+      "content": 569
+    },
+    "header": {
+      "width": 800,
+      "scroll": 800,
+      "buttons": [
+        {
+          "text": "3",
+          "label": "Notifications",
+          "rect": {
+            "x": 680,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        },
+        {
+          "text": "AD",
+          "label": "Open account menu",
+          "rect": {
+            "x": 732,
+            "width": 44
+          },
+          "display": "flex",
+          "opacity": "1"
+        }
+      ]
+    },
+    "text": "Notifications\n3\nAD\n3\nNotifications\n\nUpdates on your vehicles, bookings, consignments and earnings.\n\nMark all read\nClear all\nAll\nUnread\n3\nBookings\nRentals\nPayouts\nConsignments\nVehicles\nReviews\nDocuments\nAccount\nMONDAY, NOV 9\n1\nInspection appointment u",
+    "errors": [],
+    "wide": []
+  },
+  {
+    "label": "/operator-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/bookings-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/operator/bookings-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/bookings-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/vehicles-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/operator/vehicles-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/operator/vehicles-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/operator/consignments-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/operator/consignments-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/operator/consignments-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/earnings-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/earnings-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/earnings-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/operator/tracking-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/operator/tracking-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/operator/tracking-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/operator/profile-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/profile-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/profile-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 375,
+      "scroll": 375
+    }
+  },
+  {
+    "label": "/operator/settings-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/settings-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/settings-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/notifications-empty",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/notifications-error",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  },
+  {
+    "label": "/operator/notifications-loading",
+    "errors": [],
+    "body": 375,
+    "main": {
+      "width": 365,
+      "scroll": 365
+    }
+  }
+]

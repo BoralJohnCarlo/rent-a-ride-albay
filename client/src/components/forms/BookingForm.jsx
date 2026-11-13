@@ -555,8 +555,8 @@ const BookingForm = ({
         ].filter(Boolean);
 
         const address =
+            defaultLocation.address?.trim() ||
             addressParts.join(", ") ||
-            defaultLocation.address ||
             "";
 
         const type = address || "Office";
@@ -2258,8 +2258,8 @@ const BookingForm = ({
         ].filter(Boolean);
 
         const address =
+            location.address?.trim() ||
             addressParts.join(", ") ||
-            location.address ||
             "";
 
         const type = address || "Office";
@@ -2401,6 +2401,7 @@ const BookingForm = ({
     const returnLocation = formData.returnLocation;
 
     const hasPickupLocation =
+        Boolean(pickupLocation.address?.trim()) &&
         pickupLocation.latitude != null &&
         pickupLocation.longitude != null;
 
@@ -2417,10 +2418,10 @@ const BookingForm = ({
                 pickupLocation.serviceLocationId
             );
         } else if (hasPickupLocation) {
-            handleMapLocationChange("returnLocation", {
-                latitude: pickupLocation.latitude,
-                longitude: pickupLocation.longitude,
-            });
+            setFormData((previous) => ({
+                ...previous,
+                returnLocation: { ...pickupLocation, fee: 0 },
+            }));
         }
     };
 

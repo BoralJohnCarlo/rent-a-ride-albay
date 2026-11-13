@@ -233,16 +233,16 @@ export const createBookingValidator = [
 
     body("pickupLocation.latitude")
         .optional({ nullable: true })
-        .isFloat()
+        .isFloat({ min: -90, max: 90 })
         .withMessage(
-            "Pickup location latitude must be a number."
+            "Pickup location latitude must be between -90 and 90."
         ),
 
     body("pickupLocation.longitude")
         .optional({ nullable: true })
-        .isFloat()
+        .isFloat({ min: -180, max: 180 })
         .withMessage(
-            "Pickup location longitude must be a number."
+            "Pickup location longitude must be between -180 and 180."
         ),
 
     body("returnLocation.type")
@@ -317,16 +317,16 @@ export const createBookingValidator = [
 
     body("returnLocation.latitude")
         .optional({ nullable: true })
-        .isFloat()
+        .isFloat({ min: -90, max: 90 })
         .withMessage(
-            "Return location latitude must be a number."
+            "Return location latitude must be between -90 and 90."
         ),
 
     body("returnLocation.longitude")
         .optional({ nullable: true })
-        .isFloat()
+        .isFloat({ min: -180, max: 180 })
         .withMessage(
-            "Return location longitude must be a number."
+            "Return location longitude must be between -180 and 180."
         ),
 
     body("customerNotes")
@@ -522,7 +522,7 @@ export const updateBookingValidator = [
         .trim(),
 
     body("pickupLocation.serviceLocationId")
-        .optional()
+        .optional({ nullable: true })
         .custom(isValidObjectId)
         .withMessage(
             "Pickup location service location ID must be a valid ID."
@@ -570,16 +570,16 @@ export const updateBookingValidator = [
 
     body("pickupLocation.latitude")
         .optional()
-        .isFloat()
+        .isFloat({ min: -90, max: 90 })
         .withMessage(
-            "Pickup location latitude must be a number."
+            "Pickup location latitude must be between -90 and 90."
         ),
 
     body("pickupLocation.longitude")
         .optional()
-        .isFloat()
+        .isFloat({ min: -180, max: 180 })
         .withMessage(
-            "Pickup location longitude must be a number."
+            "Pickup location longitude must be between -180 and 180."
         ),
 
     body("returnLocation.type")
@@ -599,7 +599,7 @@ export const updateBookingValidator = [
         .trim(),
 
     body("returnLocation.serviceLocationId")
-        .optional()
+        .optional({ nullable: true })
         .custom(isValidObjectId)
         .withMessage(
             "Return location service location ID must be a valid ID."
@@ -647,16 +647,16 @@ export const updateBookingValidator = [
 
     body("returnLocation.latitude")
         .optional()
-        .isFloat()
+        .isFloat({ min: -90, max: 90 })
         .withMessage(
-            "Return location latitude must be a number."
+            "Return location latitude must be between -90 and 90."
         ),
 
     body("returnLocation.longitude")
         .optional()
-        .isFloat()
+        .isFloat({ min: -180, max: 180 })
         .withMessage(
-            "Return location longitude must be a number."
+            "Return location longitude must be between -180 and 180."
         ),
 
     body("customerNotes")

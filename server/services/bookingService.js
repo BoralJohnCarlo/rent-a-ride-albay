@@ -1351,8 +1351,8 @@ const buildBookingLocation = (
     ].filter(Boolean);
 
     const address =
+        serviceLocation.address?.trim() ||
         addressParts.join(", ") ||
-        serviceLocation.address ||
         clientLocation?.address ||
         "";
 

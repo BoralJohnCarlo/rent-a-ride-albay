@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
-import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
 
@@ -13,16 +13,25 @@ const DEFAULT_CENTER = {
 
 const DEFAULT_ZOOM = 13;
 
-const MapClickHandler = ({ onLocationChange }) => {
+const MapClickHandler = ({ onLocationChange, disabled }) => {
     useMapEvents({
         click(e) {
-            onLocationChange({
+            if (disabled) return;
+            onLocationChange?.({
                 latitude: e.latlng.lat,
                 longitude: e.latlng.lng,
             });
         },
     });
 
+    return null;
+};
+
+const MapCenter = ({ latitude, longitude }) => {
+    const map = useMap();
+    useEffect(() => {
+        map.setView([latitude, longitude], map.getZoom(), { animate: false });
+    }, [map, latitude, longitude]);
     return null;
 };
 
@@ -116,10 +125,13 @@ const LocationPicker = ({
                     />
 
                     <MapClickHandler
+                        disabled={disabled || loading}
                         onLocationChange={
                             onLocationChange
                         }
                     />
+
+                    <MapCenter latitude={center.lat} longitude={center.lng} />
 
                     {markerPosition && (
                         <Marker

@@ -129,13 +129,44 @@ const notifyVoucherRecipients = async (voucher, recipientIds) => {
     }
 };
 
-const clamp = (value) =>
-    Math.max(
-        0,
-        Math.round(
-            value * 100
-        ) / 100
-    );
+const clamp = (value) => {
+    const rounded = Math.round(value * 100) / 100;
+    if (!Number.isFinite(rounded)) {
+        throw createError("Voucher pricing must contain finite amounts.", 400);
+    }
+    return Math.max(0, rounded);
+};
+
+const normalizeVoucherPricing = (pricing = {}) => {
+    if (!pricing || typeof pricing !== "object" || Array.isArray(pricing)) {
+        throw createError("Voucher pricing must be an object.", 400);
+    }
+
+    const amount = (field, fallback = 0) => {
+        const value = pricing[field] ?? fallback;
+        if (
+            !["number", "string"].includes(typeof value) ||
+            (typeof value === "string" && !value.trim()) ||
+            !Number.isFinite(Number(value)) || Number(value) < 0
+        ) {
+            throw createError(`Voucher pricing ${field} must be a non-negative finite number.`, 400);
+        }
+        return Number(value);
+    };
+
+    const dailyRate = amount("dailyRate");
+    const rentalDays = amount("rentalDays", 1);
+    return {
+        ...pricing,
+        dailyRate,
+        rentalDays,
+        subtotal: amount("subtotal", dailyRate * rentalDays),
+        reservationFee: amount("reservationFee"),
+        pickupDistanceFee: amount("pickupDistanceFee"),
+        returnDistanceFee: amount("returnDistanceFee"),
+        driverFee: amount("driverFee"),
+    };
+};
 
 const generateVoucherCode = () => {
     const characters =
@@ -235,6 +266,11 @@ const buildVoucherFilters = (
 };
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const getUserVoucherUsageCount = (voucher, userId) =>
+    (voucher.usedBy || []).filter(
+        (entry) => String(entry.user?._id ?? entry.user) === String(userId)
+    ).length;
+
 const getActiveVouchersForUser = async (userId) => {
     const now = new Date();
 
@@ -258,7 +294,10 @@ const getActiveVouchersForUser = async (userId) => {
     });
 
     return candidates.filter(
-        (voucher) => getVoucherDateState(voucher, now) === "current"
+        (voucher) =>
+            getVoucherDateState(voucher, now) === "current" &&
+            getUserVoucherUsageCount(voucher, userId) <
+                (voucher.maxUsagesPerUser ?? 1)
     );
 };
 
@@ -268,7 +307,7 @@ const getPublicVoucherById =
             await Voucher.findById(
                 voucherId
             ).select(
-                "code name description type discountMethod discountValue startDate endDate"
+                "code name description type discountMethod discountValue startDate endDate status"
             );
 
         if (!voucher) {
@@ -377,16 +416,11 @@ const validateVoucherForUser =
             );
         }
 
-        const userUsageCount =
-            voucher.usedBy?.filter(
-                (entry) =>
-                    entry.user?.toString() ===
-                    userId.toString()
-            ).length || 0;
+        const userUsageCount = getUserVoucherUsageCount(voucher, userId);
 
         if (
             userUsageCount >=
-            voucher.maxUsagesPerUser
+            (voucher.maxUsagesPerUser ?? 1)
         ) {
             throw createError(
                 "You have already used this voucher.",
@@ -438,7 +472,7 @@ const applyVoucherDiscount = (
                 discountAmount;
         } else {
             const discountAmount =
-                clamp(discountValue);
+                clamp(Math.min(discountValue, pricing.dailyRate || 0));
 
             discount.discountedDailyRate =
                 clamp(
@@ -451,7 +485,7 @@ const applyVoucherDiscount = (
         }
 
         const rentalDays =
-            pricing.rentalDays || 1;
+            pricing.rentalDays ?? 1;
 
         discount.newSubtotal =
             clamp(
@@ -626,6 +660,10 @@ const calculatePricingWithVoucher = (
     voucher,
     userId
 ) => {
+    // Preview requests may contain numeric strings or omit optional fees.
+    // Normalize before addition so they cannot produce concatenated or NaN totals.
+    pricing = normalizeVoucherPricing(pricing);
+
     const validatedVoucher =
         voucher;
 
@@ -1018,25 +1056,6 @@ const updateVoucherById = async (
             delete updates[key]
     );
 
-    if (
-        startDate &&
-        voucher.startDate &&
-        new Date(
-            startDate
-        ).getTime() !==
-            new Date(
-                voucher.startDate
-            ).getTime()
-    ) {
-        const isBeforeStart =
-            new Date() <
-            new Date(startDate);
-
-        if (isBeforeStart) {
-            updates.usageCount = 0;
-        }
-    }
-
     const previousRecipientIds = new Set(
         (voucher.assignedTo || []).map((id) => String(id))
     );
@@ -1111,11 +1130,24 @@ const deleteVoucherById = async (
 const getAvailableVouchers = async (
     userId
 ) => {
-    return (
-        await getActiveVouchersForUser(
-            userId
-        )
-    );
+    const vouchers = await getActiveVouchersForUser(userId);
+
+    // Customer lists need the offer, never other customers' redemption or
+    // assignment records. Admin management continues to use the full document.
+    return vouchers.map((voucher) => ({
+        _id: voucher._id,
+        code: voucher.code,
+        name: voucher.name,
+        description: voucher.description,
+        type: voucher.type,
+        discountMethod: voucher.discountMethod,
+        discountValue: voucher.discountValue,
+        startDate: voucher.startDate,
+        endDate: voucher.endDate,
+        maxUsagesPerUser: voucher.maxUsagesPerUser ?? 1,
+        status: voucher.status,
+        source: voucher.source,
+    }));
 };
 
 const getVoucherByCode =
@@ -1150,8 +1182,12 @@ const recordVoucherUsage =
         userId,
         bookingId
     ) => {
-        await Voucher.findByIdAndUpdate(
-            voucherId,
+        if (!mongoose.isValidObjectId(userId) || !mongoose.isValidObjectId(bookingId)) {
+            throw createError("A valid customer and booking are required to record voucher usage.", 400);
+        }
+
+        await Voucher.findOneAndUpdate(
+            { _id: voucherId, "usedBy.booking": { $ne: bookingId } },
             {
                 $inc: {
                     usageCount: 1,
@@ -1200,6 +1236,7 @@ const claimVoucherUsage =
             await Voucher.findOneAndUpdate(
                 {
                     _id: voucherId,
+                    "usedBy.booking": { $ne: bookingId },
                     status: VOUCHER_STATUS.ACTIVE,
                     // Same inclusive Manila calendar-day rules as validation.
                     startDate: { $lt: businessDayStart(addDaysToDateKey(today, 1)) },

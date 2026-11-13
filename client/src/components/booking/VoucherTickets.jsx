@@ -25,6 +25,7 @@ const formatDiscount = (voucher) => {
 const formatExpiry = (date) =>
     date
         ? new Date(date).toLocaleDateString("en-PH", {
+              timeZone: "Asia/Manila",
               month: "short",
               day: "numeric",
               year: "numeric",

@@ -26,6 +26,9 @@ const initialState = {
     loading: false,
     error: null,
 
+    ownerUserId: null,
+    requestIds: {},
+
     filters: {
         status: "",
         type: "",
@@ -241,7 +244,8 @@ const voucherSlice = createSlice({
         clearAppliedVoucher(
             state
         ) {
-            state.voucherRequestId = null;
+            delete state.requestIds.applyVoucher;
+            state.loading = Object.keys(state.requestIds).length > 0;
             state.appliedVoucher =
                 null;
 
@@ -276,9 +280,8 @@ const voucherSlice = createSlice({
 
                 .addCase(
                     getVouchers.pending,
-                    (
-                        state
-                    ) => {
+                    (state, action) => {
+                        state.requestIds.getVouchers = action.meta.requestId;
                         state.loading =
                             true;
 
@@ -293,6 +296,8 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.getVouchers !== action.meta.requestId) return;
+                        delete state.requestIds.getVouchers;
                         state.loading =
                             false;
 
@@ -312,6 +317,8 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.getVouchers !== action.meta.requestId) return;
+                        delete state.requestIds.getVouchers;
                         state.loading =
                             false;
 
@@ -322,9 +329,8 @@ const voucherSlice = createSlice({
 
                 .addCase(
                     getVoucherById.pending,
-                    (
-                        state
-                    ) => {
+                    (state, action) => {
+                        state.requestIds.getVoucherById = action.meta.requestId;
                         state.loading =
                             true;
 
@@ -339,6 +345,8 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.getVoucherById !== action.meta.requestId) return;
+                        delete state.requestIds.getVoucherById;
                         state.loading =
                             false;
 
@@ -358,6 +366,8 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.getVoucherById !== action.meta.requestId) return;
+                        delete state.requestIds.getVoucherById;
                         state.loading =
                             false;
 
@@ -368,9 +378,8 @@ const voucherSlice = createSlice({
 
                 .addCase(
                     createVoucher.pending,
-                    (
-                        state
-                    ) => {
+                    (state, action) => {
+                        state.requestIds.createVoucher = action.meta.requestId;
                         state.loading =
                             true;
 
@@ -385,6 +394,10 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.createVoucher !== action.meta.requestId) return;
+                        delete state.requestIds.createVoucher;
+                        // A response from before this change must not restore stale data.
+                        delete state.requestIds.getVouchers;
                         state.loading =
                             false;
 
@@ -409,6 +422,8 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.createVoucher !== action.meta.requestId) return;
+                        delete state.requestIds.createVoucher;
                         state.loading =
                             false;
 
@@ -419,9 +434,8 @@ const voucherSlice = createSlice({
 
                 .addCase(
                     updateVoucher.pending,
-                    (
-                        state
-                    ) => {
+                    (state, action) => {
+                        state.requestIds.updateVoucher = action.meta.requestId;
                         state.loading =
                             true;
 
@@ -436,6 +450,10 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.updateVoucher !== action.meta.requestId) return;
+                        delete state.requestIds.updateVoucher;
+                        // A response from before this change must not restore stale data.
+                        delete state.requestIds.getVouchers;
                         state.loading =
                             false;
 
@@ -474,6 +492,8 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.updateVoucher !== action.meta.requestId) return;
+                        delete state.requestIds.updateVoucher;
                         state.loading =
                             false;
 
@@ -484,9 +504,8 @@ const voucherSlice = createSlice({
 
                 .addCase(
                     deleteVoucher.pending,
-                    (
-                        state
-                    ) => {
+                    (state, action) => {
+                        state.requestIds.deleteVoucher = action.meta.requestId;
                         state.loading =
                             true;
 
@@ -501,6 +520,10 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.deleteVoucher !== action.meta.requestId) return;
+                        delete state.requestIds.deleteVoucher;
+                        // A response from before this change must not restore stale data.
+                        delete state.requestIds.getVouchers;
                         state.loading =
                             false;
 
@@ -535,6 +558,8 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.deleteVoucher !== action.meta.requestId) return;
+                        delete state.requestIds.deleteVoucher;
                         state.loading =
                             false;
 
@@ -545,9 +570,8 @@ const voucherSlice = createSlice({
 
                 .addCase(
                     getAvailableVouchers.pending,
-                    (
-                        state
-                    ) => {
+                    (state, action) => {
+                        state.requestIds.getAvailableVouchers = action.meta.requestId;
                         state.loading =
                             true;
 
@@ -562,6 +586,8 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.getAvailableVouchers !== action.meta.requestId) return;
+                        delete state.requestIds.getAvailableVouchers;
                         state.loading =
                             false;
 
@@ -581,6 +607,9 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
+                        if (state.requestIds.getAvailableVouchers !== action.meta.requestId) return;
+                        delete state.requestIds.getAvailableVouchers;
+                        state.availableVouchers = [];
                         state.loading =
                             false;
 
@@ -594,7 +623,7 @@ const voucherSlice = createSlice({
                     (
                         state, action
                     ) => {
-                        state.voucherRequestId = action.meta.requestId;
+                        state.requestIds.applyVoucher = action.meta.requestId;
                         state.loading =
                             true;
 
@@ -609,7 +638,8 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
-                        if (state.voucherRequestId !== action.meta.requestId) return;
+                        if (state.requestIds.applyVoucher !== action.meta.requestId) return;
+                        delete state.requestIds.applyVoucher;
                         state.loading =
                             false;
 
@@ -629,7 +659,8 @@ const voucherSlice = createSlice({
                         state,
                         action
                     ) => {
-                        if (state.voucherRequestId !== action.meta.requestId) return;
+                        if (state.requestIds.applyVoucher !== action.meta.requestId) return;
+                        delete state.requestIds.applyVoucher;
                         state.loading =
                             false;
 
@@ -640,6 +671,30 @@ const voucherSlice = createSlice({
 
                         state.appliedVoucher =
                             null;
+                    }
+                )
+                .addMatcher(
+                    (action) => action.type.startsWith("voucher/") &&
+                        /\/(pending|fulfilled|rejected)$/.test(action.type),
+                    (state) => {
+                        // A list response must not enable checkout while voucher validation is pending.
+                        state.loading = Object.keys(state.requestIds).length > 0;
+                    }
+                )
+                .addMatcher(
+                    (action) => ["auth/logout/fulfilled", "auth/sessionEnded",
+                        "auth/getCurrentUser/rejected", "auth/login/rejected"].includes(action.type),
+                    () => initialState
+                )
+                .addMatcher(
+                    (action) => ["auth/login/fulfilled", "auth/getCurrentUser/fulfilled"].includes(action.type),
+                    (state, action) => {
+                        const user = action.payload?.data;
+                        const id = user?._id ?? user?.id;
+                        const ownerUserId = id ? String(id) : null;
+                        if (state.ownerUserId !== ownerUserId) {
+                            return { ...initialState, ownerUserId };
+                        }
                     }
                 );
         },
