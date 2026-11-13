@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import {
     CarFront,
-    Clock3,
-    Mail,
+    Camera,
+    Globe,
     MapPin,
     MessageCircle,
     Phone,
@@ -12,34 +12,37 @@ import PageContainer from "../../components/sections/PageContainer";
 import Section from "../../components/sections/Section";
 import SectionHeader from "../../components/sections/SectionHeader";
 
+import { businessContact } from "../../constants/businessContact";
+
 const contactItems = [
     {
         icon: MapPin,
         title: "Location",
-        value: "Albay, Philippines",
-        description:
-            "Serving customers looking for convenient vehicle rentals around Albay.",
+        value: businessContact.location,
+        description: "Serving customers looking for convenient vehicle rentals around Albay.",
     },
     {
-        icon: MessageCircle,
-        title: "Rental Inquiries",
-        value: "Vehicle Rental Support",
-        description:
-            "Contact the Rent-A-Ride Albay team regarding vehicle availability and rental concerns.",
+        icon: Phone,
+        title: "Call Us",
+        value: businessContact.phone,
+        href: businessContact.phoneHref,
+        description: "Call our team for vehicle availability and rental concerns.",
     },
     {
-        icon: Mail,
-        title: "Customer Support",
-        value: "Support & Assistance",
-        description:
-            "Get assistance with questions regarding the rental process and your transactions.",
+        icon: Globe,
+        title: "Facebook",
+        value: "Rent-A-Ride Albay Branch",
+        href: businessContact.facebook,
+        external: true,
+        description: "Visit our Facebook page for rental inquiries and assistance.",
     },
     {
-        icon: Clock3,
-        title: "Availability",
-        value: "Online Platform",
-        description:
-            "The system is designed to be accessible through internet-enabled devices.",
+        icon: Camera,
+        title: "Instagram",
+        value: "@rentaridealbay",
+        href: businessContact.instagram,
+        external: true,
+        description: "Follow Rent-A-Ride Albay on Instagram.",
     },
 ];
 
@@ -165,6 +168,8 @@ const Contact = () => {
                                 title,
                                 value,
                                 description,
+                                href,
+                                external,
                             }) => (
                                 <motion.article
                                     key={title}
@@ -240,7 +245,14 @@ const Contact = () => {
                                             dark:text-gray-200
                                         "
                                     >
-                                        {value}
+                                        {href ? (
+                                            <a href={href} target={external ? "_blank" : undefined}
+                                                rel={external ? "noopener noreferrer" : undefined}
+                                                aria-label={external ? value + " (opens in a new tab)" : undefined}
+                                                className="break-words underline underline-offset-4 hover:text-yellow-600 dark:hover:text-yellow-400">
+                                                {value}
+                                            </a>
+                                        ) : value}
                                     </p>
 
                                     <p
@@ -523,7 +535,7 @@ const Contact = () => {
                                         </p>
 
                                         <p className="mt-1 text-sm text-gray-400">
-                                            Albay, Philippines
+                                            {businessContact.location}
                                         </p>
                                     </div>
                                 </div>
@@ -544,8 +556,7 @@ const Contact = () => {
                                         </p>
 
                                         <p className="mt-1 text-sm text-gray-400">
-                                            Contact the team for
-                                            rental assistance.
+                                            <a href={businessContact.phoneHref} className="break-words underline underline-offset-4 hover:text-yellow-400">{businessContact.phone}</a>
                                         </p>
                                     </div>
                                 </div>

@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import {
-    Mail,
+    MessageCircle,
     MapPin,
     Phone,
 } from "lucide-react";
 
 import PublicLogo from "./PublicLogo";
+import { businessContact } from "../../constants/businessContact";
 
 const Footer = () => {
     return (
@@ -26,8 +27,10 @@ const Footer = () => {
 
                         <div className="mt-6 flex items-center gap-3">
                             <a
-                                href="#"
-                                aria-label="Facebook"
+                                href={businessContact.facebook}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="Facebook (opens in a new tab)"
                                 className="
                                     flex
                                     h-10
@@ -57,8 +60,10 @@ const Footer = () => {
                             </a>
 
                             <a
-                                href="#"
-                                aria-label="Instagram"
+                                href={businessContact.instagram}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="Instagram (opens in a new tab)"
                                 className="
                                     flex
                                     h-10
@@ -169,7 +174,7 @@ const Footer = () => {
                                 />
 
                                 <span className="text-sm leading-5 text-gray-400">
-                                    Albay, Philippines
+                                    {businessContact.location}
                                 </span>
                             </div>
 
@@ -179,21 +184,18 @@ const Footer = () => {
                                     className="mt-0.5 shrink-0 text-yellow-500"
                                 />
 
-                                <span className="text-sm leading-5 text-gray-400">
-                                    Contact us for rental
-                                    inquiries
-                                </span>
+                                <a href={businessContact.phoneHref} className="min-w-0 break-words text-sm leading-5 text-gray-400 hover:text-yellow-400">
+                                    {businessContact.phone}
+                                </a>
                             </div>
 
                             <div className="flex items-start gap-3">
-                                <Mail
+                                <MessageCircle
                                     size={18}
                                     className="mt-0.5 shrink-0 text-yellow-500"
                                 />
 
-                                <span className="text-sm leading-5 text-gray-400">
-                                    Customer support
-                                </span>
+                                <a href={businessContact.facebook} target="_blank" rel="noopener noreferrer" className="min-w-0 break-words text-sm leading-5 text-gray-400 hover:text-yellow-400">Rental inquiries on Facebook</a>
                             </div>
                         </div>
                     </div>
