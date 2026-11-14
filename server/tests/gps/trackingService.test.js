@@ -12,12 +12,14 @@ import {
 
 import Alert from "../../models/Alert.js";
 import Telemetry from "../../models/Telemetry.js";
+import GpsFixObservation from "../../models/GpsFixObservation.js";
 import Tracker from "../../models/Tracker.js";
 import Vehicle from "../../models/Vehicle.js";
 import VehicleTrackingState from "../../models/VehicleTrackingState.js";
 import {
     ingestTelemetry,
     recordHeartbeat,
+    getVehicleTelemetryHistory,
 } from "../../services/trackingService.js";
 import { createTracker, disableTracker, assignTrackerToVehicle, unassignTracker } from "../../services/trackerService.js";
 import { normalizeTelemetryPayload } from "../../services/telemetryNormalizationService.js";
@@ -415,6 +417,19 @@ describe("trackingService", () => {
     });
 
     describe("recordHeartbeat", () => {
+        it("persists heartbeat-only loss once and breaks history between real positions", async () => {
+            const { vehicleId, tracker } = await registerAssignedTracker();
+            const start = minutesAgo(3), lossAt = minutesAgo(2), end = minutesAgo(1);
+            await ingestTelemetry(tracker, reading({ recordedAt: start.toISOString() }), { receivedAt: start });
+            await recordHeartbeat(tracker, lossAt, { gpsFix: false });
+            await recordHeartbeat(tracker, lossAt, { gpsFix: false });
+            await ingestTelemetry(tracker, reading({ recordedAt: end.toISOString(), latitude: 13.15 }), { receivedAt: end });
+            assert.equal(await GpsFixObservation.countDocuments({ vehicle: vehicleId }), 1);
+            assert.equal(await Telemetry.countDocuments({ vehicle: vehicleId }), 2);
+            const history = await getVehicleTelemetryHistory(vehicleId, { start, end });
+            assert.equal(history.points.length, 2);
+            assert.equal(history.points[1].routeBreakBefore, true);
+        });
         it("a replacement heartbeat owns a fix-only snapshot and alerts before its first position", async () => {
             const { vehicleId, tracker: oldTracker } = await registerAssignedTracker();
             const oldPosition = reading({ recordedAt: new Date(Date.now() + 4 * 60000).toISOString() });

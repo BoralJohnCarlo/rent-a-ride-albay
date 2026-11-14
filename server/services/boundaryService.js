@@ -23,6 +23,28 @@ import { TRACKER_STATUS } from "../constants/telemetryConstants.js";
 export const BOUNDARY_RESOURCE = "boundary-policy";
 const money = value => `PHP ${Number(value).toFixed(2)}`;
 const boundaryTypes = ["BOUNDARY_NEAR", "BOUNDARY_OUTSIDE"];
+const administrativeNotices = ["approved", "waived", "trip_approved", "trip_revoked"];
+
+export const enqueueBoundaryPermission = async (rental, entry, session) => {
+    await cancelBoundaryNotices({ rental: rental._id, kind: { $in: ["trip_approved", "trip_revoked"] } }, session);
+    const approved = entry.action === "approved";
+    const key = `boundary-permission:${entry._id}:${rental.customer}`;
+    const expiry = approved ? new Date(entry.until).toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" }) : null;
+    const payload = {
+        type: approved ? "Boundary Trip Approved" : "Boundary Trip Revoked",
+        title: approved ? "Outside-Albay trip approved" : "Outside-Albay approval revoked",
+        message: approved ? `Your outside-Albay trip is approved until ${expiry} (Philippine time). Boundary monitoring resumes after this approval expires.` :
+            "Your outside-Albay trip approval has been revoked. The current boundary policy applies again; any new countdown requires fresh GPS confirmation. Please return safely if you are outside Albay.",
+        variant: approved ? "success" : "warning", category: "Rental",
+        metadata: { relatedId: rental.booking, relatedModel: "Booking" },
+    };
+    await Notification.updateOne({ recipient: rental.customer, dedupeKey: key }, { $setOnInsert: {
+        recipient: rental.customer, dedupeKey: key, ...payload, pushPending: true,
+    } }, { upsert: true, session, runValidators: true });
+    await BoundaryNotice.updateOne({ key }, { $setOnInsert: { key, recipient: rental.customer,
+        rental: rental._id, kind: approved ? "trip_approved" : "trip_revoked", payload,
+    } }, { upsert: true, session });
+};
 export const resolveBoundaryAlerts = async (vehicle, session, events = []) => {
     const alerts = await Alert.find({ ...(vehicle ? { vehicle } : {}), type: { $in: boundaryTypes }, status: "active" }).session(session);
     for (const alert of alerts) {
@@ -104,15 +126,21 @@ export const deliverBoundaryNotices = async () => {
     const { sendBrowserPush } = await import("./webPushService.js");
     const settings = resolveBoundarySettings((await Settings.findOne().select("boundarySettings").lean())?.boundarySettings);
     for (const notice of await BoundaryNotice.find({ delivered: false }).sort({ createdAt: 1 }).limit(100).lean()) {
-        if (!settings.alertsEnabled && !["approved", "waived"].includes(notice.kind)) continue;
-        const existing = await Notification.findOne({ recipient: notice.recipient, dedupeKey: notice.key });
-        if (existing && !existing.pushCancelled) {
-            const user = await User.findById(notice.recipient).select("role credentialVersion passwordChangedAt isSuspended");
-            await sendBrowserPush(user, existing);
+        try {
+            if (!settings.alertsEnabled && !administrativeNotices.includes(notice.kind)) continue;
+            const existing = await Notification.findOne({ recipient: notice.recipient, dedupeKey: notice.key });
+            if (existing && !existing.pushCancelled) {
+                const user = await User.findById(notice.recipient).select("role credentialVersion passwordChangedAt isSuspended");
+                await sendBrowserPush(user, existing);
+            }
+            const notification = existing || await createNotification({ recipient: notice.recipient, dedupeKey: notice.key, ...notice.payload });
+            if (notification || await Notification.exists({ recipient: notice.recipient, dedupeKey: notice.key }))
+                await BoundaryNotice.updateOne({ _id: notice._id }, { $set: { delivered: true } });
+        } catch (error) {
+            // Keep this recipient's durable intent for retry, without delaying
+            // other customers/admins because one enqueue or lookup failed.
+            console.error("Boundary notification delivery deferred:", error.message);
         }
-        const notification = existing || await createNotification({ recipient: notice.recipient, dedupeKey: notice.key, ...notice.payload });
-        if (notification || await Notification.exists({ recipient: notice.recipient, dedupeKey: notice.key }))
-            await BoundaryNotice.updateOne({ _id: notice._id }, { $set: { delivered: true } });
     }
 };
 
@@ -124,7 +152,7 @@ export const cancelBoundaryMonitoring = async (session) => {
         { $set: { active: false, stage: "cancelled", resolvedAt: new Date() } }, { session });
     await BoundaryIncident.updateMany({ review: "eligible", stage: "cancelled" },
         { $set: { review: "waived", reason: "Boundary alerts disabled by admin.", reviewedAt: new Date() } }, { session });
-    await cancelBoundaryNotices({ kind: { $nin: ["approved", "waived"] } }, session);
+    await cancelBoundaryNotices({ kind: { $nin: administrativeNotices } }, session);
     return events;
 };
 
@@ -154,6 +182,11 @@ export const evaluateBoundary = async (tracker, now = new Date()) => {
         const pickupAt = rental?.bookingPeriod.actualStartDate || rental?.pickup?.date;
         if ((assigned.assignedAt && new Date(fix.recordedAt) < new Date(assigned.assignedAt)) ||
             (pickupAt && new Date(fix.recordedAt) < new Date(pickupAt))) return;
+        const lastPermission = rental?.boundaryExemptionHistory?.at(-1);
+        // Revocation ends an approved period. Retained or delayed fixes from
+        // that period cannot seed warnings, crossing confirmation or evidence.
+        if (lastPermission?.action === "revoked" && lastPermission.performedAt &&
+            new Date(fix.recordedAt) <= new Date(lastPermission.performedAt)) return;
         const booking = rental && await Booking.findById(rental.booking).select("termsAcceptance").session(session).lean();
         const stored = await BoundaryState.findOne({ vehicle: tracker.vehicle }).session(session).lean();
         let incident = await BoundaryIncident.findOne({ vehicle: tracker.vehicle, active: true }).session(session);

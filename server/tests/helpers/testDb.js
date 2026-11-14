@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 
 import Alert from "../../models/Alert.js";
 import Telemetry from "../../models/Telemetry.js";
+import GpsFixObservation from "../../models/GpsFixObservation.js";
 import Tracker from "../../models/Tracker.js";
 import Vehicle from "../../models/Vehicle.js";
 import VehicleTrackingState from "../../models/VehicleTrackingState.js";
@@ -23,7 +24,7 @@ export const connectTestDb = async () => {
     // Build indexes up front - the partial unique Alert index is part of
     // what's under test.
     await Promise.all(
-        [Alert, Telemetry, Tracker, Vehicle, VehicleTrackingState].map(
+        [Alert, Telemetry, GpsFixObservation, Tracker, Vehicle, VehicleTrackingState].map(
             (model) => model.init()
         )
     );
@@ -48,7 +49,7 @@ export const disconnectTestDb = async () => {
 
 export const clearCollections = () =>
     Promise.all(
-        [Alert, Telemetry, Tracker, Vehicle, VehicleTrackingState].map(
+        [Alert, Telemetry, GpsFixObservation, Tracker, Vehicle, VehicleTrackingState].map(
             (model) => model.deleteMany({})
         )
     );

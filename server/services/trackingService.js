@@ -1,4 +1,5 @@
 import Telemetry from "../models/Telemetry.js";
+import GpsFixObservation from "../models/GpsFixObservation.js";
 import { evaluateBoundary } from "./boundaryService.js";
 import Tracker from "../models/Tracker.js";
 import VehicleTrackingState from "../models/VehicleTrackingState.js";
@@ -206,6 +207,12 @@ export const recordHeartbeat = async (tracker, receivedAt = new Date(), { gpsFix
         let fixState = null;
         if (typeof gpsFix === "boolean" && await isVehicleTrackable(tracker.vehicle)) {
             await assertCurrentTracker(tracker);
+            if (gpsFix === false) {
+                // Save before updating the live snapshot so a failed write can
+                // be retried without losing the history break. Replays dedupe.
+                await GpsFixObservation.updateOne({ vehicle: tracker.vehicle, tracker: tracker._id, observedAt: receivedAt },
+                    { $setOnInsert: { vehicle: tracker.vehicle, tracker: tracker._id, observedAt: receivedAt } }, { upsert: true });
+            }
             const sameTracker = { $eq: ["$tracker", { $literal: tracker._id }] };
             const keepPositionField = (field) => ({
                 $cond: [sameTracker, { $ifNull: [`$${field}`, null] }, null],
@@ -383,8 +390,18 @@ const sampleEvenly = (points, maxPoints) => {
     }
 
     sampled[sampled.length - 1] = points[points.length - 1];
-
-    return sampled;
+    // Preserve outages hidden between sampled readings. Otherwise a short
+    // explicit GPS loss could disappear and become a false continuous route.
+    let checked = 0;
+    return sampled.map(point => {
+        let interrupted = false;
+        while (checked < points.length && points[checked] !== point) {
+            const reading = points[checked++];
+            if (reading.routeBreakBefore || reading.gpsFix !== true || reading.latitude == null || reading.longitude == null) interrupted = true;
+        }
+        checked += 1;
+        return interrupted ? { ...point, routeBreakBefore: true } : point;
+    });
 };
 
 /*
@@ -436,7 +453,7 @@ export const getVehicleTelemetryHistory = async (
         recordedAt: { $gte: startDate, $lte: endDate },
     })
         .select(
-            "latitude longitude speed heading ignition batteryLevel gpsFix recordedAt receivedAt -_id"
+            "tracker latitude longitude speed heading ignition batteryLevel gpsFix recordedAt receivedAt -_id"
         )
         .sort({ recordedAt: 1 })
         .limit(TELEMETRY_HISTORY_QUERY_LIMIT + 1)
@@ -451,7 +468,24 @@ export const getVehicleTelemetryHistory = async (
         );
     }
 
-    const points = sampleEvenly(rawPoints, TELEMETRY_HISTORY_MAX_POINTS);
+    const losses = await GpsFixObservation.find({ vehicle: vehicleId, observedAt: { $gte: startDate, $lte: endDate } })
+        .select("observedAt -_id").sort({ observedAt: 1 }).limit(TELEMETRY_HISTORY_QUERY_LIMIT + 1).lean();
+    if (losses.length > TELEMETRY_HISTORY_QUERY_LIMIT) {
+        throw createError("This range contains too many GPS loss observations. Choose a shorter range to load the full route.", 400);
+    }
+    let lossIndex = 0;
+    const markedPoints = rawPoints.map((point, index) => {
+        const previous = rawPoints[index - 1];
+        let interrupted = Boolean(point.routeBreakBefore) || Boolean(previous && String(previous.tracker) !== String(point.tracker));
+        while (lossIndex < losses.length && new Date(losses[lossIndex].observedAt) <= new Date(point.recordedAt)) {
+            if (previous && new Date(losses[lossIndex].observedAt) >= new Date(previous.recordedAt)) interrupted = true;
+            lossIndex += 1;
+        }
+        // Tracker identity is used for segmentation, not exposed in the API.
+        const { tracker: _tracker, ...position } = point;
+        return interrupted ? { ...position, routeBreakBefore: true } : position;
+    });
+    const points = sampleEvenly(markedPoints, TELEMETRY_HISTORY_MAX_POINTS);
 
     return {
         vehicleId,

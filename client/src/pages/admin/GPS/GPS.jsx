@@ -35,6 +35,7 @@ import useGPS from "../../../hooks/gps/useGPS";
 import useGpsAssignmentSync from "../../../hooks/gps/useGpsAssignmentSync";
 import useNowTicker, { latestTimestamp } from "../../../hooks/gps/useNowTicker";
 import useRouteHistory from "../../../hooks/gps/useRouteHistory";
+import { readBoundaryHistoryLink } from "../../../utils/boundaryHistoryLink";
 import useSocket from "../../../hooks/shared/useSocket";
 import useTracker from "../../../hooks/trackers";
 import useAlerts from "../../../hooks/alerts";
@@ -189,11 +190,12 @@ const GPS = () => {
     // Supports deep-linking from elsewhere via ?vehicle=<id> - read once on
     // mount only, so it never fights the admin's own later selections.
     const [searchParams] = useSearchParams();
+    const [initialHistory] = useState(() => readBoundaryHistoryLink(searchParams));
     const [section, setSection] = useState(GPS_SECTION.MAP);
     const [selectedVehicleId, setSelectedVehicleId] = useState(
         () => searchParams.get("vehicle") || null
     );
-    const [mode, setMode] = useState(GPS_MODE.LIVE);
+    const [mode, setMode] = useState(initialHistory ? GPS_MODE.HISTORY : GPS_MODE.LIVE);
     const [vehicleSearch, setVehicleSearch] = useState("");
     const {
         range: historyRange,
@@ -203,7 +205,7 @@ const GPS = () => {
         load: handleLoadHistory,
         togglePlayback: handlePlaybackToggle,
         resetPlayback: handlePlaybackReset,
-    } = useRouteHistory(selectedVehicleId, mode);
+    } = useRouteHistory(selectedVehicleId, mode, { initialRange: initialHistory?.range });
 
     const [trackerSearch, setTrackerSearch] = useState("");
     const [trackerFormDialog, setTrackerFormDialog] = useState(

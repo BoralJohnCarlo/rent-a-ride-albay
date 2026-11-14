@@ -14,6 +14,11 @@ export function BoundaryPolicyNotice({ policy }) {
 }
 
 export default function BoundaryNotice({ rentalId }) {
+    if (!rentalId) return null;
+    return <RentalBoundaryNotice key={String(rentalId)} rentalId={rentalId} />;
+}
+
+function RentalBoundaryNotice({ rentalId }) {
     const [incidents, setIncidents] = useState([]);
     const [failed, setFailed] = useState(false);
     useEffect(() => {
@@ -36,7 +41,11 @@ export default function BoundaryNotice({ rentalId }) {
     return <aside aria-live="polite" className="my-4 space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">
         <h2 className="font-semibold">Albay boundary status</h2>
         {failed && <p>Boundary status could not be refreshed. The last status may be outdated; check your notifications and stay within Albay.</p>}
-        {incidents.map(incident => <p key={incident.id}>
+        {incidents.map(incident => incident.kind === "permission" ? <p key={incident.id}>
+            {incident.permissionStatus === "approved" ? `Your outside-Albay trip is approved until ${new Date(incident.until).toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" })} (Philippine time).` :
+                incident.permissionStatus === "expired" ? "Your outside-Albay trip approval has expired. The current boundary policy applies again." :
+                    "Your outside-Albay trip approval was revoked. The current boundary policy applies again."}
+        </p> : <p key={incident.id}>
             {!incident.locationKnown ? "Current GPS location is unknown. The penalty evidence clock is paused. " : ""}
             {incident.stage === "near" ? "You are approaching the Albay boundary. Please remain inside Albay." :
                 incident.review === "eligible" ? "The grace period has been exceeded. A proposed boundary penalty requires admin review." :

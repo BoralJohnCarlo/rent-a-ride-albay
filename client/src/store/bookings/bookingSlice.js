@@ -28,6 +28,12 @@ const initialState = {
     loading: false,
     error: null,
 
+    ownerUserId: null,
+    requestIds: {},
+    pendingRequests: {},
+    selectionRevision: 0,
+    selectedBookingId: null,
+
     filters: {
         customer: "",
         vehicle: "",
@@ -367,6 +373,13 @@ export const cancelBookingExtension =
         }
     );
 
+const invalidateRead = (state, type) => {
+    const id = state.requestIds[type];
+    if (id) delete state.pendingRequests[id];
+    delete state.requestIds[type];
+    state.loading = Object.keys(state.pendingRequests).length > 0;
+};
+
 const bookingSlice = createSlice({
     name: "booking",
 
@@ -379,12 +392,17 @@ const bookingSlice = createSlice({
 
         clearSelectedBooking: (state) => {
             state.selectedBooking = null;
+            state.selectedBookingId = null;
+            state.selectionRevision += 1;
+            invalidateRead(state, "booking/getBookingById");
         },
 
         setBookingFilters: (
             state,
             action
         ) => {
+            invalidateRead(state, "booking/getBookings");
+            state.bookings = [];
             state.filters = {
                 ...state.filters,
                 ...action.payload,
@@ -392,6 +410,8 @@ const bookingSlice = createSlice({
         },
 
         resetBookingFilters: (state) => {
+            invalidateRead(state, "booking/getBookings");
+            state.bookings = [];
             state.filters = {
                 customer: "",
                 vehicle: "",
@@ -403,560 +423,75 @@ const bookingSlice = createSlice({
     },
 
     extraReducers: (builder) => {
-        builder
-
-            .addCase(
-                getBookings.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
+        const reads = [getBookings, getBookingById];
+        const mutations = [createBooking, updateBooking, approveBooking, rejectBooking,
+            cancelBooking, expireBooking, markBookingNoShow, requestBookingExtension,
+            approveBookingExtension, rejectBookingExtension, cancelBookingExtension];
+        for (const thunk of [...reads, ...mutations]) {
+            const type = thunk.typePrefix;
+            const isRead = reads.includes(thunk);
+            builder.addCase(thunk.pending, (state, action) => {
+                if (isRead) invalidateRead(state, type);
+                if (thunk === getBookingById) {
+                    state.selectedBooking = null;
+                    state.selectedBookingId = action.meta.arg;
+                    state.selectionRevision += 1;
                 }
-            )
-
-            .addCase(
-                getBookings.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    state.bookings =
-                        action.payload?.data ??
-                        [];
-                }
-            )
-
-            .addCase(
-                getBookings.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-                }
-            )
-
-
-            .addCase(
-                getBookingById.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                getBookingById.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    state.selectedBooking =
-                        action.payload?.data ??
-                        null;
-                }
-            )
-
-            .addCase(
-                getBookingById.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-
-                    state.selectedBooking =
-                        null;
-                }
-            )
-
-
-            .addCase(
-                createBooking.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                createBooking.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    const booking =
-                        action.payload?.data;
-
-                    if (booking) {
-                        state.bookings.unshift(
-                            booking
-                        );
-
-                        state.selectedBooking =
-                            booking;
+                state.requestIds[type] = action.meta.requestId;
+                state.pendingRequests[action.meta.requestId] = {
+                    type, selectionRevision: state.selectionRevision,
+                };
+                state.loading = true;
+                state.error = null;
+            });
+            builder.addCase(thunk.fulfilled, (state, action) => {
+                const pending = state.pendingRequests[action.meta.requestId];
+                if (!pending || (isRead && state.requestIds[type] !== action.meta.requestId)) return;
+                delete state.pendingRequests[action.meta.requestId];
+                if (state.requestIds[type] === action.meta.requestId) delete state.requestIds[type];
+                state.loading = Object.keys(state.pendingRequests).length > 0;
+                state.error = null;
+                const data = action.payload?.data;
+                if (thunk === getBookings) {
+                    state.bookings = data ?? [];
+                } else if (thunk === getBookingById) {
+                    state.selectedBooking = data ?? null;
+                } else if (data) {
+                    // A list started before a successful mutation cannot undo it.
+                    invalidateRead(state, getBookings.typePrefix);
+                    if (thunk === createBooking) {
+                        state.bookings = [data, ...state.bookings.filter(booking => booking._id !== data._id)];
+                    } else {
+                        state.bookings = state.bookings.map(booking => booking._id === data._id ? data : booking);
+                    }
+                    const sameSelection = String(state.selectedBookingId || state.selectedBooking?._id || "") === String(data._id);
+                    if (sameSelection || (thunk === createBooking && pending.selectionRevision === state.selectionRevision)) {
+                        invalidateRead(state, getBookingById.typePrefix);
+                        state.selectedBooking = data;
+                        state.selectedBookingId = data._id;
                     }
                 }
-            )
-
-            .addCase(
-                createBooking.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-                }
-            )
-
-
-            .addCase(
-                updateBooking.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                updateBooking.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    const updatedBooking =
-                        action.payload?.data;
-
-                    if (!updatedBooking) {
-                        return;
-                    }
-
-                    state.bookings =
-                        state.bookings.map(
-                            (booking) =>
-                                booking._id ===
-                                updatedBooking._id
-                                    ? updatedBooking
-                                    : booking
-                        );
-
-                    state.selectedBooking =
-                        updatedBooking;
-                }
-            )
-
-            .addCase(
-                updateBooking.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-                }
-            )
-
-
-            .addCase(
-                approveBooking.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                approveBooking.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    const updatedBooking =
-                        action.payload?.data;
-
-                    if (!updatedBooking) {
-                        return;
-                    }
-
-                    state.bookings =
-                        state.bookings.map(
-                            (booking) =>
-                                booking._id ===
-                                updatedBooking._id
-                                    ? updatedBooking
-                                    : booking
-                        );
-
-                    state.selectedBooking =
-                        updatedBooking;
-                }
-            )
-
-            .addCase(
-                approveBooking.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-                }
-            )
-
-
-            .addCase(
-                rejectBooking.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                rejectBooking.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    const updatedBooking =
-                        action.payload?.data;
-
-                    if (!updatedBooking) {
-                        return;
-                    }
-
-                    state.bookings =
-                        state.bookings.map(
-                            (booking) =>
-                                booking._id ===
-                                updatedBooking._id
-                                    ? updatedBooking
-                                    : booking
-                        );
-
-                    state.selectedBooking =
-                        updatedBooking;
-                }
-            )
-
-            .addCase(
-                rejectBooking.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-                }
-            )
-
-
-            .addCase(
-                cancelBooking.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                cancelBooking.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    const updatedBooking =
-                        action.payload?.data;
-
-                    if (!updatedBooking) {
-                        return;
-                    }
-
-                    state.bookings =
-                        state.bookings.map(
-                            (booking) =>
-                                booking._id ===
-                                updatedBooking._id
-                                    ? updatedBooking
-                                    : booking
-                        );
-
-                    state.selectedBooking =
-                        updatedBooking;
-                }
-            )
-
-            .addCase(
-                cancelBooking.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-                }
-            )
-
-
-            .addCase(
-                expireBooking.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                expireBooking.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    const updatedBooking =
-                        action.payload?.data;
-
-                    if (!updatedBooking) {
-                        return;
-                    }
-
-                    state.bookings =
-                        state.bookings.map(
-                            (booking) =>
-                                booking._id ===
-                                updatedBooking._id
-                                    ? updatedBooking
-                                    : booking
-                        );
-
-                    state.selectedBooking =
-                        updatedBooking;
-                }
-            )
-
-                        .addCase(
-                expireBooking.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-                }
-            )
-
-            .addCase(
-                markBookingNoShow.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                markBookingNoShow.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    const updatedBooking =
-                        action.payload?.data;
-
-                    if (!updatedBooking) {
-                        return;
-                    }
-
-                    state.bookings =
-                        state.bookings.map(
-                            (booking) =>
-                                booking._id ===
-                                updatedBooking._id
-                                    ? updatedBooking
-                                    : booking
-                        );
-
-                    state.selectedBooking =
-                        updatedBooking;
-                }
-            )
-
-            .addCase(
-                markBookingNoShow.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        typeof action.payload === "string"
-                            ? action.payload
-                            : action.payload?.message ?? null;
-                }
-            )
-
-
-            .addCase(
-                requestBookingExtension.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                requestBookingExtension.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    const updatedBooking =
-                        action.payload?.data;
-
-                    if (!updatedBooking) {
-                        return;
-                    }
-
-                    state.bookings =
-                        state.bookings.map(
-                            (booking) =>
-                                booking._id ===
-                                updatedBooking._id
-                                    ? updatedBooking
-                                    : booking
-                        );
-
-                    state.selectedBooking =
-                        updatedBooking;
-                }
-            )
-
-            .addCase(
-                requestBookingExtension.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-                }
-            )
-
-
-            .addCase(
-                approveBookingExtension.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                approveBookingExtension.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    const updatedBooking =
-                        action.payload?.data;
-
-                    if (!updatedBooking) {
-                        return;
-                    }
-
-                    state.bookings =
-                        state.bookings.map(
-                            (booking) =>
-                                booking._id ===
-                                updatedBooking._id
-                                    ? updatedBooking
-                                    : booking
-                        );
-
-                    state.selectedBooking =
-                        updatedBooking;
-                }
-            )
-
-            .addCase(
-                approveBookingExtension.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-                }
-            )
-
-
-            .addCase(
-                rejectBookingExtension.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                rejectBookingExtension.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    const updatedBooking =
-                        action.payload?.data;
-
-                    if (!updatedBooking) {
-                        return;
-                    }
-
-                    state.bookings =
-                        state.bookings.map(
-                            (booking) =>
-                                booking._id ===
-                                updatedBooking._id
-                                    ? updatedBooking
-                                    : booking
-                        );
-
-                    state.selectedBooking =
-                        updatedBooking;
-                }
-            )
-
-            .addCase(
-                rejectBookingExtension.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-                }
-            )
-
-
-            .addCase(
-                cancelBookingExtension.pending,
-                (state) => {
-                    state.loading = true;
-                    state.error = null;
-                }
-            )
-
-            .addCase(
-                cancelBookingExtension.fulfilled,
-                (state, action) => {
-                    state.loading = false;
-                    state.error = null;
-
-                    const updatedBooking =
-                        action.payload?.data;
-
-                    if (!updatedBooking) {
-                        return;
-                    }
-
-                    state.bookings =
-                        state.bookings.map(
-                            (booking) =>
-                                booking._id ===
-                                updatedBooking._id
-                                    ? updatedBooking
-                                    : booking
-                        );
-
-                    state.selectedBooking =
-                        updatedBooking;
-                }
-            )
-
-            .addCase(
-                cancelBookingExtension.rejected,
-                (state, action) => {
-                    state.loading = false;
-                    state.error =
-                        action.payload;
-                }
-            );
+            });
+            builder.addCase(thunk.rejected, (state, action) => {
+                if (!state.pendingRequests[action.meta.requestId] || (isRead && state.requestIds[type] !== action.meta.requestId)) return;
+                delete state.pendingRequests[action.meta.requestId];
+                if (state.requestIds[type] === action.meta.requestId) delete state.requestIds[type];
+                state.loading = Object.keys(state.pendingRequests).length > 0;
+                state.error = typeof action.payload === "string" ? action.payload : action.payload?.message ?? null;
+                if (thunk === getBookingById) state.selectedBooking = null;
+            });
+        }
+        for (const type of ["auth/logout/fulfilled", "auth/sessionEnded", "auth/getCurrentUser/rejected", "auth/login/rejected"]) {
+            builder.addCase(type, () => initialState);
+        }
+        for (const type of ["auth/login/fulfilled", "auth/getCurrentUser/fulfilled"]) {
+            builder.addCase(type, (state, action) => {
+                const id = action.payload?.data?._id ?? action.payload?.data?.id;
+                const ownerUserId = id ? String(id) : null;
+                if (type === "auth/login/fulfilled" || state.ownerUserId !== ownerUserId) return { ...initialState, ownerUserId };
+            });
+        }
     },
-    
 });
 
 

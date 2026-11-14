@@ -20,6 +20,13 @@ test("boundary alerts reach every authorized role, link to the correct screen an
     assert.equal(pushPath("admin", notification), "/admin/settings/penalties");
     assert.equal(shouldPush("stranger", notification), false);
 });
+test("outside-trip permission updates are push enabled for the affected customer", () => {
+    for (const type of ["Boundary Trip Approved", "Boundary Trip Revoked"]) {
+        assert.equal(shouldPush("customer", { type }), true);
+        assert.equal(shouldPush("operator", { type }), false);
+        assert.equal(pushPath("customer", { type, metadata: { relatedModel: "Booking", relatedId: "b".repeat(24) } }), `/customer/bookings/${"b".repeat(24)}`);
+    }
+});
 
 test("push configuration rejects malformed and mismatched keys and invalid contacts without exposing secrets", (t) => {
     const originalEnvironment = { ...process.env };

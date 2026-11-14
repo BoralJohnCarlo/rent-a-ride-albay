@@ -4,6 +4,7 @@ import Button from "../common/Button";
 import Input from "../common/Input";
 import Switch from "../common/Switch";
 import Select from "../common/Select";
+import { boundaryHistoryLink } from "../../utils/boundaryHistoryLink";
 
 const defaults = { alertsEnabled: true, penaltiesEnabled: false, warningDistanceKm: 2,
     gracePeriodMinutes: 15, penaltyAmount: 500, bufferMeters: 200, confirmationSeconds: 60 };
@@ -20,6 +21,8 @@ export default function BoundarySettings() {
     const [settings, setSettings] = useState(null);
     const [baseline, setBaseline] = useState(null);
     const [incidents, setIncidents] = useState([]);
+    const [historyMode, setHistoryMode] = useState(false);
+    const [historyCursor, setHistoryCursor] = useState(null);
     const [rentals, setRentals] = useState([]);
     const [attempt, setAttempt] = useState(0);
     const [busy, setBusy] = useState(false);
@@ -34,7 +37,7 @@ export default function BoundarySettings() {
         Promise.all([api.get("/settings"), api.get("/boundary/incidents"), api.get("/rentals")]).then(([s, i, r]) => {
             if (!active) return;
             const value = { ...defaults, ...s.data.data.boundarySettings };
-            setSettings(value); setBaseline(value); setIncidents(i.data.data);
+            setSettings(value); setBaseline(value); setIncidents(i.data.data); setHistoryMode(false); setHistoryCursor(null);
             setRentals(r.data.data.filter(rental => rental.status === "Ongoing" && !rental.return?.date));
         }).catch(err => { if (active) setError(errorText(err)); });
         return () => { active = false; };
@@ -46,6 +49,14 @@ export default function BoundarySettings() {
         catch (err) { setError(errorText(err)); }
         finally { setBusy(false); }
     };
+    const refreshIncidents = async (allHistory = historyMode, before = null) => {
+        const response = await api.get(allHistory ? "/boundary/history" : "/boundary/incidents", { params: before ? { before } : undefined });
+        const data = response.data.data;
+        const records = allHistory ? data.incidents : data;
+        setIncidents(previous => before ? [...new Map([...previous, ...records].map(incident => [incident._id, incident])).values()] : records);
+        setHistoryMode(allHistory);
+        setHistoryCursor(allHistory ? data.nextCursor : null);
+    };
     const save = event => {
         event.preventDefault();
         run(async () => {
@@ -54,13 +65,19 @@ export default function BoundarySettings() {
             const response = await api.put("/settings", { boundarySettings: patch });
             const value = { ...defaults, ...response.data.data.boundarySettings };
             setSettings(value); setBaseline(value); setMessage("Boundary settings saved.");
-            setIncidents((await api.get("/boundary/incidents")).data.data);
+            await refreshIncidents();
         });
+    };
+    const refreshTripData = async () => {
+        await Promise.all([
+            refreshIncidents(),
+            api.get("/rentals").then(response => setRentals(response.data.data.filter(rental => rental.status === "Ongoing" && !rental.return?.date))),
+        ]);
     };
     const review = (incident, action) => run(async () => {
         await api.post(`/boundary/incidents/${incident._id}/review`, { action, reason: reasons[incident._id] || "",
             ...(action === "approve" ? { amount: Number(reviewAmounts[incident._id] ?? incident.amount) } : {}) });
-        setIncidents((await api.get("/boundary/incidents")).data.data);
+        await refreshIncidents();
         setMessage(action === "approve" ? "Boundary charge added to the rental." : "Boundary penalty waived.");
     });
     return <section className="min-w-0 space-y-5 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-6">
@@ -88,8 +105,8 @@ export default function BoundarySettings() {
             <h3 className="font-semibold text-gray-900 dark:text-white">Approve an outside-Albay trip</h3>
             <form onSubmit={event => { event.preventDefault(); run(async () => {
                 await api.post(`/boundary/rentals/${exemption.rental}/exemption`, { until: new Date(Date.now() + Number(exemption.hours) * 3600000).toISOString(), reason: exemption.reason });
+                await refreshTripData();
                 setMessage("Outside trip approved. Pending boundary reviews for this rental were waived.");
-                setAttempt(value => value + 1);
             }); }} className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
                 <Select label="Ongoing rental" value={exemption.rental} required disabled={busy} options={rentals.map(rental => ({ value: rental._id, label: rental.rentalCode }))}
                     onChange={event => setExemption(previous => ({ ...previous, rental: event.target.value }))} />
@@ -100,8 +117,8 @@ export default function BoundarySettings() {
                 <Button type="submit" disabled={busy || !exemption.rental}>Approve trip</Button>
                 <Button type="button" disabled={busy || !exemption.rental || !exemption.reason.trim()} onClick={() => run(async () => {
                     await api.post(`/boundary/rentals/${exemption.rental}/exemption`, { revoke: true, reason: exemption.reason });
+                    await refreshTripData();
                     setMessage("Outside trip approval revoked. Fresh GPS evidence is required before a new penalty countdown.");
-                    setAttempt(value => value + 1);
                 })}>Revoke selected trip approval</Button>
             </form>
             {rentals.filter(rental => rental.boundaryExemption?.until && new Date(rental.boundaryExemption.until) > new Date()).map(rental => <p key={rental._id} className="break-words text-sm text-gray-600 dark:text-gray-400">
@@ -110,23 +127,29 @@ export default function BoundarySettings() {
         </div>
         <div className="space-y-3 border-t border-gray-200 pt-5 dark:border-gray-800">
             <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold text-gray-900 dark:text-white">Recent boundary incidents</h3>
-                <Button disabled={busy} onClick={() => run(async () => setIncidents((await api.get("/boundary/incidents")).data.data))}>Refresh incidents</Button></div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">All pending reviews appear first, followed by recent incidents.</p>
+                <div className="flex flex-wrap gap-2"><Button disabled={busy} onClick={() => run(() => refreshIncidents())}>Refresh incidents</Button>
+                    <Button disabled={busy} onClick={() => run(() => refreshIncidents(!historyMode))}>{historyMode ? "Recent and pending" : "Browse all history"}</Button></div></div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{historyMode ? "All incident history, newest first. Load older records below." : "All pending reviews appear first, followed by recent incidents."}</p>
             {!incidents.length && <p className="text-sm text-gray-500 dark:text-gray-400">No boundary incidents recorded.</p>}
             {incidents.map(incident => <article key={incident._id} className="min-w-0 space-y-2 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
                 <p className="break-words font-medium text-gray-900 dark:text-white">{incident.vehicle?.plateNumber || "Vehicle"} · {incident.rental?.rentalCode || "No active rental"}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">{incident.stage} · {incident.review === "none" ? "No penalty due" : incident.review} · {new Date(incident.createdAt).toLocaleString("en-PH", { timeZone: "Asia/Manila" })}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Confirmed grace-period evidence: {Math.floor(incident.evidenceMinutes)} minutes. {incident.outsideAt && `Proposed charge: PHP ${Number(incident.amount).toFixed(2)}.`}</p>
                 {incident.reason && <p className="break-words text-sm text-gray-600 dark:text-gray-400">{incident.reason}</p>}
+                {boundaryHistoryLink(incident) && <a href={boundaryHistoryLink(incident)} className="inline-block text-sm font-medium text-blue-700 underline dark:text-blue-300">View route history around crossing</a>}
+                {boundaryHistoryLink(incident) && <p className="text-xs text-gray-500 dark:text-gray-400">GPS History opens with the vehicle and dates selected. Select Load History to view recorded points; adjust dates for longer trips.</p>}
                 {incident.review === "eligible" && <div className="space-y-2">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Review the route history and customer warning before approving. Reentry resolves the alert but does not erase an eligible review.</p>
                     <Input label="Review reason" maxLength={500} disabled={busy} value={reasons[incident._id] || ""} onChange={event => setReasons(previous => ({ ...previous, [incident._id]: event.target.value }))} />
                     <Input label="Approved amount (PHP, may only reduce)" type="number" min={0.01} max={incident.amount} step={0.01} disabled={busy}
                         value={reviewAmounts[incident._id] ?? incident.amount} onChange={event => setReviewAmounts(previous => ({ ...previous, [incident._id]: event.target.value }))} />
-                    <div className="flex flex-wrap gap-2"><Button disabled={busy || !reasons[incident._id]?.trim()} onClick={() => review(incident, "approve")}>Approve charge</Button>
+                    {incident.evidenceMinutes < Math.max(baseline?.gracePeriodMinutes || 0, incident.policy?.gracePeriodMinutes || 0) &&
+                        <p className="text-xs text-amber-700 dark:text-amber-300">The current, longer grace period has not been met. Refresh after more confirmed travel, or waive this review.</p>}
+                    <div className="flex flex-wrap gap-2"><Button disabled={busy || !reasons[incident._id]?.trim() || incident.evidenceMinutes < Math.max(baseline?.gracePeriodMinutes || 0, incident.policy?.gracePeriodMinutes || 0)} onClick={() => review(incident, "approve")}>Approve charge</Button>
                         <Button disabled={busy || !reasons[incident._id]?.trim()} onClick={() => review(incident, "waive")}>Waive</Button></div>
                 </div>}
             </article>)}
+            {historyMode && historyCursor && <Button disabled={busy} onClick={() => run(() => refreshIncidents(true, historyCursor))}>Load older incidents</Button>}
         </div>
     </section>;
 }

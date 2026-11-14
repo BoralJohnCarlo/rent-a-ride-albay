@@ -167,6 +167,34 @@ it("requires a persisted customer warning and allows reducing the charge", async
     const charged = await Rental.findById(rental._id);
     assert.equal(charged.charges[0].amount, 250); assert.equal(charged.financial.finalAmount, 1350);
 });
+it("revocation ignores approved-period GPS fixes and requires fresh confirmation and a full grace period", async () => {
+    const path = `/boundary/rentals/${rental._id}/exemption`;
+    assert.equal((await request(path, admin, { until: new Date(Date.now() + 3600000).toISOString(), reason: "Approved route" })).status, 200);
+    assert.equal((await request(path, admin, { revoke: true, reason: "Trip ended" })).status, 200);
+    const updated = await Rental.findById(rental._id);
+    const revokedAt = updated.boundaryExemptionHistory.at(-1).performedAt.getTime();
+    // Retained and delayed telemetry from the approved period is still fresh
+    // enough for normal GPS processing, but must not seed boundary monitoring.
+    base = revokedAt - 60000;
+    await fix(0);
+    await fix(1);
+    assert.equal(await Incident.countDocuments(), 0);
+    assert.equal(await Alert.countDocuments({ status: "active" }), 0);
+    assert.equal(await Notification.countDocuments({ type: "Boundary Alert" }), 0);
+    base = revokedAt + 1000;
+    await fix(0);
+    assert.equal(await Incident.countDocuments(), 0);
+    await fix(1);
+    const crossing = await Incident.findOne({ stage: "outside" });
+    assert.ok(crossing);
+    assert.equal(crossing.evidenceMinutes, 0);
+    for (let minute = 2; minute <= 15; minute++) await fix(minute);
+    assert.equal(await Incident.countDocuments({ review: "eligible" }), 0);
+    await fix(16);
+    assert.equal((await Incident.findById(crossing._id)).evidenceMinutes, 15);
+    assert.equal(await Incident.countDocuments({ review: "eligible" }), 1);
+    assert.equal((await Rental.findById(rental._id)).charges.length, 0);
+});
 it("saves the customer's booking-linked warning atomically with crossing confirmation", async () => {
     await fix(0); await fix(1);
     const incident = await Incident.findOne({ stage: "outside" });
@@ -212,4 +240,79 @@ it("shows an older pending review even when over 100 newer incidents exist", asy
     const result = await (await request("/boundary/incidents", admin)).json();
     assert.equal(String(result.data[0]._id), String(incident._id));
     assert.equal(result.data.length, 101);
+});
+it("continues other boundary deliveries after one recipient lookup fails and retries the failed notice", async t => {
+    await fix(0); await fix(1);
+    const pending = await Notice.find({ delivered: false }).sort({ createdAt: 1 }).lean();
+    assert.equal(pending.length, 2);
+    const original = User.findById;
+    let failed = false;
+    const lookup = t.mock.method(User, "findById", function (...args) {
+        if (!failed) { failed = true; throw new Error("Temporary recipient lookup failure"); }
+        return original.apply(this, args);
+    });
+    await deliverBoundaryNotices();
+    assert.equal((await Notice.findById(pending[0]._id)).delivered, false);
+    assert.equal((await Notice.findById(pending[1]._id)).delivered, true);
+    lookup.mock.restore();
+    await deliverBoundaryNotices();
+    assert.equal(await Notice.countDocuments({ delivered: false }), 0);
+    assert.equal(await Notification.countDocuments(), 2);
+});
+it("a longer grace period restores the customer's countdown and blocks premature approval", async () => {
+    const incident = await eligible();
+    await updateBookingLocationPolicy({ boundarySettings: { gracePeriodMinutes: 30 } });
+    const result = await (await request("/boundary/current", rental.customer)).json();
+    assert.equal(result.data[0].remainingMinutes, 15);
+    assert.equal(result.data[0].review, "none");
+    await assert.rejects(reviewBoundaryIncident(incident._id, "approve", "Reviewed", admin), /grace period has not been met/);
+    assert.equal((await Rental.findById(rental._id)).charges.length, 0);
+});
+it("customers receive approval and revocation notices with booking links and visible expiry", async () => {
+    const path = `/boundary/rentals/${rental._id}/exemption`;
+    const until = new Date(Date.now() + 3600000).toISOString();
+    const approval = { until, reason: "Approved family trip" };
+    assert.equal((await request(path, admin, approval)).status, 200);
+    assert.equal((await request(path, admin, approval)).status, 200);
+    let record = await Rental.findById(rental._id);
+    assert.equal(record.boundaryExemptionHistory.length, 1);
+    const notification = await Notification.findOne({ recipient: rental.customer, type: "Boundary Trip Approved" });
+    assert.ok(notification); assert.equal(notification.pushPending, true);
+    assert.equal(notification.metadata.relatedModel, "Booking");
+    assert.equal(String(notification.metadata.relatedId), String(rental.booking));
+    let status = (await (await request("/boundary/current", rental.customer)).json()).data;
+    assert.equal(status[0].kind, "permission"); assert.equal(status[0].permissionStatus, "approved");
+    assert.equal(new Date(status[0].until).toISOString(), until);
+    await updateBookingLocationPolicy({ boundarySettings: { alertsEnabled: false } });
+    status = (await (await request("/boundary/current", rental.customer)).json()).data;
+    assert.equal(status[0].permissionStatus, "approved", "approval remains visible when boundary warnings are disabled");
+    assert.equal((await request(path, admin, { revoke: true, reason: "Trip changed" })).status, 200);
+    assert.equal((await request(path, admin, { revoke: true, reason: "Retried revoke" })).status, 200);
+    record = await Rental.findById(rental._id);
+    assert.equal(record.boundaryExemptionHistory.length, 2);
+    assert.equal(await Notification.countDocuments({ type: "Boundary Trip Revoked", recipient: rental.customer }), 1);
+    assert.equal((await Notification.findById(notification._id)).pushCancelled, true);
+    status = (await (await request("/boundary/current", rental.customer)).json()).data;
+    assert.equal(status[0].permissionStatus, "revoked");
+});
+it("expired outside-trip approvals remain visible as expired rather than active", async () => {
+    await Rental.updateOne({ _id: rental._id }, { $set: { boundaryExemption: { until: new Date(Date.now() - 1000), reason: "Ended trip" } } });
+    const status = (await (await request("/boundary/current", rental.customer)).json()).data;
+    assert.equal(status[0].permissionStatus, "expired");
+});
+it("admin history pagination reaches old records without skipping or duplicating equal timestamps", async () => {
+    const timestamp = new Date("2026-11-01T00:00:00Z");
+    await Incident.collection.insertMany(Array.from({ length: 121 }, () => ({
+        vehicle: tracker.vehicle, tracker: tracker._id, rental: rental._id, active: false,
+        stage: "returned", review: "none", createdAt: timestamp,
+    })));
+    const ids = []; let before = null;
+    do {
+        const page = await (await request(`/boundary/history${before ? `?before=${before}` : ""}`, admin)).json();
+        assert.ok(page.success); assert.ok(page.data.incidents.length <= 50);
+        ids.push(...page.data.incidents.map(incident => incident._id)); before = page.data.nextCursor;
+    } while (before);
+    assert.equal(ids.length, 121); assert.equal(new Set(ids).size, 121);
+    assert.equal((await request("/boundary/history", rental.customer)).status, 403);
+    assert.equal((await request("/boundary/history?before=invalid", admin)).status, 400);
 });

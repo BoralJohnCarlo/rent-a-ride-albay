@@ -80,3 +80,14 @@ and makes the current excursion alerts-only even after reenabling. A later
 excursion can qualify again. Approved charges remain unchanged. All pending
 reviews are listed ahead of recent incidents, including reviews older than the
 100-item recent-history window.
+
+Customers receive approval and revocation notices linked to their booking. Their
+ongoing rental also shows approval expiry in Philippine time, including when
+boundary alerts are disabled. Permission changes and their notices are saved in
+the same transaction; repeated identical requests do not create duplicate notices.
+
+Admins can browse all incident history in pages of 50 using Load older incidents.
+The Recent and pending view continues to include every pending review. Incident
+route-history links select the vehicle and a time range around the crossing in
+GPS History; select Load History to fetch recorded points. The initial range is
+limited to 24 hours and can be adjusted for longer trips.

@@ -21,12 +21,18 @@ const STOPPED_PLAYBACK = { playing: false, index: 0 };
 const useRouteHistory = (
     vehicleId,
     mode,
-    { earliestStartMs = null, earliestStartMessage = null } = {}
+    { earliestStartMs = null, earliestStartMessage = null, initialRange = null } = {}
 ) => {
-    const [range, setRange] = useState(defaultHistoryRange);
+    const [range, updateRange] = useState(() => initialRange || defaultHistoryRange());
     const [history, setHistory] = useState(EMPTY_HISTORY);
     const [playback, setPlayback] = useState(STOPPED_PLAYBACK);
     const historyRequest = useRef(0);
+    const setRange = nextRange => {
+        historyRequest.current += 1;
+        setHistory(EMPTY_HISTORY);
+        setPlayback(STOPPED_PLAYBACK);
+        updateRange(nextRange);
+    };
 
     // Switching vehicles invalidates any previously loaded route/playback -
     // a stale route for a different vehicle must never linger on screen.
@@ -128,7 +134,9 @@ const useRouteHistory = (
         } catch (error) {
             if (request !== historyRequest.current) return;
             fail(
-                error.response?.data?.message ||
+                ["ECONNABORTED", "ETIMEDOUT"].includes(error.code)
+                    ? "Loading route history timed out. Please try again."
+                    : error.response?.data?.message ||
                     "Unable to load route history."
             );
         }

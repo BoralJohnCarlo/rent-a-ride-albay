@@ -156,6 +156,12 @@ const HistoryControls = ({
                 {windowNote ? ` ${windowNote}` : ""}
             </p>
 
+            {data?.sampled && <p className="break-words text-xs text-amber-700 dark:text-amber-300">
+                Showing {data.returnedPoints.toLocaleString()} of {data.totalPoints.toLocaleString()} recorded readings.
+                The route is simplified; distance is approximate and maximum speed reflects only the displayed points.
+                Choose a shorter range for more detail.
+            </p>}
+
             <AnimatePresence>
                 {error && (
                     <motion.p
@@ -191,14 +197,14 @@ const HistoryControls = ({
                         </span>
 
                         <span>
-                            Distance:{" "}
+                            {data.sampled ? "Approx. distance:" : "Distance:"}{" "}
                             <strong>
                                 {summary.distanceKm.toFixed(1)} km
                             </strong>
                         </span>
 
                         <span>
-                            Max speed:{" "}
+                            {data.sampled ? "Max displayed speed:" : "Max speed:"}{" "}
                             <strong>
                                 {summary.maxSpeedKmh ?? "N/A"} km/h
                             </strong>

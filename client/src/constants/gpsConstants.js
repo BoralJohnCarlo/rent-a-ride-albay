@@ -1,4 +1,4 @@
-import { haversineDistanceMeters } from "../utils/geo";
+import { haversineDistanceMeters } from "../utils/geo.js";
 
 /*
  * If a tracker hasn't communicated in this long, the UI treats it as
@@ -197,27 +197,24 @@ export const filterValidRoutePoints = (points) =>
  * so a long tracker outage never renders as a single continuous line.
  */
 export const buildRouteSegments = (points) => {
-    const validPoints = filterValidRoutePoints(points);
-
-    if (validPoints.length === 0) {
-        return [];
-    }
-
-    const segments = [[validPoints[0]]];
-
-    for (let i = 1; i < validPoints.length; i += 1) {
-        const previous = validPoints[i - 1];
-        const current = validPoints[i];
+    const segments = [];
+    let previous = null;
+    for (const current of points || []) {
+        if (!filterValidRoutePoints([current]).length) {
+            previous = null;
+            continue;
+        }
 
         const gapMs =
             new Date(current.recordedAt).getTime() -
-            new Date(previous.recordedAt).getTime();
+            (previous ? new Date(previous.recordedAt).getTime() : NaN);
 
-        if (gapMs > GPS_ROUTE_GAP_THRESHOLD_MS) {
+        if (!previous || current.routeBreakBefore || gapMs > GPS_ROUTE_GAP_THRESHOLD_MS) {
             segments.push([current]);
         } else {
             segments[segments.length - 1].push(current);
         }
+        previous = current;
     }
 
     return segments;

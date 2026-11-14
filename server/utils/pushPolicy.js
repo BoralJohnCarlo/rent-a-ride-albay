@@ -6,6 +6,7 @@ const events = {
 };
 
 events.customer.push("Upcoming Pickup", "Rental Return Reminder", "Rental Overdue", "Your Booking Is Back On");
+events.customer.push("Boundary Trip Approved", "Boundary Trip Revoked");
 events.operator.push("Withdrawal Completed", "Withdrawal Failed", "Rental Overdue");
 events.admin.push("vehicleRegistrationRenewalRequest", "Vehicle Registration Expired", "Vehicle Registration Expiring Soon", "Reschedule Requested", "Rental Extension Requested");
 for (const role of ["customer", "operator", "admin"]) events[role].push("Boundary Alert");

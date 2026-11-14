@@ -24,6 +24,7 @@ export const getVehicleTelemetryHistory = async (
         `/telemetry/vehicles/${vehicleId}/history`,
         {
             params: { start, end },
+            timeout: 15000,
         }
     );
 
